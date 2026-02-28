@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { Home, BookOpen, PenLine, Sparkles, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -21,11 +22,17 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   return (
     <div className="min-h-screen bg-background text-foreground bg-noise flex justify-center">
       <div className="w-full max-w-md bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
+        
+        {/* Floating Theme Toggle */}
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+
         <main className="flex-1 overflow-y-auto pb-24">
           {children}
         </main>
         
-        <nav className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border pb-safe">
+        <nav className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border pb-safe z-50">
           <div className="flex justify-around items-center h-16 px-2">
             {navItems.map((item) => {
               const isActive = location === item.href;
