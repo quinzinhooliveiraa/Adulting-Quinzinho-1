@@ -1,21 +1,60 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+
+// Refletive Question Pool
+const REFLECTION_QUESTIONS = [
+  { id: 1, text: "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?", theme: "Identidade" },
+  { id: 2, text: "O que você tem evitado sentir ultimamente?", theme: "Ansiedade" },
+  { id: 3, text: "Como você definiria 'sucesso' se o dinheiro não existisse?", theme: "Propósito" },
+  { id: 4, text: "Qual foi a última vez que você se sentiu verdadeiramente em paz consigo mesmo?", theme: "Solidão" },
+  { id: 5, text: "Você está vivendo a vida que escolheu ou a vida que esperam de você?", theme: "Identidade" },
+  { id: 6, text: "O que o seu 'eu' de 10 anos atrás pensaria de quem você é hoje?", theme: "Crescimento" },
+  { id: 7, text: "Qual a diferença entre a solidão que dói e a solitude que cura?", theme: "Solidão" },
+  { id: 8, text: "Se você soubesse que vai dar certo, o que tentaria fazer hoje?", theme: "Incerteza" },
+  { id: 9, text: "Em que relacionamentos você sente que pode ser 100% você mesmo?", theme: "Relações" },
+  { id: 10, text: "O que você precisa perdoar em si mesmo para conseguir avançar?", theme: "Crescimento" }
+];
+
+// Simple mock logic for auto-tagging
+const analyzeTextForTags = (text: string) => {
+  const lowerText = text.toLowerCase();
+  const foundTags = new Set<string>();
+  
+  if (lowerText.match(/medo|futuro|ansioso|ansiedade|preocupa|nervoso/)) foundTags.add("ansiedade");
+  if (lowerText.match(/objetivo|sentido|carreira|trabalho|fazer da vida|propósito/)) foundTags.add("propósito");
+  if (lowerText.match(/amor|namorado|namorada|relacionamento|casamento|amigo/)) foundTags.add("relações");
+  if (lowerText.match(/eu mesmo|quem sou|minha essência|autêntico|identidade/)) foundTags.add("identidade");
+  if (lowerText.match(/sozinho|solitário|solitude|solidão|isolado/)) foundTags.add("solidão");
+  if (lowerText.match(/aprender|evoluir|mudar|crescer|melhorar|crescimento/)) foundTags.add("crescimento");
+  if (lowerText.match(/não sei|dúvida|incerteza|confuso|perdido/)) foundTags.add("incerteza");
+
+  return Array.from(foundTags).slice(0, 3); // Max 3 suggestions
+};
 
 export default function Home() {
   const [mood, setMood] = useState<string | null>(null);
   const [isReflecting, setIsReflecting] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
   const [isSaved, setIsSaved] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
   // Sharing Drawer State
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
+
+  // Rotate daily question based on the day of the year
+  const dailyQuestion = useMemo(() => {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+    const index = dayOfYear % REFLECTION_QUESTIONS.length;
+    return REFLECTION_QUESTIONS[index];
+  }, []);
 
   const moodIcons = [
     { id: "terrible", icon: Frown, label: "Difícil" },
@@ -24,13 +63,32 @@ export default function Home() {
     { id: "good", icon: Heart, label: "Grato" },
   ];
 
+  // AI Tagging effect
+  useEffect(() => {
+    if (reflectionText.length > 15) {
+      const tags = analyzeTextForTags(reflectionText);
+      // Only show tags that aren't already selected
+      setSuggestedTags(tags.filter(t => !selectedTags.includes(t)));
+    } else {
+      setSuggestedTags([]);
+    }
+  }, [reflectionText, selectedTags]);
+
+  const toggleTag = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
   const handleSaveReflection = () => {
     if (!reflectionText.trim()) return;
     setIsSaved(true);
     setTimeout(() => {
       setIsReflecting(false);
       setIsSaved(false);
-      // Keep text or reset based on preference. We'll keep it so they see it's there.
+      // In a real app we'd save it to the DB here.
     }, 1500);
   };
 
@@ -76,7 +134,13 @@ export default function Home() {
 
       <section className="space-y-4">
         <div className="flex justify-between items-end">
-          <h2 className="text-lg font-serif text-foreground">Uma reflexão para você hoje</h2>
+          <h2 className="text-lg font-serif text-foreground flex items-center gap-2">
+            Reflexão Diária
+            <Sparkles size={14} className="text-primary opacity-60" />
+          </h2>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md">
+            {dailyQuestion.theme}
+          </span>
         </div>
         
         <div className="glass-card rounded-3xl p-6 md:p-8 relative overflow-hidden group">
@@ -86,7 +150,7 @@ export default function Home() {
           
           <div className="relative z-10 space-y-6">
             <p className="font-serif text-xl md:text-2xl reading-text text-foreground">
-              "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?"
+              "{dailyQuestion.text}"
             </p>
             
             {!isReflecting && !reflectionText && (
@@ -125,8 +189,35 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+
+                {/* Intelligent Tagging Area */}
+                {(suggestedTags.length > 0 || selectedTags.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Hash size={14} className="text-muted-foreground opacity-70" />
+                    
+                    {selectedTags.map(tag => (
+                      <button 
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className="text-[11px] px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-1 transition-all"
+                      >
+                        {tag} <X size={10} className="opacity-70 ml-1" />
+                      </button>
+                    ))}
+
+                    {suggestedTags.map(tag => (
+                      <button 
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className="text-[11px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground border border-dashed border-primary/30 font-medium hover:bg-primary/10 transition-all animate-in fade-in zoom-in"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 
-                <div className="flex space-x-3">
+                <div className="flex space-x-3 pt-2">
                   <Button 
                     onClick={handleSaveReflection}
                     disabled={!reflectionText.trim() || isSaved}
@@ -200,7 +291,6 @@ export default function Home() {
               
               <button className="flex flex-col items-center space-y-3 group">
                 <div className="w-14 h-14 rounded-full bg-[#FF6719] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                  {/* Substack generic icon */}
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM22.539 12.086H1.46v9.379l10.539-5.875 10.54 5.875v-9.379zM22.539 4.406H1.46V1.566h21.08v2.84z" fill="currentColor"/>
                   </svg>

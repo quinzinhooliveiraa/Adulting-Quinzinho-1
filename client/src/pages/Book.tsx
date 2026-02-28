@@ -1,6 +1,7 @@
-import { Bookmark, LockKeyhole, ChevronRight, BookOpen } from "lucide-react";
+import { Bookmark, LockKeyhole, ChevronRight, BookOpen, Instagram, Mail, MessageCircle } from "lucide-react";
 import bookCover from "@/assets/images/book-cover.png";
 import solitudeArt from "@/assets/images/solitude.png";
+import { Button } from "@/components/ui/button";
 
 const CHAPTERS = [
   { 
@@ -44,6 +45,26 @@ export default function Book() {
           <h2 className="mt-8 font-serif text-2xl text-center text-foreground tracking-tight">A Casa dos 20</h2>
           <p className="text-sm text-muted-foreground text-center mt-2 italic font-serif">Refletindo sobre os Desafios da Transição para a Vida Adulta</p>
           <p className="text-xs text-primary/70 font-medium uppercase tracking-widest mt-4">Por Quinzinho Oliveira</p>
+        </div>
+
+        {/* Contact Author Section */}
+        <div className="mb-12 bg-card rounded-3xl p-6 border border-border shadow-sm flex flex-col items-center text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-background shadow-md">
+             <span className="font-serif text-2xl text-primary">QO</span>
+          </div>
+          <div>
+            <h3 className="font-serif text-lg text-foreground">Converse com o Autor</h3>
+            <p className="text-sm text-muted-foreground mt-1 px-4">
+              Feedback, histórias ou apenas para trocar ideias sobre a jornada dos 20 anos.
+            </p>
+          </div>
+          <Button 
+            className="w-full sm:w-auto bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 text-white hover:opacity-90 rounded-full h-12 shadow-md border-0 transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
+            onClick={() => window.open('https://instagram.com/', '_blank')} // User can update exact handle
+          >
+            <Instagram size={20} />
+            <span className="font-medium">@quinzinhooliveira</span>
+          </Button>
         </div>
 
         <div className="space-y-8">
