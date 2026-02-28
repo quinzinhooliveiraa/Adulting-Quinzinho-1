@@ -69,31 +69,33 @@
 }
 
 .dark {
-  /* Dark mode - deeper warm tones */
-  --background: 30 11% 12%;
-  --foreground: 40 33% 90%;
+  /* Deep charcoal literary environment */
+  --background: 240 8% 8%;
+  --foreground: 40 20% 85%;
   
-  --card: 30 10% 15%;
-  --card-foreground: 40 33% 90%;
+  /* Soft dark cards */
+  --card: 240 6% 12%;
+  --card-foreground: 40 25% 90%;
   
-  --popover: 30 10% 15%;
-  --popover-foreground: 40 33% 90%;
+  --popover: 240 6% 12%;
+  --popover-foreground: 40 25% 90%;
   
-  --primary: 40 25% 85%;
-  --primary-foreground: 30 20% 20%;
+  /* Warm accents for interactions */
+  --primary: 35 30% 75%;
+  --primary-foreground: 240 10% 10%;
   
-  --secondary: 30 15% 20%;
-  --secondary-foreground: 40 33% 90%;
+  --secondary: 240 5% 18%;
+  --secondary-foreground: 40 20% 85%;
   
-  --muted: 30 15% 20%;
-  --muted-foreground: 40 20% 70%;
+  --muted: 240 5% 15%;
+  --muted-foreground: 40 10% 60%;
   
-  --accent: 30 20% 25%;
-  --accent-foreground: 40 33% 90%;
+  --accent: 35 20% 25%;
+  --accent-foreground: 40 30% 90%;
   
-  --border: 30 15% 20%;
-  --input: 30 15% 20%;
-  --ring: 40 25% 85%;
+  --border: 240 5% 18%;
+  --input: 240 5% 18%;
+  --ring: 35 30% 75%;
 }
 
 @layer base {
@@ -106,12 +108,15 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-tight;
   }
+  p {
+    @apply leading-relaxed;
+  }
 }
 
 /* Custom utilities for the literary aesthetic */
 @layer utilities {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.04)];
+    @apply bg-card/60 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)];
   }
   
   .text-ink {
@@ -120,5 +125,10 @@
   
   .bg-noise {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+  
+  /* Increased line height for reflective reading */
+  .reading-text {
+    @apply leading-loose tracking-wide;
   }
 }
