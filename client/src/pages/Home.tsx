@@ -35,6 +35,20 @@ const analyzeTextForTags = (text: string) => {
   return Array.from(foundTags).slice(0, 3); // Max 3 suggestions
 };
 
+// Reminders Pool
+const DAILY_REMINDERS = [
+  "A transição para a vida adulta não é uma corrida. É natural sentir que todos estão avançando enquanto você tenta encontrar seu próprio ritmo. Respire.",
+  "Sua identidade não é um destino final, mas um processo contínuo de descoberta. Permita-se mudar de ideia.",
+  "A incerteza é o espaço onde todas as possibilidades coexistem. Não tenha medo do que ainda não está escrito.",
+  "Cuidar de si mesmo não é egoísmo, é sobrevivência. Suas necessidades importam tanto quanto as dos outros.",
+  "O fracasso é apenas um feedback. Cada erro é uma lição disfarçada que te prepara para o que está por vir.",
+  "A solidão pode ser um solo fértil para a criatividade. Aprenda a desfrutar da sua própria companhia.",
+  "Você não precisa ter todas as respostas hoje. Às vezes, apenas fazer a pergunta certa já é o suficiente.",
+  "Sua saúde mental é mais importante do que qualquer prazo ou expectativa externa. Priorize sua paz.",
+  "A comparação é a ladra da alegria. Olhe para o seu progresso, não para o palco dos outros.",
+  "Cada pequena vitória merece ser celebrada. Você está fazendo o melhor que pode com o que tem."
+];
+
 export default function Home() {
   const [mood, setMood] = useState<string | null>(null);
   const [isReflecting, setIsReflecting] = useState(false);
@@ -49,12 +63,20 @@ export default function Home() {
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
-  // Rotate daily question based on the day of the year
+  // Rotate daily question and reminder based on the day of the year
+  const dayOfYear = useMemo(() => 
+    Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24),
+  []);
+
   const dailyQuestion = useMemo(() => {
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
     const index = dayOfYear % REFLECTION_QUESTIONS.length;
     return REFLECTION_QUESTIONS[index];
-  }, []);
+  }, [dayOfYear]);
+
+  const dailyReminder = useMemo(() => {
+    const index = dayOfYear % DAILY_REMINDERS.length;
+    return DAILY_REMINDERS[index];
+  }, [dayOfYear]);
 
   const moodIcons = [
     { id: "terrible", icon: Frown, label: "Difícil" },
@@ -253,7 +275,7 @@ export default function Home() {
       <section className="pt-6 border-t border-border/60">
         <h2 className="text-lg font-serif text-foreground mb-4">Lembrete do dia</h2>
         <p className="text-muted-foreground reading-text text-sm md:text-base">
-          A transição para a vida adulta não é uma corrida. É natural sentir que todos estão avançando enquanto você tenta encontrar seu próprio ritmo. Respire.
+          {dailyReminder}
         </p>
       </section>
 
