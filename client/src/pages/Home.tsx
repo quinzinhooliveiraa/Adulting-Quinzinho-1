@@ -35,18 +35,55 @@ const analyzeTextForTags = (text: string) => {
   return Array.from(foundTags).slice(0, 3); // Max 3 suggestions
 };
 
-// Reminders Pool
-const DAILY_REMINDERS = [
-  "A transição para a vida adulta não é uma corrida. É natural sentir que todos estão avançando enquanto você tenta encontrar seu próprio ritmo. Respire.",
-  "Sua identidade não é um destino final, mas um processo contínuo de descoberta. Permita-se mudar de ideia.",
-  "A incerteza é o espaço onde todas as possibilidades coexistem. Não tenha medo do que ainda não está escrito.",
-  "Cuidar de si mesmo não é egoísmo, é sobrevivência. Suas necessidades importam tanto quanto as dos outros.",
-  "O fracasso é apenas um feedback. Cada erro é uma lição disfarçada que te prepara para o que está por vir.",
-  "A solidão pode ser um solo fértil para a criatividade. Aprenda a desfrutar da sua própria companhia.",
-  "Você não precisa ter todas as respostas hoje. Às vezes, apenas fazer a pergunta certa já é o suficiente.",
-  "Sua saúde mental é mais importante do que qualquer prazo ou expectativa externa. Priorize sua paz.",
-  "A comparação é a ladra da alegria. Olhe para o seu progresso, não para o palco dos outros.",
-  "Cada pequena vitória merece ser celebrada. Você está fazendo o melhor que pode com o que tem."
+// Shared Mock Entries (In a real app, this would come from a database/context)
+const RECENT_JOURNAL_ENTRIES = [
+  {
+    id: 1,
+    date: "Ontem",
+    text: "Acho que estou me cobrando demais sobre onde eu deveria estar aos 25. Todo mundo parece ter um plano...",
+    tags: ["ansiedade", "identidade"]
+  },
+  {
+    id: 2,
+    date: "12 de Março",
+    text: "Hoje percebi que a solidão não precisa ser vazia. Foi bom ter um momento só para mim.",
+    tags: ["solidão", "crescimento"]
+  }
+];
+
+// Reminders mapped to themes
+const THEMED_REMINDERS: Record<string, string[]> = {
+  ansiedade: [
+    "Respire. O futuro ainda não chegou e você não precisa resolver tudo hoje.",
+    "Sua ansiedade é um sinal de que você se importa, mas ela não é uma previsão do futuro.",
+    "Está tudo bem não estar bem o tempo todo. Acolha seu sentir."
+  ],
+  identidade: [
+    "Você é muito mais do que suas conquistas ou o seu cargo. Sua essência é única.",
+    "Não se compare com o palco dos outros. Sua jornada tem o seu próprio ritmo.",
+    "A pessoa que você está se tornando é mais importante do que a que você costumava ser."
+  ],
+  solidão: [
+    "A solitude é o encontro consigo mesmo. Aproveite esse espaço para se ouvir.",
+    "Estar sozinho não significa estar desamparado. É um momento de recarregar.",
+    "Sua própria companhia é preciosa. Cultive o amor por quem você é no silêncio."
+  ],
+  propósito: [
+    "O propósito não é um destino, é a forma como você caminha todos os dias.",
+    "Pequenas ações alinhadas com seus valores valem mais do que grandes metas vazias.",
+    "Confie no processo. Suas buscas estão te levando exatamente onde você precisa estar."
+  ],
+  crescimento: [
+    "Crescer dói, mas estagnar dói muito mais. Orgulhe-se de quão longe você chegou.",
+    "Cada desafio superado é um degrau na construção da sua melhor versão.",
+    "O amadurecimento é um processo lento. Seja gentil com o seu tempo."
+  ]
+};
+
+const DEFAULT_REMINDERS = [
+  "A transição para a vida adulta não é uma corrida. Respire.",
+  "Cada pequena vitória merece ser celebrada hoje.",
+  "Você está fazendo o melhor que pode com o que tem."
 ];
 
 export default function Home() {
@@ -63,20 +100,27 @@ export default function Home() {
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
-  // Rotate daily question and reminder based on the day of the year
-  const dayOfYear = useMemo(() => 
-    Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24),
-  []);
+  // Intelligent Reminder Selection
+  const dailyReminder = useMemo(() => {
+    // In a real app, RECENT_JOURNAL_ENTRIES would be dynamic state
+    const latestEntry = RECENT_JOURNAL_ENTRIES[0];
+    if (!latestEntry || !latestEntry.tags.length) {
+      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+      return DEFAULT_REMINDERS[dayOfYear % DEFAULT_REMINDERS.length];
+    }
 
+    // Pick a random tag from the latest entry and a random reminder for that tag
+    const randomTag = latestEntry.tags[Math.floor(Math.random() * latestEntry.tags.length)];
+    const options = THEMED_REMINDERS[randomTag] || DEFAULT_REMINDERS;
+    return options[Math.floor(Math.random() * options.length)];
+  }, []);
+
+  // Rotate daily question based on the day of the year
   const dailyQuestion = useMemo(() => {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
     const index = dayOfYear % REFLECTION_QUESTIONS.length;
     return REFLECTION_QUESTIONS[index];
-  }, [dayOfYear]);
-
-  const dailyReminder = useMemo(() => {
-    const index = dayOfYear % DAILY_REMINDERS.length;
-    return DAILY_REMINDERS[index];
-  }, [dayOfYear]);
+  }, []);
 
   const moodIcons = [
     { id: "terrible", icon: Frown, label: "Difícil" },
@@ -85,7 +129,7 @@ export default function Home() {
     { id: "good", icon: Heart, label: "Grato" },
   ];
 
-  // AI Tagging effect
+  // Intelligent Tagging effect
   useEffect(() => {
     if (reflectionText.length > 15) {
       const tags = analyzeTextForTags(reflectionText);
@@ -106,11 +150,18 @@ export default function Home() {
 
   const handleSaveReflection = () => {
     if (!reflectionText.trim()) return;
+    
+    // Auto-select top suggested tags if none selected
+    let finalTags = selectedTags;
+    if (selectedTags.length === 0 && suggestedTags.length > 0) {
+      finalTags = [suggestedTags[0]];
+      setSelectedTags(finalTags);
+    }
+
     setIsSaved(true);
     setTimeout(() => {
       setIsReflecting(false);
       setIsSaved(false);
-      // In a real app we'd save it to the DB here.
     }, 1500);
   };
 
