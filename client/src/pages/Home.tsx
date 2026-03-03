@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -93,6 +93,7 @@ export default function Home() {
   const [isSaved, setIsSaved] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [checkIns, setCheckIns] = useState<{id: string, time: string}[]>([]);
   
   // Sharing Drawer State
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -127,7 +128,33 @@ export default function Home() {
     { id: "bad", icon: Meh, label: "Ansioso" },
     { id: "neutral", icon: Smile, label: "Calmo" },
     { id: "good", icon: Heart, label: "Grato" },
+    { id: "excited", icon: Sparkles, label: "Animado" },
+    { id: "lonely", icon: Moon, label: "Solitário" },
   ];
+
+  const handleMoodSelect = (id: string) => {
+    setMood(id);
+    const now = new Date();
+    const timeStr = format(now, "HH:mm");
+    setCheckIns(prev => [...prev, { id, time: timeStr }]);
+    
+    // Auto-save logic for check-in
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  const handleCopy = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleTag = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
 
   // Intelligent Tagging effect
   useEffect(() => {
@@ -140,12 +167,10 @@ export default function Home() {
     }
   }, [reflectionText, selectedTags]);
 
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
+  const weeklySummary = {
+    predominant: "Calmo",
+    percentage: "65%",
+    trend: "estável"
   };
 
   const handleSaveReflection = () => {
@@ -165,45 +190,78 @@ export default function Home() {
     }, 1500);
   };
 
-  const handleCopy = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-widest text-muted-foreground font-sans">
-          {today}
-        </p>
-        <h1 className="text-3xl text-foreground font-serif leading-tight">
-          Bom dia. <br/>
-          Como você está hoje?
-        </h1>
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="text-sm uppercase tracking-widest text-muted-foreground font-sans">
+              {today}
+            </p>
+            <h1 className="text-3xl text-foreground font-serif leading-tight">
+              Bom dia. <br/>
+              Como você está agora?
+            </h1>
+          </div>
+          {checkIns.length > 0 && (
+            <div className="bg-secondary/50 p-2 rounded-xl text-[10px] font-medium text-primary border border-primary/10">
+              {checkIns.length} check-ins hoje
+            </div>
+          )}
+        </div>
       </header>
 
-      <section className="flex justify-between items-center bg-card rounded-2xl p-4 shadow-sm border border-border/50">
-        {moodIcons.map((m) => {
-          const Icon = m.icon;
-          const isActive = mood === m.id;
-          return (
-            <button
-              key={m.id}
-              onClick={() => setMood(m.id)}
-              className="flex flex-col items-center space-y-2"
-              data-testid={`mood-${m.id}`}
-            >
-              <div className={`p-3 rounded-full transition-all duration-300 ${isActive ? 'bg-primary text-primary-foreground scale-110 shadow-md' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+      <section className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-sm font-serif text-muted-foreground uppercase tracking-wider">Check-in de Humor</h2>
+          {checkIns.length > 0 && (
+            <button className="text-[10px] font-bold text-primary underline">Ver Resumo da Semana</button>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {moodIcons.map((m) => {
+            const Icon = m.icon;
+            const isActive = mood === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => handleMoodSelect(m.id)}
+                className={`flex flex-col items-center space-y-2 p-4 rounded-2xl border transition-all duration-300 ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground border-primary shadow-md scale-[1.02]' 
+                    : 'bg-card border-border/50 text-muted-foreground hover:bg-muted/50'
+                }`}
+                data-testid={`mood-${m.id}`}
+              >
                 <Icon size={24} strokeWidth={isActive ? 2 : 1.5} />
-              </div>
-              <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                {m.label}
-              </span>
-            </button>
-          );
-        })}
+                <span className="text-[10px] font-medium tracking-tight text-center">
+                  {m.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </section>
+
+      {checkIns.length > 0 && (
+        <section className="animate-in fade-in slide-in-from-top-2">
+          <div className="bg-primary/5 rounded-3xl p-6 border border-primary/10 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" />
+              <h3 className="font-serif text-lg">Resumo Semanal</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Esta semana você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary.predominant}</span> ({weeklySummary.percentage}). Seu humor está {weeklySummary.trend} em relação à semana passada.
+            </p>
+            <div className="flex gap-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary w-[65%]" />
+              <div className="h-full bg-primary/40 w-[20%]" />
+              <div className="h-full bg-primary/20 w-[15%]" />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex justify-between items-end">
@@ -371,7 +429,10 @@ export default function Home() {
                 <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">Substack</span>
               </button>
 
-              <button onClick={handleCopy} className="flex flex-col items-center space-y-3 group">
+              <button onClick={() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }} className="flex flex-col items-center space-y-3 group">
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-secondary text-foreground'}`}>
                   {copied ? <Check size={22} /> : <Copy size={22} />}
                 </div>
