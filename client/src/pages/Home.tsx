@@ -104,6 +104,19 @@ export default function Home() {
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
+  // Time-based greeting and User Name
+  const { greeting, userName } = useMemo(() => {
+    const hour = new Date().getHours();
+    const storedName = localStorage.getItem("casa-dos-20-user-name") || "";
+    const nameStr = storedName ? `, ${storedName.split(' ')[0]}` : "";
+    
+    let g = "Bom dia";
+    if (hour >= 12 && hour < 18) g = "Boa tarde";
+    else if (hour >= 18 || hour < 5) g = "Boa noite";
+    
+    return { greeting: g, userName: nameStr };
+  }, []);
+
   // Intelligent Reminder Selection
   const dailyReminder = useMemo(() => {
     // In a real app, RECENT_JOURNAL_ENTRIES would be dynamic state
@@ -210,7 +223,7 @@ export default function Home() {
               {today}
             </p>
             <h1 className="text-3xl text-foreground font-serif leading-tight">
-              Bom dia. <br/>
+              {greeting}{userName}. <br/>
               Como você está agora?
             </h1>
           </div>

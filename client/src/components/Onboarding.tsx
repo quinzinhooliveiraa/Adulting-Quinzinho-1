@@ -49,12 +49,14 @@ const ONBOARDING_STEPS = [
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [notifications, setNotifications] = useState(true);
 
   const next = () => {
     if (step < ONBOARDING_STEPS.length - 1) {
       setStep(step + 1);
     } else {
+      localStorage.setItem("casa-dos-20-user-name", name);
       onComplete();
     }
   };
@@ -110,6 +112,13 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         {current.type === "email" && (
           <div className="pt-4 space-y-4 animate-in slide-in-from-bottom-2 px-4">
             <Input 
+              type="text" 
+              placeholder="Como quer ser chamado?" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans mb-2 focus-visible:ring-primary/20"
+            />
+            <Input 
               type="email" 
               placeholder="seu@email.com" 
               value={email}
@@ -135,7 +144,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         
         <Button 
           onClick={next}
-          disabled={current.type === "email" && !email.includes("@")}
+          disabled={current.type === "email" && (!email.includes("@") || !name.trim())}
           className="w-full h-14 rounded-full bg-primary text-primary-foreground text-lg font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
         >
           {step === ONBOARDING_STEPS.length - 1 ? "Começar Jornada" : current.type === "premium" ? "Ver planos" : "Próximo"}
