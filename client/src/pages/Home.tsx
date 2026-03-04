@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import Onboarding from "@/components/Onboarding";
 
 // Refletive Question Pool
 const REFLECTION_QUESTIONS = [
@@ -87,6 +88,9 @@ const DEFAULT_REMINDERS = [
 ];
 
 export default function Home() {
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem("casa-dos-20-onboarding-complete");
+  });
   const [mood, setMood] = useState<string | null>(null);
   const [isReflecting, setIsReflecting] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
@@ -94,9 +98,8 @@ export default function Home() {
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [checkIns, setCheckIns] = useState<{id: string, time: string}[]>([]);
-  
-  // Sharing Drawer State
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isReminderShareOpen, setIsReminderShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
@@ -189,6 +192,13 @@ export default function Home() {
       setIsSaved(false);
     }, 1500);
   };
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => {
+      localStorage.setItem("casa-dos-20-onboarding-complete", "true");
+      setShowOnboarding(false);
+    }} />;
+  }
 
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
@@ -382,11 +392,100 @@ export default function Home() {
       </section>
       
       <section className="pt-6 border-t border-border/60">
-        <h2 className="text-lg font-serif text-foreground mb-4">Lembrete do dia</h2>
-        <p className="text-muted-foreground reading-text text-sm md:text-base">
-          {dailyReminder}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-serif text-foreground">Lembrete do dia</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsReminderShareOpen(true)}
+            className="text-primary h-8 px-2 hover:bg-primary/5 rounded-lg"
+          >
+            <Share size={14} className="mr-1.5" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Compartilhar</span>
+          </Button>
+        </div>
+        <p className="text-muted-foreground reading-text text-sm md:text-base italic">
+          "{dailyReminder}"
         </p>
       </section>
+
+      {/* Reminder Share Drawer */}
+      {isReminderShareOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setIsReminderShareOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+            <button 
+              onClick={() => setIsReminderShareOpen(false)}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+            >
+              <X size={18} />
+            </button>
+            
+            <h3 className="text-xl font-serif text-foreground mb-4">Compartilhar Lembrete</h3>
+            
+            {/* Visual Preview */}
+            <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-background to-secondary/30 p-8 flex flex-col items-center justify-center text-center border border-border/30 shadow-inner mb-6 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-noise opacity-[0.03]" />
+              <div className="relative z-10 space-y-6">
+                <Sparkles size={32} className="text-primary/40 mx-auto" />
+                <p className="font-serif text-2xl leading-relaxed text-foreground px-4">
+                  "{dailyReminder}"
+                </p>
+                <div className="pt-6">
+                  <div className="h-px w-12 bg-primary/30 mx-auto mb-4" />
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Casa dos 20</p>
+                  <p className="text-[9px] text-muted-foreground italic mt-1">Reflexões para a Vida Adulta</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <button className="flex flex-col items-center space-y-3 group">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <Instagram size={24} />
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">Stories</span>
+              </button>
+              
+              <button className="flex flex-col items-center space-y-3 group">
+                <div className="w-14 h-14 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-sm group-hover:scale-105 transition-transform">
+                  <Twitter size={22} fill="currentColor" />
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">X (Twitter)</span>
+              </button>
+              
+              <button className="flex flex-col items-center space-y-3 group">
+                <div className="w-14 h-14 rounded-full bg-[#FF6719] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM22.539 12.086H1.46v9.379l10.539-5.875 10.54 5.875v-9.379zM22.539 4.406H1.46V1.566h21.08v2.84z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">Substack</span>
+              </button>
+
+              <button onClick={() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }} className="flex flex-col items-center space-y-3 group">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-secondary text-foreground'}`}>
+                  {copied ? <Check size={22} /> : <Copy size={22} />}
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {copied ? 'Copiado!' : 'Copiar'}
+                </span>
+              </button>
+            </div>
+
+            <Button className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all">
+              <ImageIcon className="mr-2" size={20} />
+              Salvar Imagem
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Share Drawer Overlay */}
       {isShareOpen && (
