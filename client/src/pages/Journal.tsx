@@ -83,13 +83,6 @@ export default function Journal() {
       <div className="px-6 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-serif text-foreground">Diário</h1>
-          <Button 
-            onClick={() => setIsWriting(!isWriting)}
-            size="icon" 
-            className={`rounded-full transition-all duration-500 ${isWriting ? 'bg-secondary text-foreground rotate-45' : 'bg-primary text-primary-foreground'} w-10 h-10 shadow-sm active:scale-95`}
-          >
-            {isWriting ? <X size={20} /> : <PenLine size={18} />}
-          </Button>
         </div>
 
         {!isWriting && (
@@ -114,6 +107,17 @@ export default function Journal() {
       <div className="px-6 space-y-4">
         {isWriting ? (
           <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Nova Reflexão</h2>
+              <Button 
+                onClick={() => setIsWriting(false)}
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </Button>
+            </div>
             <div className="relative">
               <Textarea 
                 value={entryText}
@@ -207,6 +211,18 @@ export default function Journal() {
           </div>
         )}
       </div>
+
+      {!isWriting && (
+        <div className="fixed bottom-24 right-6 z-40 animate-in zoom-in slide-in-from-bottom-4 duration-500">
+          <Button 
+            onClick={() => setIsWriting(true)}
+            size="icon" 
+            className="rounded-full bg-primary text-primary-foreground w-14 h-14 shadow-2xl hover:shadow-primary/20 active:scale-95 transition-all border-4 border-background"
+          >
+            <PenLine size={24} />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
