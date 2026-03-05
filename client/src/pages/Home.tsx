@@ -339,6 +339,7 @@ export default function Home() {
       )}
 
       {checkIns.length > 0 && (
+        <section className="animate-in fade-in slide-in-from-top-2">
           <div className="bg-primary/5 rounded-3xl p-6 border border-primary/10 space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-primary" />
