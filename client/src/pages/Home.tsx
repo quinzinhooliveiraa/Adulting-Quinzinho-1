@@ -100,6 +100,7 @@ export default function Home() {
   const [checkIns, setCheckIns] = useState<{id: string, time: string}[]>([]);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isReminderShareOpen, setIsReminderShareOpen] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
@@ -183,11 +184,29 @@ export default function Home() {
     }
   }, [reflectionText, selectedTags]);
 
-  const weeklySummary = {
-    predominant: "Calmo",
-    percentage: "65%",
-    trend: "estável"
-  };
+  const weeklySummary = useMemo(() => {
+    if (checkIns.length === 0) return null;
+    
+    const counts: Record<string, number> = {};
+    checkIns.forEach(c => {
+      counts[c.id] = (counts[c.id] || 0) + 1;
+    });
+    
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const topMoodId = sorted[0][0];
+    const topMood = moodIcons.find(m => m.id === topMoodId);
+    const percentage = Math.round((sorted[0][1] / checkIns.length) * 100);
+    
+    return {
+      predominant: topMood?.label || "Calmo",
+      percentage: `${percentage}%`,
+      trend: percentage > 50 ? "estável" : "variável",
+      counts: sorted.map(([id, count]) => ({
+        label: moodIcons.find(m => m.id === id)?.label || id,
+        percent: Math.round((count / checkIns.length) * 100)
+      }))
+    };
+  }, [checkIns]);
 
   const handleSaveReflection = () => {
     if (!reflectionText.trim()) return;
@@ -239,7 +258,12 @@ export default function Home() {
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-serif text-muted-foreground uppercase tracking-wider">Check-in de Humor</h2>
           {checkIns.length > 0 && (
-            <button className="text-[10px] font-bold text-primary underline">Ver Resumo da Semana</button>
+            <button 
+              onClick={() => setIsSummaryOpen(true)}
+              className="text-[10px] font-bold text-primary underline"
+            >
+              Ver Resumo da Semana
+            </button>
           )}
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -496,6 +520,59 @@ export default function Home() {
               <ImageIcon className="mr-2" size={20} />
               Salvar Imagem
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Summary Modal */}
+      {isSummaryOpen && weeklySummary && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+          <div 
+            className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => setIsSummaryOpen(false)}
+          />
+          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <button 
+              onClick={() => setIsSummaryOpen(false)}
+              className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="space-y-8">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles size={32} className="text-primary" />
+                </div>
+                <h3 className="text-2xl font-serif text-foreground">Sua Semana</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed px-4">
+                  Baseado nos seus check-ins, você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary.predominant}</span>.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {weeklySummary.counts.map((item, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-wider">
+                      <span>{item.label}</span>
+                      <span className="text-primary">{item.percent}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-1000" 
+                        style={{ width: `${item.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 text-center">
+                <p className="text-[10px] text-muted-foreground italic">
+                  Seu estado emocional parece {weeklySummary.trend} no momento.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
