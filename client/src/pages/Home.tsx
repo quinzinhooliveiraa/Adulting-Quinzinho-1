@@ -150,8 +150,30 @@ export default function Home() {
   ];
 
   const handleMoodSelect = (id: string) => {
-    setMood(id);
     const now = new Date();
+    
+    // Check if there's a check-in in the last 30 minutes
+    if (checkIns.length > 0) {
+      const lastCheckIn = new Date();
+      const [hours, minutes] = checkIns[checkIns.length - 1].time.split(':');
+      lastCheckIn.setHours(parseInt(hours), parseInt(minutes));
+      
+      const diffMs = now.getTime() - lastCheckIn.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 30) {
+        // Just update current mood without adding new check-in
+        setMood(id);
+        const updatedCheckIns = [...checkIns];
+        updatedCheckIns[updatedCheckIns.length - 1] = { id, time: format(now, "HH:mm") };
+        setCheckIns(updatedCheckIns);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2000);
+        return;
+      }
+    }
+
+    setMood(id);
     const timeStr = format(now, "HH:mm");
     setCheckIns(prev => [...prev, { id, time: timeStr }]);
     
@@ -232,6 +254,15 @@ export default function Home() {
     }} />;
   }
 
+  const moodTips: Record<string, string> = {
+    terrible: "Dê a si mesmo permissão para descansar. Às vezes, o ato mais produtivo é pausar e respirar fundo.",
+    bad: "A ansiedade é uma nuvem, não o céu. Tente escrever três coisas que você pode controlar agora.",
+    neutral: "Aproveite esta calma para ler uma página do livro ou planejar algo que te traga alegria.",
+    good: "Que momento precioso. Compartilhe essa gratidão com alguém ou escreva o motivo desse sorriso.",
+    excited: "Use essa energia para dar o primeiro passo naquele projeto que você estava adiando!",
+    lonely: "A solitude pode ser um mestre silencioso. O que sua própria companhia está tentando te dizer hoje?",
+  };
+
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       
@@ -291,8 +322,23 @@ export default function Home() {
         </div>
       </section>
 
+      {mood && (
+        <section className="animate-in fade-in zoom-in duration-500">
+          <div className="bg-secondary/30 rounded-3xl p-6 border border-primary/5 flex items-start gap-4">
+            <div className="p-3 bg-background rounded-2xl shadow-sm text-primary">
+              <Sparkles size={20} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Dica para agora</p>
+              <p className="text-sm text-foreground leading-relaxed italic">
+                "{moodTips[mood]}"
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {checkIns.length > 0 && (
-        <section className="animate-in fade-in slide-in-from-top-2">
           <div className="bg-primary/5 rounded-3xl p-6 border border-primary/10 space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-primary" />
