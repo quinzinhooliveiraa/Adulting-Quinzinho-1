@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
