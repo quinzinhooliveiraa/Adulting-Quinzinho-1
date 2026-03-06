@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Sparkles, Bell, Mail, LockKeyhole, Check } from "lucide-react";
+import { ArrowRight, Sparkles, Bell, Mail, LockKeyhole, Check, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,13 @@ const ONBOARDING_STEPS = [
     description: "Receba perguntas profundas e lembretes que se adaptam ao seu momento, baseados nos temas do livro de Quinzinho Oliveira.",
     icon: Sparkles,
     accent: "bg-amber-50"
+  },
+  {
+    id: "journey",
+    title: "Sua Jornada Guiada",
+    description: "Trilhe caminhos temáticos de 7 dias. Cada etapa combina trechos do livro, exercícios práticos e meditações para sua evolução.",
+    icon: Map,
+    accent: "bg-emerald-50"
   },
   {
     id: "notifications",
