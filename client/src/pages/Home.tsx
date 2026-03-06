@@ -101,6 +101,7 @@ export default function Home() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isReminderShareOpen, setIsReminderShareOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
@@ -247,6 +248,17 @@ export default function Home() {
     }, 1500);
   };
 
+  const monthlyReport = useMemo(() => {
+    const totalEntries = RECENT_JOURNAL_ENTRIES.length + 5; 
+    const dominantTheme = "Identidade";
+    
+    return {
+      totalEntries,
+      dominantTheme,
+      insight: "Este mês você explorou profundamente sua Identidade. Suas reflexões mostram uma transição de ansiedade para uma calma mais consciente."
+    };
+  }, []);
+
   if (showOnboarding) {
     return <Onboarding onComplete={() => {
       localStorage.setItem("casa-dos-20-onboarding-complete", "true");
@@ -254,14 +266,48 @@ export default function Home() {
     }} />;
   }
 
-  const moodTips: Record<string, string> = {
-    terrible: "Dê a si mesmo permissão para descansar. Às vezes, o ato mais produtivo é pausar e respirar fundo.",
-    bad: "A ansiedade é uma nuvem, não o céu. Tente escrever três coisas que você pode controlar agora.",
-    neutral: "Aproveite esta calma para ler uma página do livro ou planejar algo que te traga alegria.",
-    good: "Que momento precioso. Compartilhe essa gratidão com alguém ou escreva o motivo desse sorriso.",
-    excited: "Use essa energia para dar o primeiro passo naquele projeto que você estava adiando!",
-    lonely: "A solitude pode ser um mestre silencioso. O que sua própria companhia está tentando te dizer hoje?",
+  const moodTips: Record<string, string[]> = {
+    terrible: [
+      "Dê a si mesmo permissão para descansar. Às vezes, o ato mais produtivo é pausar e respirar fundo.",
+      "Não se cobre tanto hoje. Pequenos passos ainda são progresso.",
+      "O que você pode fazer de gentil por si mesmo nos próximos 15 minutos?"
+    ],
+    bad: [
+      "A ansiedade é uma nuvem, não o céu. Tente escrever três coisas que você pode controlar agora.",
+      "Respire em quatro tempos. Sinta seus pés no chão. Você está aqui e está seguro.",
+      "Seus pensamentos não são fatos. Deixe-os passar como barcos em um rio."
+    ],
+    neutral: [
+      "Aproveite esta calma para ler uma página do livro ou planejar algo que te traga alegria.",
+      "A neutralidade é um terreno fértil. O que você gostaria de plantar hoje?",
+      "Um momento de silêncio pode ser o melhor presente que você se dá agora."
+    ],
+    good: [
+      "Que momento precioso. Compartilhe essa gratidão com alguém ou escreva o motivo desse sorriso.",
+      "Saboreie esta sensação. Como você pode levar esse brilho para o resto do seu dia?",
+      "A felicidade está nas pequenas frestas. Onde mais você a vê hoje?"
+    ],
+    excited: [
+      "Use essa energia para dar o primeiro passo naquele projeto que você estava adiando!",
+      "Sua vitalidade é contagiosa. O que você quer criar com esse entusiasmo?",
+      "Celebre este impulso! A vida adulta também é feita de grandes começos."
+    ],
+    lonely: [
+      "A solitude pode ser um mestre silencioso. O que sua própria companhia está tentando te dizer hoje?",
+      "Estar sozinho é uma oportunidade de se reconectar com quem você é de verdade.",
+      "Você é sua primeira casa. Como você pode tornar esse espaço mais acolhedor agora?"
+    ],
   };
+
+  const currentTip = useMemo(() => {
+    if (!mood) return "";
+    const options = moodTips[mood];
+    // Use day of year + hour to rotate tips
+    const now = new Date();
+    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+    const seed = dayOfYear + now.getHours();
+    return options[seed % options.length];
+  }, [mood, moodTips]);
 
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
@@ -331,7 +377,7 @@ export default function Home() {
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Dica para agora</p>
               <p className="text-sm text-foreground leading-relaxed italic">
-                "{moodTips[mood]}"
+                "{currentTip}"
               </p>
             </div>
           </div>
@@ -341,18 +387,21 @@ export default function Home() {
       {checkIns.length > 0 && (
         <section className="animate-in fade-in slide-in-from-top-2">
           <div className="bg-primary/5 rounded-3xl p-6 border border-primary/10 space-y-4">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-primary" />
-              <h3 className="font-serif text-lg">Resumo Semanal</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-primary" />
+                <h3 className="font-serif text-lg">Resumo Semanal</h3>
+              </div>
+              <button 
+                onClick={() => setIsSummaryOpen(true)}
+                className="text-[10px] font-bold text-primary underline uppercase tracking-wider"
+              >
+                Detalhes
+              </button>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Esta semana você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary.predominant}</span> ({weeklySummary.percentage}). Seu humor está {weeklySummary.trend} em relação à semana passada.
+              Esta semana você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary?.predominant}</span>. Seu humor está {weeklySummary?.trend} em relação à semana passada.
             </p>
-            <div className="flex gap-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary w-[65%]" />
-              <div className="h-full bg-primary/40 w-[20%]" />
-              <div className="h-full bg-primary/20 w-[15%]" />
-            </div>
           </div>
         </section>
       )}
@@ -477,6 +526,26 @@ export default function Home() {
       
       <section className="pt-6 border-t border-border/60">
         <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-serif text-foreground">Relatório Mensal</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsReportOpen(true)}
+            className="text-primary h-8 px-2 hover:bg-primary/5 rounded-lg"
+          >
+            <ChevronRight size={14} className="mr-1.5" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Ver Insight</span>
+          </Button>
+        </div>
+        <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10">
+          <p className="text-sm text-muted-foreground leading-relaxed italic">
+            "{monthlyReport.insight}"
+          </p>
+        </div>
+      </section>
+
+      <section className="pt-6 border-t border-border/60">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-serif text-foreground">Lembrete do dia</h2>
           <Button 
             variant="ghost" 
@@ -567,6 +636,60 @@ export default function Home() {
               <ImageIcon className="mr-2" size={20} />
               Salvar Imagem
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Report Modal */}
+      {isReportOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+          <div 
+            className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => setIsReportOpen(false)}
+          />
+          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <button 
+              onClick={() => setIsReportOpen(false)}
+              className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="space-y-8">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BookOpen size={32} className="text-primary" />
+                </div>
+                <h3 className="text-2xl font-serif text-foreground">Insight do Mês</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed px-4">
+                  Uma análise profunda das suas <strong>{monthlyReport.totalEntries} reflexões</strong> e check-ins.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-secondary/30 p-4 rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Tema Principal</p>
+                  <p className="text-sm font-bold text-primary">{monthlyReport.dominantTheme}</p>
+                </div>
+                <div className="bg-secondary/30 p-4 rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Evolução</p>
+                  <p className="text-sm font-bold text-primary">+12% calma</p>
+                </div>
+              </div>
+
+              <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
+                <p className="text-sm text-foreground leading-relaxed italic text-center">
+                  "{monthlyReport.insight}"
+                </p>
+              </div>
+
+              <Button 
+                onClick={() => setIsReportOpen(false)}
+                className="w-full bg-primary text-primary-foreground rounded-full h-12 font-medium"
+              >
+                Continuar Jornada
+              </Button>
+            </div>
           </div>
         </div>
       )}
