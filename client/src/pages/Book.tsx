@@ -60,10 +60,10 @@ export default function Book() {
           </div>
           <Button 
             className="w-full sm:w-auto bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 text-white hover:opacity-90 rounded-full h-12 shadow-md border-0 transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
-            onClick={() => window.open('https://instagram.com/', '_blank')} // User can update exact handle
+            onClick={() => window.open('https://www.instagram.com/quinzinhooliveiraa_/', '_blank')}
           >
             <Instagram size={20} />
-            <span className="font-medium">@quinzinhooliveira</span>
+            <span className="font-medium">@quinzinhooliveiraa_</span>
           </Button>
         </div>
 

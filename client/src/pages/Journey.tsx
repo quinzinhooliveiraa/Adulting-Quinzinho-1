@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { ChevronRight, LockKeyhole, Sparkles, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import journeyHero from "@/assets/images/journey-hero.png";
@@ -61,10 +62,12 @@ export default function Journey() {
                   <p className="text-sm text-muted-foreground mt-1">{stage.desc}</p>
                   
                   {isActive && (
-                    <Button className="mt-4 bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all">
-                      Continuar a jornada
-                      <ChevronRight size={14} className="ml-1" />
-                    </Button>
+                    <Link href={`/journey/${stage.id}`}>
+                      <Button className="mt-4 bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all">
+                        Continuar a jornada
+                        <ChevronRight size={14} className="ml-1" />
+                      </Button>
+                    </Link>
                   )}
                   
                   {isLocked && (

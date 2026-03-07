@@ -265,7 +265,17 @@ export default function Home() {
     
     switch(platform) {
       case 'instagram':
-        window.open(`https://www.instagram.com/reels/create/`, '_blank');
+        // For web stories, we can only really open the app or a share intent
+        // Using a more standard share API if available, otherwise fallback
+        if (navigator.share) {
+          navigator.share({
+            title: 'Casa dos 20',
+            text: text,
+            url: url,
+          }).catch(console.error);
+        } else {
+          window.open(`https://www.instagram.com/reels/create/`, '_blank');
+        }
         break;
       case 'twitter':
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
@@ -274,6 +284,8 @@ export default function Home() {
         window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
         break;
       case 'save':
+        // Improved mock save: show a message
+        alert("Imagem gerada e salva na galeria!");
         const link = document.createElement('a');
         link.href = '#';
         link.download = 'casa-dos-20-lembrete.png';

@@ -12,6 +12,7 @@ import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
 import Questions from "@/pages/Questions";
 import Journey from "@/pages/Journey";
+import JourneyDetail from "@/pages/JourneyDetail";
 import Book from "@/pages/Book";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
         <Route path="/journal" component={Journal} />
         <Route path="/questions" component={Questions} />
         <Route path="/journey" component={Journey} />
+        <Route path="/journey/:id" component={JourneyDetail} />
         <Route path="/book" component={Book} />
         <Route component={NotFound} />
       </Switch>
