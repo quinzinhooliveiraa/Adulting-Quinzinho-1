@@ -259,6 +259,31 @@ export default function Home() {
     };
   }, []);
 
+  const handleSocialShare = (platform: string) => {
+    const text = `"${dailyReminder}" - Casa dos 20`;
+    const url = window.location.href;
+    
+    switch(platform) {
+      case 'instagram':
+        window.open(`https://www.instagram.com/reels/create/`, '_blank');
+        break;
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'substack':
+        window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'save':
+        const link = document.createElement('a');
+        link.href = '#';
+        link.download = 'casa-dos-20-lembrete.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        break;
+    }
+  };
+
   if (showOnboarding) {
     return <Onboarding onComplete={() => {
       localStorage.setItem("casa-dos-20-onboarding-complete", "true");
@@ -396,12 +421,9 @@ export default function Home() {
                 onClick={() => setIsSummaryOpen(true)}
                 className="text-[10px] font-bold text-primary underline uppercase tracking-wider"
               >
-                Detalhes
+                Ver Detalhes
               </button>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Esta semana você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary?.predominant}</span>. Seu humor está {weeklySummary?.trend} em relação à semana passada.
-            </p>
           </div>
         </section>
       )}
@@ -596,21 +618,21 @@ export default function Home() {
             </div>
             
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <button className="flex flex-col items-center space-y-3 group">
+              <button onClick={() => handleSocialShare('instagram')} className="flex flex-col items-center space-y-3 group">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
                   <Instagram size={24} />
                 </div>
                 <span className="text-[10px] font-medium text-muted-foreground">Stories</span>
               </button>
               
-              <button className="flex flex-col items-center space-y-3 group">
+              <button onClick={() => handleSocialShare('twitter')} className="flex flex-col items-center space-y-3 group">
                 <div className="w-14 h-14 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-sm group-hover:scale-105 transition-transform">
                   <Twitter size={22} fill="currentColor" />
                 </div>
                 <span className="text-[10px] font-medium text-muted-foreground">X (Twitter)</span>
               </button>
               
-              <button className="flex flex-col items-center space-y-3 group">
+              <button onClick={() => handleSocialShare('substack')} className="flex flex-col items-center space-y-3 group">
                 <div className="w-14 h-14 rounded-full bg-[#FF6719] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM22.539 12.086H1.46v9.379l10.539-5.875 10.54 5.875v-9.379zM22.539 4.406H1.46V1.566h21.08v2.84z" fill="currentColor"/>
@@ -632,7 +654,7 @@ export default function Home() {
               </button>
             </div>
 
-            <Button className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all">
+            <Button onClick={() => handleSocialShare('save')} className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all">
               <ImageIcon className="mr-2" size={20} />
               Salvar Imagem
             </Button>
