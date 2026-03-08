@@ -466,15 +466,36 @@ export default function Home() {
             <Sparkles size={16} className="text-primary" />
             Reflexão para Hoje
           </h2>
-          {dailyReflection.fromBook && (
+          {dailyReflection.type === "reflection" && dailyReflection.fromBook && (
             <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200/50 dark:border-amber-800/30">
               <BookOpen size={10} />
               Do Livro
             </span>
           )}
+          {dailyReflection.type === "tip" && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-green-700 dark:text-green-400 bg-green-100/50 dark:bg-green-950/30 px-2.5 py-1 rounded-full border border-green-200/50 dark:border-green-800/30">
+              Dica Prática
+            </span>
+          )}
+          {dailyReflection.type === "reminder" && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-950/30 px-2.5 py-1 rounded-full border border-blue-200/50 dark:border-blue-800/30">
+              Lembrete
+            </span>
+          )}
+          {dailyReflection.type === "question" && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-purple-700 dark:text-purple-400 bg-purple-100/50 dark:bg-purple-950/30 px-2.5 py-1 rounded-full border border-purple-200/50 dark:border-purple-800/30">
+              Questão
+            </span>
+          )}
         </div>
         
-        <div className={`${dailyReflection.fromBook ? 'bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border-amber-200/50 dark:border-amber-800/30' : 'glass-card'} rounded-3xl p-6 md:p-8 relative overflow-hidden group border`}>
+        <div className={`${
+          dailyReflection.type === 'reflection' && dailyReflection.fromBook ? 'bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border-amber-200/50 dark:border-amber-800/30' :
+          dailyReflection.type === 'tip' ? 'bg-gradient-to-br from-green-50/50 to-emerald-50/30 dark:from-green-950/20 dark:to-emerald-950/10 border-green-200/50 dark:border-green-800/30' :
+          dailyReflection.type === 'reminder' ? 'bg-gradient-to-br from-blue-50/50 to-cyan-50/30 dark:from-blue-950/20 dark:to-cyan-950/10 border-blue-200/50 dark:border-blue-800/30' :
+          dailyReflection.type === 'question' ? 'bg-gradient-to-br from-purple-50/50 to-pink-50/30 dark:from-purple-950/20 dark:to-pink-950/10 border-purple-200/50 dark:border-purple-800/30' :
+          'glass-card'
+        } rounded-3xl p-6 md:p-8 relative overflow-hidden group border`}>
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Sparkles size={120} />
           </div>
