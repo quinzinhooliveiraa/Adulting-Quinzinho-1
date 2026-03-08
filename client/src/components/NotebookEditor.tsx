@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -23,9 +23,60 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   const [images, setImages] = useState<ImageElement[]>([]);
   const [bannerUrl, setBannerUrl] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [drawingColor, setDrawingColor] = useState("#000000");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const notebookRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      // Set actual size in memory (scaled to account for extra pixel density)
+      canvas.width = canvas.offsetWidth * 2;
+      canvas.height = canvas.offsetHeight * 2;
+      
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.scale(2, 2);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = drawingColor;
+        ctx.lineWidth = 3;
+        ctxRef.current = ctx;
+      }
+    }
+  }, [showText, bannerUrl, images.length]); // Re-init when layout might change
+
+  useEffect(() => {
+    if (ctxRef.current) {
+      ctxRef.current.strokeStyle = drawingColor;
+    }
+  }, [drawingColor]);
+
+  const startDrawing = ({ nativeEvent }: any) => {
+    if (!isDrawingMode || !ctxRef.current) return;
+    const { offsetX, offsetY } = nativeEvent;
+    ctxRef.current.beginPath();
+    ctxRef.current.moveTo(offsetX, offsetY);
+    setIsDrawing(true);
+  };
+
+  const draw = ({ nativeEvent }: any) => {
+    if (!isDrawingMode || !isDrawing || !ctxRef.current) return;
+    const { offsetX, offsetY } = nativeEvent;
+    ctxRef.current.lineTo(offsetX, offsetY);
+    ctxRef.current.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawingMode || !ctxRef.current) return;
+    ctxRef.current.closePath();
+    setIsDrawing(false);
+  };
 
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,7 +194,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
         </div>
 
         {/* Tools */}
-        <div className="flex gap-2 px-6 py-4 border-b border-border overflow-x-auto">
+        <div className="flex gap-2 px-6 py-4 border-b border-border overflow-x-auto items-center">
           <button
             onClick={() => bannerInputRef.current?.click()}
             className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap"
@@ -152,23 +203,73 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap"
+            className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap flex items-center gap-2"
           >
-            <ImagePlus size={16} className="inline mr-2" />
-            Imagem
+            <ImagePlus size={16} /> Imagem
           </button>
+          <div className="w-px h-6 bg-border mx-2" />
+          <button
+            onClick={() => setIsDrawingMode(!isDrawingMode)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+              isDrawingMode 
+                ? "bg-primary text-primary-foreground shadow-inner" 
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <PenTool size={16} /> {isDrawingMode ? "Desenhando" : "Desenhar"}
+          </button>
+          {isDrawingMode && (
+            <div className="flex items-center gap-2 px-2">
+              <input
+                type="color"
+                value={drawingColor}
+                onChange={(e) => setDrawingColor(e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer border-none p-0"
+                title="Cor da caneta"
+              />
+            </div>
+          )}
         </div>
 
         {/* Notebook Canvas */}
         <div className="flex-1 overflow-y-auto bg-notebook-pattern">
           <div
             ref={notebookRef}
-            className="relative w-full min-h-full bg-white dark:bg-slate-900 mx-auto max-w-lg p-8 shadow-lg"
+            className="relative w-full min-h-[800px] bg-white dark:bg-slate-900 mx-auto max-w-lg p-8 shadow-lg overflow-hidden"
             style={{
               backgroundImage: "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px)",
               backgroundSize: "100% 28px",
             }}
           >
+            {/* Drawing Canvas Layer */}
+            <canvas
+              ref={canvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={(e) => {
+                if(isDrawingMode) {
+                  const touch = e.touches[0];
+                  const rect = canvasRef.current?.getBoundingClientRect();
+                  if(rect) {
+                     startDrawing({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
+                  }
+                }
+              }}
+              onTouchMove={(e) => {
+                if(isDrawingMode) {
+                  // e.preventDefault(); // Prevent scrolling while drawing on mobile
+                  const touch = e.touches[0];
+                  const rect = canvasRef.current?.getBoundingClientRect();
+                  if(rect) {
+                     draw({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
+                  }
+                }
+              }}
+              onTouchEnd={stopDrawing}
+              className={`absolute inset-0 w-full h-full z-20 ${isDrawingMode ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
+            />
             {/* Banner */}
             {bannerUrl && (
               <div className="mb-6 rounded-lg overflow-hidden shadow-md border-2 border-dashed border-border">
