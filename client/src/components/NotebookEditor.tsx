@@ -15,6 +15,7 @@ interface ImageElement {
   height: number;
   x: number;
   y: number;
+  rotation: number;
 }
 
 export default function NotebookEditor({ initialContent = "", onClose, onSave }: NotebookEditorProps) {
@@ -103,6 +104,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             height: (200 * img.height) / img.width,
             x: 20,
             y: 20,
+            rotation: 0,
           };
           setImages([...images, newImage]);
         };
@@ -302,59 +304,121 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   top: `${img.y}px`,
                   width: `${img.width}px`,
                   height: `${img.height}px`,
+                  transform: `rotate(${img.rotation}deg)`,
+                  touchAction: 'none',
                 }}
-                draggable
-                onDragStart={(e) => {
+                onPointerDown={(e) => {
+                  if (isDrawingMode) return;
+                  e.stopPropagation();
                   setSelectedImage(img.id);
-                  e.dataTransfer.setData("imageId", img.id);
+                  
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  
+                  const startX = e.clientX;
+                  const startY = e.clientY;
+                  const initialImageX = img.x;
+                  const initialImageY = img.y;
+
+                  const handlePointerMove = (moveEvent: PointerEvent) => {
+                    const deltaX = moveEvent.clientX - startX;
+                    const deltaY = moveEvent.clientY - startY;
+                    
+                    updateImage(img.id, { 
+                      x: Math.max(0, initialImageX + deltaX), 
+                      y: Math.max(0, initialImageY + deltaY) 
+                    });
+                  };
+
+                  const handlePointerUp = (upEvent: PointerEvent) => {
+                    document.removeEventListener("pointermove", handlePointerMove);
+                    document.removeEventListener("pointerup", handlePointerUp);
+                    const target = upEvent.target as HTMLElement;
+                    if (target.releasePointerCapture) {
+                      try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                    }
+                  };
+
+                  document.addEventListener("pointermove", handlePointerMove);
+                  document.addEventListener("pointerup", handlePointerUp);
                 }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const rect = notebookRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    const newX = e.clientX - rect.left - img.width / 2;
-                    const newY = e.clientY - rect.top - img.height / 2;
-                    updateImage(img.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
-                  }
-                }}
-                onClick={() => setSelectedImage(img.id)}
               >
                 <img
                   src={img.src}
                   alt="Note"
-                  className="w-full h-full object-cover rounded-lg shadow-md border border-border"
+                  draggable={false}
+                  className="w-full h-full object-cover rounded-lg shadow-md border border-border pointer-events-none"
                 />
 
-                {/* Resize handle */}
-                {selectedImage === img.id && (
+                {/* Rotate handle */}
+                {selectedImage === img.id && !isDrawingMode && (
                   <div
-                    className="absolute bottom-0 right-0 w-6 h-6 bg-primary cursor-se-resize rounded-tl"
-                    draggable
-                    onDragStart={(e) => {
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 cursor-grab active:cursor-grabbing rounded-full flex items-center justify-center z-30"
+                    style={{ touchAction: 'none' }}
+                    onPointerDown={(e) => {
                       e.stopPropagation();
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      
+                      const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                      const centerX = rect.left + rect.width / 2;
+                      const centerY = rect.top + rect.height / 2;
+
+                      const handlePointerMove = (moveEvent: PointerEvent) => {
+                        const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+                        const degrees = (angle * 180) / Math.PI + 90; // +90 because handle is at top
+                        updateImage(img.id, { rotation: degrees });
+                      };
+
+                      const handlePointerUp = (upEvent: PointerEvent) => {
+                        document.removeEventListener("pointermove", handlePointerMove);
+                        document.removeEventListener("pointerup", handlePointerUp);
+                        const target = upEvent.target as HTMLElement;
+                        if (target.releasePointerCapture) {
+                          try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                        }
+                      };
+
+                      document.addEventListener("pointermove", handlePointerMove);
+                      document.addEventListener("pointerup", handlePointerUp);
+                    }}
+                  >
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  </div>
+                )}
+
+                {/* Resize handle */}
+                {selectedImage === img.id && !isDrawingMode && (
+                  <div
+                    className="absolute bottom-0 right-0 w-6 h-6 bg-primary cursor-se-resize rounded-tl z-30 flex items-center justify-center"
+                    style={{ touchAction: 'none' }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      
                       const startX = e.clientX;
                       const startY = e.clientY;
                       const startWidth = img.width;
                       const startHeight = img.height;
 
-                      const handleDragMove = (moveEvent: DragEvent) => {
+                      const handlePointerMove = (moveEvent: PointerEvent) => {
                         const deltaX = moveEvent.clientX - startX;
                         const deltaY = moveEvent.clientY - startY;
-                        const aspectRatio = startHeight / startWidth;
                         updateImage(img.id, {
                           width: Math.max(50, startWidth + deltaX),
                           height: Math.max(50, startHeight + deltaY),
                         });
                       };
 
-                      const handleDragEnd = () => {
-                        document.removeEventListener("dragover", handleDragMove);
-                        document.removeEventListener("drop", handleDragEnd);
+                      const handlePointerUp = (upEvent: PointerEvent) => {
+                        document.removeEventListener("pointermove", handlePointerMove);
+                        document.removeEventListener("pointerup", handlePointerUp);
+                        const target = upEvent.target as HTMLElement;
+                        if (target.releasePointerCapture) {
+                          try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                        }
                       };
 
-                      document.addEventListener("dragover", handleDragMove);
-                      document.addEventListener("drop", handleDragEnd);
+                      document.addEventListener("pointermove", handlePointerMove);
+                      document.addEventListener("pointerup", handlePointerUp);
                     }}
                   />
                 )}

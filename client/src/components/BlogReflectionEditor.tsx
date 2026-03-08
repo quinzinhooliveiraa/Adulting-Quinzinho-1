@@ -9,6 +9,7 @@ interface ImageElement {
   height: number;
   x: number;
   y: number;
+  rotation: number;
 }
 
 interface BlogReflectionEditorProps {
@@ -37,6 +38,7 @@ export default function BlogReflectionEditor({
   
   // Notebook/Canvas states
   const [images, setImages] = useState<ImageElement[]>([]);
+  const [bannerUrl, setBannerUrl] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
@@ -44,6 +46,7 @@ export default function BlogReflectionEditor({
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -101,6 +104,17 @@ export default function BlogReflectionEditor({
   };
 
   // Image handlers
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setBannerUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -115,6 +129,7 @@ export default function BlogReflectionEditor({
             height: (200 * img.height) / img.width,
             x: 20,
             y: 20,
+            rotation: 0,
           };
           setImages([...images, newImage]);
           setIsDrawingMode(false); // Switch out of drawing mode to place image
@@ -147,8 +162,8 @@ export default function BlogReflectionEditor({
     setIsSaving(true);
     
     // Package content with images data if we have them
-    const finalContent = images.length > 0 
-      ? JSON.stringify({ text: content, images }) 
+    const finalContent = (images.length > 0 || bannerUrl)
+      ? JSON.stringify({ text: content, images, banner: bannerUrl }) 
       : content;
       
     setTimeout(() => {
@@ -223,11 +238,18 @@ export default function BlogReflectionEditor({
                   {isDrawingMode ? "Modo Texto" : "Desenhar"}
                 </button>
                 <button
+                  onClick={() => bannerInputRef.current?.click()}
+                  className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
+                >
+                  <ImagePlus size={16} />
+                  Banner
+                </button>
+                <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
                 >
                   <ImagePlus size={16} />
-                  Adicionar Imagem
+                  Imagem
                 </button>
               </div>
             </div>
@@ -236,6 +258,24 @@ export default function BlogReflectionEditor({
               className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" 
               ref={contentAreaRef}
             >
+              {/* Banner Layer - Background */}
+              {bannerUrl && (
+                <div className="absolute top-0 left-0 w-full h-48 sm:h-64 z-0 group cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
+                  <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-white text-sm font-medium px-4 py-2 bg-black/50 rounded-full">Trocar Banner</span>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBannerUrl("");
+                    }}
+                    className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all z-10"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               
               {/* Text Area - Underneath */}
               <textarea
@@ -243,7 +283,7 @@ export default function BlogReflectionEditor({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Escreva seus pensamentos aqui..."
                 disabled={isDrawingMode}
-                className={`absolute inset-0 w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"}`}
+                className={`absolute inset-0 w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
               />
 
               {/* Drawing Canvas Layer - On Top */}
@@ -285,6 +325,7 @@ export default function BlogReflectionEditor({
                     top: `${img.y}px`,
                     width: `${img.width}px`,
                     height: `${img.height}px`,
+                    transform: `rotate(${img.rotation}deg)`,
                     touchAction: 'none',
                   }}
                   onPointerDown={(e) => {
@@ -329,6 +370,42 @@ export default function BlogReflectionEditor({
                     draggable={false} // Prevent browser's native image drag behavior
                     className="w-full h-full object-cover rounded shadow-md border border-border/50 bg-white p-1 pointer-events-none"
                   />
+
+                  {/* Rotate handle */}
+                  {selectedImage === img.id && !isDrawingMode && (
+                    <div
+                      className="absolute -top-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 cursor-grab active:cursor-grabbing rounded-full flex items-center justify-center z-30"
+                      style={{ touchAction: 'none' }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        
+                        const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+
+                        const handlePointerMove = (moveEvent: PointerEvent) => {
+                          const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+                          const degrees = (angle * 180) / Math.PI + 90; // +90 because handle is at top
+                          updateImage(img.id, { rotation: degrees });
+                        };
+
+                        const handlePointerUp = (upEvent: PointerEvent) => {
+                          document.removeEventListener("pointermove", handlePointerMove);
+                          document.removeEventListener("pointerup", handlePointerUp);
+                          const target = upEvent.target as HTMLElement;
+                          if (target.releasePointerCapture) {
+                            try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                          }
+                        };
+
+                        document.addEventListener("pointermove", handlePointerMove);
+                        document.addEventListener("pointerup", handlePointerUp);
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                    </div>
+                  )}
 
                   {/* Resize handle */}
                   {selectedImage === img.id && !isDrawingMode && (
@@ -389,6 +466,13 @@ export default function BlogReflectionEditor({
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
+              className="hidden"
+            />
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBannerUpload}
               className="hidden"
             />
           </div>
