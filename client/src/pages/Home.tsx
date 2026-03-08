@@ -284,14 +284,46 @@ export default function Home() {
         window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
         break;
       case 'save':
-        // Improved mock save: show a message
-        alert("Imagem gerada e salva na galeria!");
-        const link = document.createElement('a');
-        link.href = '#';
-        link.download = 'casa-dos-20-lembrete.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Create a simple canvas and save as image
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1080;
+          canvas.height = 1920;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#f0ebe3';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1a1410';
+            ctx.font = 'bold 60px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Casa dos 20', canvas.width / 2, 200);
+            ctx.font = '40px serif';
+            ctx.fillStyle = '#6b6048';
+            const maxWidth = 900;
+            const lineHeight = 60;
+            let y = 400;
+            const words = dailyReminder.split(' ');
+            let line = '';
+            for (let word of words) {
+              const testLine = line + word + ' ';
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > maxWidth) {
+                ctx.fillText(line, canvas.width / 2, y);
+                line = word + ' ';
+                y += lineHeight;
+              } else {
+                line = testLine;
+              }
+            }
+            ctx.fillText(line, canvas.width / 2, y);
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `casa-dos-20-${new Date().toISOString().split('T')[0]}.png`;
+            link.click();
+          }
+        } catch (error) {
+          console.error('Error saving image:', error);
+        }
         break;
     }
   };

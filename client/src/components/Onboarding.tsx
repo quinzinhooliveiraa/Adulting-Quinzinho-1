@@ -64,7 +64,8 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       setStep(step + 1);
     } else {
       localStorage.setItem("casa-dos-20-user-name", name);
-      onComplete();
+      // Small delay to ensure state is saved before transitioning
+      setTimeout(() => onComplete(), 100);
     }
   };
 

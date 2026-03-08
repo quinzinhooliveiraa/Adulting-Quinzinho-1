@@ -62,12 +62,10 @@ export default function Journey() {
                   <p className="text-sm text-muted-foreground mt-1">{stage.desc}</p>
                   
                   {isActive && (
-                    <Link href={`/journey/${stage.id}`}>
-                      <Button className="mt-4 bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all">
-                        Continuar a jornada
-                        <ChevronRight size={14} className="ml-1" />
-                      </Button>
-                    </Link>
+                    <a href={`/journey/${stage.id}`} className="mt-4 inline-flex bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all items-center space-x-1">
+                      <span>Continuar a jornada</span>
+                      <ChevronRight size={14} />
+                    </a>
                   )}
                   
                   {isLocked && (
