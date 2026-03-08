@@ -1,89 +1,199 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain } from "lucide-react";
+import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
-const QUESTIONS_COLLECTION = [
-  {
-    id: 1,
-    category: "Identidade",
-    emoji: "🎭",
-    question: "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?",
-    topic: "A pressão das expectativas externas",
-    explanation: "Essa pergunta nos convida a separar o que queremos fazer do que acreditamos que devemos fazer. Aos 20 anos, é fácil viver uma vida desenhada por terceiros. Este é um convite para você se reimaginar.",
-    theme: "orange"
+const CATEGORIES = [
+  { 
+    id: 'identity', 
+    title: 'Identidade', 
+    count: 24, 
+    icon: '🎭', 
+    color: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    textColor: 'text-orange-600'
   },
-  {
-    id: 2,
-    category: "Ansiedade",
-    emoji: "😰",
-    question: "O que você tem evitado sentir ultimamente?",
-    topic: "A coragem de sentir o incômodo",
-    explanation: "Muitas vezes, evitamos sentimentos desconfortáveis esperando que passem sozinhos. Mas ignorar emoções é como ignorar uma ferida que não cicatriza. Que sentimento está pedindo sua atenção?",
-    theme: "blue"
+  { 
+    id: 'purpose', 
+    title: 'Propósito', 
+    count: 18, 
+    icon: '🧭', 
+    color: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    textColor: 'text-blue-600'
   },
-  {
-    id: 3,
-    category: "Propósito",
-    emoji: "🧭",
-    question: "Como você definiria 'sucesso' se o dinheiro não existisse?",
-    topic: "Redefinindo o sucesso na vida adulta",
-    explanation: "Libertando-se da métrica financeira, qual seria sua verdadeira medida de uma vida bem vivida? Essa resposta é mais reveladora do que qualquer plano de carreira.",
-    theme: "green"
+  { 
+    id: 'relationships', 
+    title: 'Relações', 
+    count: 32, 
+    icon: '🤍', 
+    color: 'bg-rose-50',
+    borderColor: 'border-rose-200',
+    textColor: 'text-rose-600'
   },
-  {
-    id: 4,
-    category: "Solidão",
-    emoji: "🤍",
-    question: "Qual foi a última vez que você se sentiu verdadeiramente em paz consigo mesmo?",
-    topic: "O diferença entre estar sozinho e estar em solitude",
-    explanation: "A solidão dói quando nos falta autoconhecimento. Mas quando aprendemos a estar consigo, o silêncio vira um refúgio. Quando foi a última vez que você experimentou isso?",
-    theme: "rose"
-  },
-  {
-    id: 5,
-    category: "Identidade",
-    emoji: "🎭",
-    question: "Você está vivendo a vida que escolheu ou a vida que esperam de você?",
-    topic: "O chamado para viver autenticamente",
-    explanation: "Aos 20 anos, essa distinção nunca foi tão importante. Viver conforme os outros esperam é uma forma lenta de desaparecer. É hora de recuperar a autoria da sua vida.",
-    theme: "orange"
+  { 
+    id: 'uncertainty', 
+    title: 'Incerteza', 
+    count: 15, 
+    icon: '🌫️', 
+    color: 'bg-slate-100',
+    borderColor: 'border-slate-200',
+    textColor: 'text-slate-600'
   },
 ];
 
-export default function Questions() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [liked, setLiked] = useState<number[]>([]);
-  const [saved, setSaved] = useState<number[]>([]);
+const QUESTIONS_BY_CATEGORY: Record<string, any[]> = {
+  identity: [
+    {
+      id: 1,
+      category: "Identidade",
+      emoji: "🎭",
+      question: "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?",
+      topic: "A pressão das expectativas externas",
+      explanation: "Essa pergunta nos convida a separar o que queremos fazer do que acreditamos que devemos fazer. Aos 20 anos, é fácil viver uma vida desenhada por terceiros. Este é um convite para você se reimaginar.",
+      theme: "orange"
+    },
+    {
+      id: 2,
+      category: "Identidade",
+      emoji: "🎭",
+      question: "Você está vivendo a vida que escolheu ou a vida que esperam de você?",
+      topic: "O chamado para viver autenticamente",
+      explanation: "Aos 20 anos, essa distinção nunca foi tão importante. Viver conforme os outros esperam é uma forma lenta de desaparecer. É hora de recuperar a autoria da sua vida.",
+      theme: "orange"
+    },
+  ],
+  purpose: [
+    {
+      id: 3,
+      category: "Propósito",
+      emoji: "🧭",
+      question: "Como você definiria 'sucesso' se o dinheiro não existisse?",
+      topic: "Redefinindo o sucesso na vida adulta",
+      explanation: "Libertando-se da métrica financeira, qual seria sua verdadeira medida de uma vida bem vivida? Essa resposta é mais reveladora do que qualquer plano de carreira.",
+      theme: "blue"
+    },
+  ],
+  relationships: [
+    {
+      id: 4,
+      category: "Relações",
+      emoji: "🤍",
+      question: "Em que relacionamentos você sente que pode ser 100% você mesmo?",
+      topic: "A autenticidade nas conexões",
+      explanation: "Relacionamentos verdadeiros só existem quando podemos ser quem realmente somos. Que espaços em sua vida permitem essa vulnerabilidade?",
+      theme: "rose"
+    },
+  ],
+  uncertainty: [
+    {
+      id: 5,
+      category: "Incerteza",
+      emoji: "🌫️",
+      question: "Se você soubesse que vai dar certo, o que tentaria fazer hoje?",
+      topic: "O medo como bússola",
+      explanation: "A incerteza paralisa porque inventamos futuros que não existem. E se você confiasse no processo sem precisar ver o final?",
+      theme: "slate"
+    },
+  ],
+};
 
-  const current = QUESTIONS_COLLECTION[currentIndex];
+function QuestionCard({ question, liked, saved, onLike, onSave, onShare }: any) {
   const themeColors: Record<string, string> = {
     orange: "from-orange-50 to-amber-50",
     blue: "from-blue-50 to-cyan-50",
     green: "from-emerald-50 to-teal-50",
-    rose: "from-rose-50 to-pink-50"
+    rose: "from-rose-50 to-pink-50",
+    slate: "from-slate-50 to-gray-50"
   };
 
   const themeBorder: Record<string, string> = {
     orange: "border-orange-200",
     blue: "border-blue-200",
     green: "border-emerald-200",
-    rose: "border-rose-200"
+    rose: "border-rose-200",
+    slate: "border-slate-200"
   };
 
-  const themeIcon: Record<string, string> = {
-    orange: "text-orange-600",
-    blue: "text-blue-600",
-    green: "text-emerald-600",
-    rose: "text-rose-600"
-  };
+  return (
+    <div className={`relative bg-gradient-to-br ${themeColors[question.theme]} border-2 ${themeBorder[question.theme]} rounded-3xl shadow-lg overflow-hidden`}>
+      <div className="absolute top-0 right-0 opacity-5 pointer-events-none">
+        <Brain size={200} />
+      </div>
 
-  const handlePrev = () => {
-    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-  };
+      <div className="relative z-10 p-8 md:p-10 space-y-8">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-5xl">{question.emoji}</span>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                {question.category}
+              </p>
+              <h2 className="text-sm font-medium text-foreground mt-0.5">Uma pergunta para você</h2>
+            </div>
+          </div>
+        </div>
 
-  const handleNext = () => {
-    if (currentIndex < QUESTIONS_COLLECTION.length - 1) setCurrentIndex(currentIndex + 1);
-  };
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-widest text-primary font-bold">Tópico</p>
+            <h3 className="font-serif text-xl md:text-2xl text-foreground leading-snug">
+              "{question.question}"
+            </h3>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-border/40">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
+              {question.topic}
+            </p>
+            <p className="text-sm leading-relaxed text-foreground/80 font-serif italic">
+              {question.explanation}
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-4 flex gap-3 justify-end border-t border-border/40">
+          <button
+            onClick={() => onLike(question.id)}
+            className={`p-3 rounded-full transition-all active:scale-95 ${
+              liked.includes(question.id)
+                ? "bg-rose-100 text-rose-600"
+                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+            }`}
+            data-testid="button-like-question"
+          >
+            <Heart size={18} fill={liked.includes(question.id) ? "currentColor" : "none"} />
+          </button>
+          <button
+            onClick={() => onSave(question.id)}
+            className={`p-3 rounded-full transition-all active:scale-95 ${
+              saved.includes(question.id)
+                ? "bg-amber-100 text-amber-600"
+                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+            }`}
+            data-testid="button-save-question"
+          >
+            <Bookmark size={18} fill={saved.includes(question.id) ? "currentColor" : "none"} />
+          </button>
+          <button
+            onClick={() => onShare(question)}
+            className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-all active:scale-95"
+            data-testid="button-share-question"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Questions() {
+  const [isConversationMode, setIsConversationMode] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [liked, setLiked] = useState<number[]>([]);
+  const [saved, setSaved] = useState<number[]>([]);
 
   const handleLike = (id: number) => {
     setLiked(liked.includes(id) ? liked.filter(x => x !== id) : [...liked, id]);
@@ -93,166 +203,190 @@ export default function Questions() {
     setSaved(saved.includes(id) ? saved.filter(x => x !== id) : [...saved, id]);
   };
 
-  return (
-    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-      <div className="px-6 pt-12 pb-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-serif text-foreground">Perguntas Profundas</h1>
-          <p className="text-sm text-muted-foreground">
-            {currentIndex + 1} de {QUESTIONS_COLLECTION.length}
-          </p>
-        </div>
-      </div>
+  const handleShare = (question: any) => {
+    const text = `"${question.question}" - Casa dos 20`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'Casa dos 20',
+        text: text,
+      }).catch(console.error);
+    } else {
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    }
+  };
 
-      {/* Letter-card interface */}
-      <div className="px-6 space-y-6">
-        <div className={`relative bg-gradient-to-br ${themeColors[current.theme]} border-2 ${themeBorder[current.theme]} rounded-3xl shadow-lg overflow-hidden`}>
-          {/* Decorative corner elements */}
-          <div className="absolute top-0 right-0 opacity-5 pointer-events-none">
-            <Brain size={200} />
+  if (selectedCategory) {
+    const questions = QUESTIONS_BY_CATEGORY[selectedCategory] || [];
+    const current = questions[currentQuestionIndex];
+    const category = CATEGORIES.find(c => c.id === selectedCategory);
+
+    return (
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                setSelectedCategory(null);
+                setCurrentQuestionIndex(0);
+              }}
+              className="p-2 rounded-full hover:bg-muted transition-all"
+              data-testid="button-back-to-categories"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h1 className="text-3xl font-serif text-foreground">{category?.title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentQuestionIndex + 1} de {questions.length}
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div className="relative z-10 p-8 md:p-10 space-y-8">
-            {/* Header with category and emoji */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-5xl">{current.emoji}</span>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                    {current.category}
-                  </p>
-                  <h2 className="text-sm font-medium text-foreground mt-0.5">Uma pergunta para você</h2>
+        <div className="px-6 space-y-6">
+          {current && (
+            <QuestionCard
+              question={current}
+              liked={liked}
+              saved={saved}
+              onLike={handleLike}
+              onSave={handleSave}
+              onShare={handleShare}
+            />
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+                disabled={currentQuestionIndex === 0}
+                className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                data-testid="button-prev-question"
+              >
+                <ChevronLeft size={20} />
+              </button>
+
+              <div className="flex-1 mx-4">
+                <div className="flex gap-1.5 justify-center">
+                  {questions.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentQuestionIndex(i)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === currentQuestionIndex ? "w-8 bg-primary" : "w-2 bg-muted hover:bg-muted/70"
+                      }`}
+                      data-testid={`progress-dot-${i}`}
+                    />
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Main question */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-widest text-primary font-bold">Tópico</p>
-                <h3 className="font-serif text-xl md:text-2xl text-foreground leading-snug">
-                  "{current.question}"
-                </h3>
-              </div>
-
-              {/* Topic breakdown */}
-              <div className="mt-6 pt-6 border-t border-border/40">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
-                  {current.topic}
-                </p>
-                <p className="text-sm leading-relaxed text-foreground/80 font-serif italic">
-                  {current.explanation}
-                </p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="pt-4 flex gap-3 justify-end border-t border-border/40">
               <button
-                onClick={() => handleLike(current.id)}
-                className={`p-3 rounded-full transition-all active:scale-95 ${
-                  liked.includes(current.id)
-                    ? "bg-rose-100 text-rose-600"
-                    : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                }`}
-                data-testid="button-like-question"
+                onClick={() => setCurrentQuestionIndex(Math.min(questions.length - 1, currentQuestionIndex + 1))}
+                disabled={currentQuestionIndex === questions.length - 1}
+                className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                data-testid="button-next-question"
               >
-                <Heart size={18} fill={liked.includes(current.id) ? "currentColor" : "none"} />
-              </button>
-              <button
-                onClick={() => handleSave(current.id)}
-                className={`p-3 rounded-full transition-all active:scale-95 ${
-                  saved.includes(current.id)
-                    ? "bg-amber-100 text-amber-600"
-                    : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                }`}
-                data-testid="button-save-question"
-              >
-                <Bookmark size={18} fill={saved.includes(current.id) ? "currentColor" : "none"} />
-              </button>
-              <button
-                className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-all active:scale-95"
-                onClick={() => {
-                  const text = `"${current.question}" - Casa dos 20`;
-                  if (navigator.share) {
-                    navigator.share({
-                      title: 'Casa dos 20',
-                      text: text,
-                    }).catch(console.error);
-                  } else {
-                    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-                    window.open(url, '_blank');
-                  }
-                }}
-                data-testid="button-share-question"
-              >
-                <Share2 size={18} />
+                <ChevronRight size={20} />
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Navigation and progress */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
-              className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-              data-testid="button-prev-question"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            <div className="flex-1 mx-4">
-              <div className="flex gap-1.5 justify-center">
-                {QUESTIONS_COLLECTION.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentIndex(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === currentIndex ? "w-8 bg-primary" : "w-2 bg-muted hover:bg-muted/70"
-                    }`}
-                    data-testid={`progress-dot-${i}`}
-                  />
-                ))}
+            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Heart size={14} />
+                <span>{liked.length} salva</span>
+              </div>
+              <div className="text-muted-foreground/30">•</div>
+              <div className="flex items-center gap-1">
+                <Bookmark size={14} />
+                <span>{saved.length} marcada</span>
               </div>
             </div>
-
-            <button
-              onClick={handleNext}
-              disabled={currentIndex === QUESTIONS_COLLECTION.length - 1}
-              className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-              data-testid="button-next-question"
-            >
-              <ChevronRight size={20} />
-            </button>
           </div>
-
-          {/* Interaction summary */}
-          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Heart size={14} />
-              <span>{liked.length} salva</span>
-            </div>
-            <div className="text-muted-foreground/30">•</div>
-            <div className="flex items-center gap-1">
-              <Bookmark size={14} />
-              <span>{saved.length} marcada</span>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA for full collection */}
-        <div className="mt-8 p-6 bg-primary/5 rounded-3xl border border-primary/10 text-center space-y-3">
-          <p className="text-sm text-foreground font-medium">
-            Descubra mais perguntas em diferentes categorias
-          </p>
-          <Button className="w-full bg-primary text-primary-foreground rounded-full h-12 font-medium shadow-sm active:scale-95 transition-all">
-            Explorar Coleções
-          </Button>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <header className="space-y-4">
+        <h1 className="text-3xl font-serif text-foreground">Perguntas Profundas</h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Explore questionamentos que te ajudam a se entender melhor e a navegar a transição para a vida adulta.
+        </p>
+      </header>
+
+      <div className="p-5 rounded-2xl bg-secondary/50 border border-secondary flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm">
+            <Users size={18} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground text-sm">Modo Conversa</h3>
+            <p className="text-[11px] text-muted-foreground">Para responder a dois</p>
+          </div>
+        </div>
+        <Switch 
+          checked={isConversationMode}
+          onCheckedChange={setIsConversationMode}
+          data-testid="toggle-conversation-mode"
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="font-serif text-xl text-foreground">Coleções</h2>
+        
+        <div className="grid grid-cols-2 gap-4">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id} 
+              onClick={() => {
+                setSelectedCategory(cat.id);
+                setCurrentQuestionIndex(0);
+              }}
+              className={`p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:border-primary/30 transition-all group`}
+              data-testid={`button-category-${cat.id}`}
+            >
+              <div className="text-2xl">{cat.icon}</div>
+              <div>
+                <h3 className="font-medium text-foreground text-sm">{cat.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{cat.count} perguntas</p>
+              </div>
+            </button>
+          ))}
+
+          {/* Premium Lock example */}
+          <div className="p-5 rounded-2xl bg-muted/50 border border-border flex flex-col justify-between space-y-4 relative overflow-hidden">
+            <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+              <LockKeyhole size={24} className="text-muted-foreground" />
+            </div>
+            <div className="text-2xl opacity-50">💼</div>
+            <div className="opacity-50">
+              <h3 className="font-medium text-foreground text-sm">Carreira</h3>
+              <p className="text-xs text-muted-foreground mt-1">Premium</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <Sparkles size={100} />
+        </div>
+        <div className="relative z-10">
+          <h3 className="font-serif text-xl mb-2">Pergunta Aleatória</h3>
+          <p className="text-sm opacity-80 mb-6 max-w-[80%]">
+            Deixe o acaso guiar sua próxima reflexão.
+          </p>
+          <button className="flex items-center space-x-2 text-sm font-medium bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition-all">
+            <span>Sortear agora</span>
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }
