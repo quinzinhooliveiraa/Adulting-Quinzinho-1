@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -448,11 +448,39 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
+                        updateImage(img.id, { zIndex: 10 }); // Back behind text
+                      }}
+                      className="p-2 bg-white text-purple-500 hover:bg-purple-50 hover:text-purple-600 rounded-full transition-colors touch-none"
+                      title="Enviar para trás do texto"
+                    >
+                      <MoveDown size={16} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        if (notebookRef.current) {
+                          updateImage(img.id, {
+                            x: 0,
+                            y: 0,
+                            width: notebookRef.current.offsetWidth,
+                            height: notebookRef.current.offsetHeight,
+                            rotation: 0
+                          });
+                        }
+                      }}
+                      className="p-2 bg-white text-green-500 hover:bg-green-50 hover:text-green-600 rounded-full transition-colors touch-none"
+                      title="Preencher tela"
+                    >
+                      <Maximize size={16} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
                         const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
-                        updateImage(img.id, { zIndex: minZ - 1 });
+                        updateImage(img.id, { zIndex: Math.max(20, minZ - 1) });
                       }}
                       className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
-                      title="Enviar para trás"
+                      title="Enviar para trás das imagens"
                     >
                       <ArrowDownToLine size={16} strokeWidth={2.5} />
                     </button>
