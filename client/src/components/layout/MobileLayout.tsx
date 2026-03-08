@@ -38,23 +38,21 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               const isActive = location === item.href;
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href}>
-                  <a className="flex flex-col items-center justify-center w-16 h-full space-y-1">
-                    <Icon 
-                      size={24} 
-                      strokeWidth={isActive ? 2 : 1.5}
-                      className={cn(
-                        "transition-all duration-300",
-                        isActive ? "text-primary scale-110" : "text-muted-foreground"
-                      )} 
-                    />
-                    <span className={cn(
-                      "text-[10px] transition-colors",
-                      isActive ? "text-primary font-medium" : "text-muted-foreground"
-                    )}>
-                      {item.label}
-                    </span>
-                  </a>
+                <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center w-16 h-full space-y-1">
+                  <Icon 
+                    size={24} 
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className={cn(
+                      "transition-all duration-300",
+                      isActive ? "text-primary scale-110" : "text-muted-foreground"
+                    )} 
+                  />
+                  <span className={cn(
+                    "text-[10px] transition-colors",
+                    isActive ? "text-primary font-medium" : "text-muted-foreground"
+                  )}>
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
