@@ -36,118 +36,6 @@ const GAME_MODES = [
   { id: 'family', title: 'Para Família', icon: '👨‍👩‍👧‍👦', color: 'from-amber-50 to-orange-50', border: 'border-amber-200' },
 ];
 
-function GameSetup({ onStartGame }: any) {
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
-  const [roomCode, setRoomCode] = useState<string | null>(null);
-  const [playerName, setPlayerName] = useState("");
-
-  const mode = GAME_MODES.find(m => m.id === selectedMode);
-
-  if (roomCode && selectedMode) {
-    const modeInfo = GAME_MODES.find(m => m.id === selectedMode);
-    const [otherPlayerName, setOtherPlayerName] = useState("");
-    return (
-      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-        <div className="px-6 pt-12 pb-6 text-center space-y-4">
-          <h1 className="text-3xl font-serif text-foreground">Sala Criada!</h1>
-          <p className="text-sm text-muted-foreground">Código: <strong>{roomCode}</strong></p>
-        </div>
-        <div className="px-6 space-y-8">
-          <div className="bg-primary/5 border-2 border-primary/30 rounded-3xl p-8 space-y-4 text-center">
-            <p className="text-xs uppercase tracking-widest text-primary font-bold">Compartilhe o código</p>
-            <button
-              onClick={() => navigator.clipboard.writeText(roomCode).then(() => alert("Copiado!"))}
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary"
-            >
-              <Copy size={14} /> Copiar {roomCode}
-            </button>
-          </div>
-          <Input
-            placeholder="Nome do outro jogador"
-            value={otherPlayerName}
-            onChange={(e) => setOtherPlayerName(e.target.value)}
-            className="h-12 rounded-xl"
-          />
-          <button
-            onClick={() => {
-              if (otherPlayerName.trim()) {
-                onStartGame(null, selectedMode, otherPlayerName);
-              }
-            }}
-            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
-          >
-            Começar Jogo
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedMode) {
-    const [nameInput, setNameInput] = useState("");
-    return (
-      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-        <div className="px-6 pt-12 pb-6">
-          <button onClick={() => setSelectedMode(null)} className="p-2 mb-4">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-3xl font-serif text-foreground">{mode?.title}</h1>
-        </div>
-        <div className="px-6 space-y-8">
-          <div className={`bg-gradient-to-br ${mode?.color} border-2 ${mode?.border} rounded-3xl p-8 text-center space-y-4`}>
-            <div className="text-6xl">{mode?.icon}</div>
-            <h2 className="font-serif text-2xl text-foreground">{mode?.title}</h2>
-          </div>
-          <Input
-            placeholder="Seu nome"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            className="h-12 rounded-xl"
-          />
-          <button
-            onClick={() => {
-              if (nameInput.trim()) {
-                setPlayerName(nameInput);
-                setRoomCode(Math.random().toString(36).substring(2, 8).toUpperCase());
-              }
-            }}
-            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
-          >
-            Criar Sala
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
-      <header className="space-y-4">
-        <h1 className="text-3xl font-serif text-foreground">Jogo de Perguntas</h1>
-        <p className="text-muted-foreground text-sm">Escolha um modo e comece a jogar</p>
-      </header>
-
-      <div className="space-y-4">
-        <h2 className="font-serif text-xl text-foreground">Escolha um Modo</h2>
-        <div className="grid grid-cols-2 gap-4">
-          {GAME_MODES.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setSelectedMode(m.id)}
-              className={`p-5 rounded-2xl bg-gradient-to-br ${m.color} border-2 ${m.border} flex flex-col justify-between space-y-4`}
-            >
-              <div className="text-3xl">{m.icon}</div>
-              <div className="text-left">
-                <h3 className="font-medium text-foreground text-sm">{m.title}</h3>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
   const questions = QUESTIONS_BY_CATEGORY[category] || [];
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -298,7 +186,11 @@ export default function Questions() {
   const [gameCategory, setGameCategory] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<string | null>(null);
   const [otherPlayerName, setOtherPlayerName] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
 
+  // Game interface - when playing
   if (isConversationMode && gameCategory) {
     return (
       <GameInterface
@@ -309,23 +201,125 @@ export default function Questions() {
           setGameCategory(null);
           setGameMode(null);
           setOtherPlayerName(null);
+          setRoomCode(null);
+          setSelectedMode(null);
+          setNameInput("");
         }}
       />
     );
   }
 
+  // Room waiting screen - game setup step 3
+  if (isConversationMode && roomCode && selectedMode) {
+    const modeInfo = GAME_MODES.find(m => m.id === selectedMode);
+    return (
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6 text-center space-y-4">
+          <h1 className="text-3xl font-serif text-foreground">Sala Criada!</h1>
+          <p className="text-sm text-muted-foreground">Código: <strong>{roomCode}</strong></p>
+        </div>
+        <div className="px-6 space-y-8">
+          <div className="bg-primary/5 border-2 border-primary/30 rounded-3xl p-8 space-y-4 text-center">
+            <p className="text-xs uppercase tracking-widest text-primary font-bold">Compartilhe o código</p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(roomCode);
+                alert("Código copiado!");
+              }}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary"
+            >
+              <Copy size={14} /> Copiar {roomCode}
+            </button>
+          </div>
+          <Input
+            placeholder="Nome do outro jogador"
+            value={otherPlayerName || ""}
+            onChange={(e) => setOtherPlayerName(e.target.value)}
+            className="h-12 rounded-xl"
+          />
+          <button
+            onClick={() => {
+              if (otherPlayerName?.trim()) {
+                setGameCategory(selectedMode === 'couples' ? 'identity' : selectedMode === 'friends' ? 'purpose' : selectedMode === 'strangers' ? 'relationships' : 'uncertainty');
+              }
+            }}
+            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
+          >
+            Começar Jogo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Mode selection with name input - game setup step 2
+  if (isConversationMode && selectedMode) {
+    const mode = GAME_MODES.find(m => m.id === selectedMode);
+    return (
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6">
+          <button onClick={() => setSelectedMode(null)} className="p-2 mb-4">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-3xl font-serif text-foreground">{mode?.title}</h1>
+        </div>
+        <div className="px-6 space-y-8">
+          <div className={`bg-gradient-to-br ${mode?.color} border-2 ${mode?.border} rounded-3xl p-8 text-center space-y-4`}>
+            <div className="text-6xl">{mode?.icon}</div>
+            <h2 className="font-serif text-2xl text-foreground">{mode?.title}</h2>
+          </div>
+          <Input
+            placeholder="Seu nome"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            className="h-12 rounded-xl"
+          />
+          <button
+            onClick={() => {
+              if (nameInput.trim()) {
+                setRoomCode(Math.random().toString(36).substring(2, 8).toUpperCase());
+              }
+            }}
+            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
+          >
+            Criar Sala
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Game mode selection - game setup step 1
   if (isConversationMode) {
     return (
-      <GameSetup
-        onStartGame={(category: string | null, mode: string, otherName: string) => {
-          setGameCategory(category);
-          setGameMode(mode);
-          setOtherPlayerName(otherName);
-        }}
-      />
+      <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
+        <header className="space-y-4">
+          <h1 className="text-3xl font-serif text-foreground">Jogo de Perguntas</h1>
+          <p className="text-muted-foreground text-sm">Escolha um modo e comece a jogar</p>
+        </header>
+
+        <div className="space-y-4">
+          <h2 className="font-serif text-xl text-foreground">Escolha um Modo</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {GAME_MODES.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMode(m.id)}
+                className={`p-5 rounded-2xl bg-gradient-to-br ${m.color} border-2 ${m.border} flex flex-col justify-between space-y-4`}
+              >
+                <div className="text-3xl">{m.icon}</div>
+                <div className="text-left">
+                  <h3 className="font-medium text-foreground text-sm">{m.title}</h3>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     );
   }
 
+  // Normal mode - browse questions
   return (
     <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
       <header className="space-y-4">
