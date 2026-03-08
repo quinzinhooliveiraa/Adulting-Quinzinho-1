@@ -7,6 +7,8 @@ interface ImageElement {
   src: string;
   width: number;
   height: number;
+  naturalWidth: number;
+  naturalHeight: number;
   x: number;
   y: number;
   rotation: number;
@@ -130,6 +132,8 @@ export default function BlogReflectionEditor({
             src: event.target?.result as string,
             width: 200,
             height: (200 * img.height) / img.width,
+            naturalWidth: img.width,
+            naturalHeight: img.height,
             x: 20,
             y: 20,
             rotation: 0,
@@ -500,17 +504,30 @@ export default function BlogReflectionEditor({
                         onPointerDown={(e) => {
                           e.stopPropagation();
                           if (contentAreaRef.current) {
+                            const frameW = contentAreaRef.current.offsetWidth;
+                            const frameH = contentAreaRef.current.offsetHeight;
+                            const natW = img.naturalWidth || img.width;
+                            const natH = img.naturalHeight || img.height;
+                            const ratio = natW / natH;
+                            let fitW: number, fitH: number;
+                            if (frameW / frameH > ratio) {
+                              fitH = frameH;
+                              fitW = frameH * ratio;
+                            } else {
+                              fitW = frameW;
+                              fitH = frameW / ratio;
+                            }
                             updateImage(img.id, {
-                              x: 0,
-                              y: 0,
-                              width: contentAreaRef.current.offsetWidth,
-                              height: contentAreaRef.current.offsetHeight,
+                              x: Math.round((frameW - fitW) / 2),
+                              y: Math.round((frameH - fitH) / 2),
+                              width: Math.round(fitW),
+                              height: Math.round(fitH),
                               rotation: 0
                             });
                           }
                         }}
                         className="p-2 bg-white text-green-500 hover:bg-green-50 hover:text-green-600 rounded-full transition-colors touch-none"
-                        title="Preencher tela"
+                        title="Enquadrar imagem"
                       >
                         <Maximize size={16} strokeWidth={2.5} />
                       </button>
