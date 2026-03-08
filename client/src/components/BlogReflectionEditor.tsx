@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -322,14 +322,9 @@ export default function BlogReflectionEditor({
                   className={`flex items-center gap-1.5 text-sm transition-colors ${
                     isDrawingMode ? "text-primary font-medium" : "text-[#7a7a7a] hover:text-[#333]"
                   }`}
+                  title="Desenhar"
                 >
                   <PenTool size={16} />
-                </button>
-                <button
-                  onClick={() => bannerInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
-                >
-                  <ImagePlus size={16} />
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -337,7 +332,6 @@ export default function BlogReflectionEditor({
                   title="Adicionar imagem"
                 >
                   <ImagePlus size={16} />
-                  <span className="text-xs">+</span>
                 </button>
               </div>
             </div>
@@ -346,27 +340,42 @@ export default function BlogReflectionEditor({
               className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" 
               ref={contentAreaRef}
             >
-              {bannerUrl && (
-                <div className="absolute top-0 left-0 w-full h-48 sm:h-64 z-0 group cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
-                  <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <span className="text-white text-sm font-medium px-4 py-2 bg-black/50 rounded-full">Trocar Banner</span>
+              {bannerUrl ? (
+                <div className="relative w-full z-0">
+                  <img src={bannerUrl} alt="Capa" className="w-full h-48 sm:h-64 object-cover" />
+                  <div className="absolute bottom-3 right-3 flex gap-2 z-10">
+                    <button 
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-all shadow-lg"
+                      title="Trocar capa"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setBannerUrl("")}
+                      className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
+                      title="Remover capa"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBannerUrl("");
-                    }}
-                    className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all z-10"
-                  >
-                    <X size={16} />
-                  </button>
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-white bg-black/40 px-3 py-1 rounded-full">Capa</span>
+                  </div>
                 </div>
+              ) : (
+                <button
+                  onClick={() => bannerInputRef.current?.click()}
+                  className="w-full h-24 border-2 border-dashed border-[#e0e0e0] rounded-t-2xl flex items-center justify-center gap-2 text-[#aaa] hover:text-[#777] hover:border-[#ccc] transition-colors"
+                >
+                  <ImageIcon size={18} />
+                  <span className="text-sm font-medium">Adicionar capa</span>
+                </button>
               )}
               
               {hasWrappedImages ? (
                 <div 
-                  className={`absolute inset-0 z-15 ${bannerUrl ? "pt-48 sm:pt-64" : ""}`}
+                  className="relative z-15"
                   onPointerDown={(e) => {
                     if (e.target === e.currentTarget) setSelectedImage(null);
                   }}
@@ -376,7 +385,7 @@ export default function BlogReflectionEditor({
                     contentEditable={isTextMode}
                     suppressContentEditableWarning
                     onInput={handleContentInput}
-                    className={`w-full h-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] ${
+                    className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] ${
                       !isTextMode ? "pointer-events-none opacity-60" : ""
                     }`}
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px' }}
@@ -385,7 +394,7 @@ export default function BlogReflectionEditor({
                 </div>
               ) : (
                 <div 
-                  className="absolute inset-0 z-15"
+                  className="relative z-15"
                   onPointerDown={(e) => {
                     if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
                       if (contentAreaRef.current && isImageMode) {
@@ -416,7 +425,7 @@ export default function BlogReflectionEditor({
                     disabled={isDrawingMode || isImageMode}
                     className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${
                       (isDrawingMode || isImageMode) ? "pointer-events-none opacity-50" : "pointer-events-auto"
-                    } ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
+                    }`}
                   />
                 </div>
               )}

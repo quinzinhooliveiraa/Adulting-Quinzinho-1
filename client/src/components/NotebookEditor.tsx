@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -300,9 +300,11 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
           )}
           <button
             onClick={() => bannerInputRef.current?.click()}
-            className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap"
+            className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap flex items-center gap-1"
+            title="Adicionar capa"
           >
-            📸
+            <ImageIcon size={14} />
+            Capa
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -369,17 +371,30 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               className={`absolute inset-0 w-full h-full z-20 ${isDrawingMode ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
             />
 
-            {bannerUrl && (
-              <div className="mb-6 rounded-lg overflow-hidden shadow-md border-2 border-dashed border-border relative">
-                <img src={bannerUrl} alt="Banner" className="w-full h-auto" />
-                <button
-                  onClick={() => setBannerUrl("")}
-                  className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white"
-                >
-                  <X size={16} />
-                </button>
+            {bannerUrl ? (
+              <div className="mb-6 rounded-lg overflow-hidden shadow-md relative">
+                <img src={bannerUrl} alt="Capa" className="w-full h-auto" />
+                <div className="absolute top-2 left-2 z-10">
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-white bg-black/40 px-2 py-0.5 rounded-full">Capa</span>
+                </div>
+                <div className="absolute bottom-2 right-2 flex gap-2 z-10">
+                  <button
+                    onClick={() => bannerInputRef.current?.click()}
+                    className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-all shadow-lg"
+                    title="Trocar capa"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                  <button
+                    onClick={() => setBannerUrl("")}
+                    className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
+                    title="Remover capa"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-            )}
+            ) : null}
 
             {hasWrappedImages ? (
               <div 
