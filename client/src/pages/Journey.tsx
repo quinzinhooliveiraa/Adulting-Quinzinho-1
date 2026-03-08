@@ -4,17 +4,13 @@ import { ChevronRight, LockKeyhole, Sparkles, CheckCircle2, Clock, MapPin } from
 import { Button } from "@/components/ui/button";
 import journeyHero from "@/assets/images/journey-hero.png";
 
-import journeySolitude from "@/assets/journey-solitude.png";
-import journeyCareer from "@/assets/journey-career.png";
-import journeyRelationships from "@/assets/journey-relationships.png";
-
 const STAGES = [
-  { id: 1, title: "Incerteza", desc: "O chão desaparece", status: "completed", image: journeyCareer },
-  { id: 2, title: "Solidão", desc: "Aprendendo a estar só", status: "active", image: journeySolitude },
-  { id: 3, title: "Identidade", desc: "Quem sou eu?", status: "locked", image: journeyRelationships },
-  { id: 4, title: "Ansiedade", desc: "O medo do futuro", status: "locked", image: journeyCareer },
-  { id: 5, title: "Aceitação", desc: "Abraçando a realidade", status: "locked", image: journeySolitude },
-  { id: 6, title: "Liberdade", desc: "O voo próprio", status: "locked", image: journeyRelationships },
+  { id: 1, title: "Incerteza", desc: "O chão desaparece", status: "completed" },
+  { id: 2, title: "Solidão", desc: "Aprendendo a estar só", status: "active" },
+  { id: 3, title: "Identidade", desc: "Quem sou eu?", status: "locked" },
+  { id: 4, title: "Ansiedade", desc: "O medo do futuro", status: "locked" },
+  { id: 5, title: "Aceitação", desc: "Abraçando a realidade", status: "locked" },
+  { id: 6, title: "Liberdade", desc: "O voo próprio", status: "locked" },
 ];
 
 export default function Journey() {
@@ -63,25 +59,14 @@ export default function Journey() {
                   <h3 className={`font-serif text-xl ${isActive ? 'text-primary' : 'text-foreground'}`}>
                     {index + 1}. {stage.title}
                   </h3>
+                  <p className="text-sm text-muted-foreground mt-1">{stage.desc}</p>
                   
-                  <div className="flex flex-col sm:flex-row gap-4 mt-2">
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">{stage.desc}</p>
-                      
-                      {isActive && (
-                        <a href={`/journey/${stage.id}`} className="mt-4 inline-flex bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all items-center space-x-1">
-                          <span>Continuar a jornada</span>
-                          <ChevronRight size={14} />
-                        </a>
-                      )}
-                    </div>
-                    
-                    {stage.image && (
-                      <div className={`h-24 w-20 sm:w-28 rounded-xl overflow-hidden shadow-sm flex-shrink-0 mt-2 sm:mt-0 ${isLocked ? 'opacity-30 grayscale' : ''}`}>
-                        <img src={stage.image} alt={stage.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
+                  {isActive && (
+                    <a href={`/journey/${stage.id}`} className="mt-4 inline-flex bg-primary text-primary-foreground rounded-full h-10 px-6 text-xs font-medium shadow-sm active:scale-95 transition-all items-center space-x-1">
+                      <span>Continuar a jornada</span>
+                      <ChevronRight size={14} />
+                    </a>
+                  )}
                   
                   {isLocked && (
                     <div className="mt-3 flex items-center space-x-1.5 text-xs text-muted-foreground font-medium">

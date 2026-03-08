@@ -79,8 +79,6 @@ const DEFAULT_REMINDERS = [
   "Você está fazendo o melhor que pode com o que tem."
 ];
 
-import homeBanner from "../assets/home-banner.png";
-
 export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem("casa-dos-20-onboarding-complete");
@@ -399,42 +397,31 @@ export default function Home() {
   }, [mood, moodTips]);
 
   return (
-    <div className="pb-8 flex flex-col space-y-8 animate-in fade-in duration-700 relative">
+    <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       
-      {/* Hero Banner */}
-      <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-b-[2.5rem] shadow-sm mb-4">
-        <img 
-          src={homeBanner} 
-          alt="Home lifestyle banner" 
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-        
-        <header className="absolute bottom-6 left-6 right-6">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <p className="text-sm uppercase tracking-widest text-background/80 drop-shadow-sm font-sans font-medium">
-                {today}
-              </p>
-              <h1 className="text-3xl text-foreground font-serif leading-tight">
-                {greeting}{userName}. <br/>
-                Como você está agora?
-              </h1>
-            </div>
+      <header className="space-y-2">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="text-sm uppercase tracking-widest text-muted-foreground font-sans">
+              {today}
+            </p>
+            <h1 className="text-3xl text-foreground font-serif leading-tight">
+              {greeting}{userName}. <br/>
+              Como você está agora?
+            </h1>
           </div>
-        </header>
-      </div>
+        </div>
+      </header>
 
-      <div className="px-6 flex flex-col space-y-10">
-        <section className="space-y-4 mt-2">
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm font-serif text-muted-foreground uppercase tracking-wider">Check-in de Humor</h2>
-            {checkIns.length > 0 && (
-              <button 
-                onClick={() => setIsSummaryOpen(true)}
-                className="text-[10px] font-bold text-primary underline"
-              >
-                Ver Resumo da Semana
+      <section className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-sm font-serif text-muted-foreground uppercase tracking-wider">Check-in de Humor</h2>
+          {checkIns.length > 0 && (
+            <button 
+              onClick={() => setIsSummaryOpen(true)}
+              className="text-[10px] font-bold text-primary underline"
+            >
+              Ver Resumo da Semana
             </button>
           )}
         </div>
@@ -965,7 +952,6 @@ export default function Home() {
           }}
         />
       )}
-      </div>
     </div>
   );
 }
