@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, Volume2, Copy } from "lucide-react";
+import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, Copy, Check } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const CATEGORIES = [
   { 
@@ -101,84 +102,217 @@ const QUESTIONS_BY_CATEGORY: Record<string, any[]> = {
 // Flatten all questions for random selection
 const ALL_QUESTIONS = Object.values(QUESTIONS_BY_CATEGORY).flat();
 
+const GAME_MODES = [
+  { id: 'couples', title: 'Para Casais', icon: '💑', color: 'from-rose-50 to-pink-50', border: 'border-rose-200' },
+  { id: 'friends', title: 'Para Amigos', icon: '🤝', color: 'from-blue-50 to-cyan-50', border: 'border-blue-200' },
+  { id: 'strangers', title: 'Desconhecidos', icon: '👥', color: 'from-purple-50 to-indigo-50', border: 'border-purple-200' },
+  { id: 'family', title: 'Para Família', icon: '👨‍👩‍👧‍👦', color: 'from-amber-50 to-orange-50', border: 'border-amber-200' },
+];
+
+function RoomSetup({ selectedMode, onBack, onCreateRoom }: any) {
+  const [playerName, setPlayerName] = useState("");
+  const mode = GAME_MODES.find(m => m.id === selectedMode);
+
+  return (
+    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+      <div className="px-6 pt-12 pb-6">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-muted transition-all mb-4"
+          data-testid="button-back-to-mode-select"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-3xl font-serif text-foreground">{mode?.title}</h1>
+        <p className="text-sm text-muted-foreground mt-2">Crie uma sala para jogar</p>
+      </div>
+
+      <div className="px-6 space-y-8">
+        <div className={`bg-gradient-to-br ${mode?.color} border-2 ${mode?.border} rounded-3xl p-8 text-center space-y-4`}>
+          <div className="text-6xl">{mode?.icon}</div>
+          <h2 className="font-serif text-2xl text-foreground">{mode?.title}</h2>
+          <p className="text-sm text-foreground/70">Modo de jogo para aproveitar reflexões profundas</p>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-foreground">Como você quer ser chamado?</label>
+          <Input
+            type="text"
+            placeholder="Seu nome"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            className="h-12 rounded-xl bg-card border-border text-center"
+            data-testid="input-player-name"
+          />
+        </div>
+
+        <button
+          onClick={() => onCreateRoom(playerName)}
+          disabled={!playerName.trim()}
+          className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
+          data-testid="button-create-room"
+        >
+          Criar Sala
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomWaiting({ roomCode, playerName, mode, onCopyCode, onStartGame }: any) {
+  const modeInfo = GAME_MODES.find(m => m.id === mode);
+  const [otherPlayerName, setOtherPlayerName] = useState("");
+
+  return (
+    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+      <div className="px-6 pt-12 pb-6 text-center space-y-4">
+        <h1 className="text-3xl font-serif text-foreground">Sala Criada!</h1>
+        <p className="text-sm text-muted-foreground">Aguardando outro jogador</p>
+      </div>
+
+      <div className="px-6 space-y-8">
+        {/* Room Code */}
+        <div className="bg-primary/5 border-2 border-primary/30 rounded-3xl p-8 space-y-4 text-center">
+          <p className="text-xs uppercase tracking-widest text-primary font-bold">Código da Sala</p>
+          <div className="text-4xl font-bold text-primary font-mono tracking-widest">{roomCode}</div>
+          <button
+            onClick={() => onCopyCode(roomCode)}
+            className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            data-testid="button-copy-code"
+          >
+            <Copy size={14} />
+            Copiar código
+          </button>
+          <p className="text-xs text-muted-foreground mt-4">Compartilhe este código com outro jogador</p>
+        </div>
+
+        {/* Players */}
+        <div className="space-y-3">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Jogadores</p>
+          
+          {/* Player 1 */}
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+              <div>
+                <p className="font-medium text-foreground text-sm">{playerName}</p>
+                <p className="text-xs text-muted-foreground">Você</p>
+              </div>
+            </div>
+            <Check size={18} className="text-green-600" />
+          </div>
+
+          {/* Player 2 - Input */}
+          <div className="bg-card border border-dashed border-border rounded-2xl p-4">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-3">Outro Jogador</p>
+            <Input
+              type="text"
+              placeholder="Nome do outro jogador"
+              value={otherPlayerName}
+              onChange={(e) => setOtherPlayerName(e.target.value)}
+              className="h-10 rounded-lg text-sm"
+              data-testid="input-other-player-name"
+            />
+          </div>
+        </div>
+
+        {/* Start Button */}
+        <button
+          onClick={() => onStartGame(otherPlayerName)}
+          disabled={!otherPlayerName.trim()}
+          className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
+          data-testid="button-start-game"
+        >
+          Começar Jogo
+        </button>
+
+        {/* Share Instructions */}
+        <div className="bg-secondary/30 rounded-2xl p-4 text-center">
+          <p className="text-xs text-foreground/70">
+            💡 <strong>Dica:</strong> Compartilhe o código {roomCode} para que seu parceiro entre na sala
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GameSetup({ conversationMode, onStartGame }: any) {
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState("");
+
+  const generateRoomCode = (name: string) => {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    setRoomCode(code);
+    setPlayerName(name);
+  };
+
+  if (roomCode) {
+    return (
+      <RoomWaiting
+        roomCode={roomCode}
+        playerName={playerName}
+        mode={selectedMode}
+        onCopyCode={(code: string) => {
+          navigator.clipboard.writeText(code);
+          alert("Código copiado!");
+        }}
+        onStartGame={(otherName: string) => {
+          onStartGame(null, selectedMode, otherName);
+        }}
+      />
+    );
+  }
+
+  if (selectedMode) {
+    return (
+      <RoomSetup
+        selectedMode={selectedMode}
+        onBack={() => setSelectedMode(null)}
+        onCreateRoom={generateRoomCode}
+      />
+    );
+  }
+
   return (
     <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="space-y-4">
         <h1 className="text-3xl font-serif text-foreground">Jogo de Perguntas</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          {conversationMode 
-            ? "Escolha um tema e comece a jogar com alguém online ou pessoalmente"
-            : "Explore questionamentos que te ajudam a se entender melhor"}
+          Escolha o modo e comece a jogar
         </p>
       </header>
 
       <div className="space-y-4">
-        <h2 className="font-serif text-xl text-foreground">Escolha um Tema</h2>
+        <h2 className="font-serif text-xl text-foreground">Escolha um Modo</h2>
         
         <div className="grid grid-cols-2 gap-4">
-          {CATEGORIES.map((cat) => (
+          {GAME_MODES.map((mode) => (
             <button
-              key={cat.id} 
-              onClick={() => onStartGame(cat.id)}
-              className={`p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:border-primary/30 transition-all group active:scale-95`}
-              data-testid={`button-game-category-${cat.id}`}
+              key={mode.id}
+              onClick={() => setSelectedMode(mode.id)}
+              className={`p-5 rounded-2xl bg-gradient-to-br ${mode.color} border-2 ${mode.border} shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:shadow-lg transition-all active:scale-95`}
+              data-testid={`button-game-mode-${mode.id}`}
             >
-              <div className="text-2xl">{cat.icon}</div>
-              <div>
-                <h3 className="font-medium text-foreground text-sm">{cat.title}</h3>
-                <p className="text-xs text-muted-foreground mt-1">{cat.count} perguntas</p>
+              <div className="text-3xl">{mode.icon}</div>
+              <div className="text-left">
+                <h3 className="font-medium text-foreground text-sm">{mode.title}</h3>
               </div>
             </button>
           ))}
-
-          {/* Premium Lock example */}
-          <div className="p-5 rounded-2xl bg-muted/50 border border-border flex flex-col justify-between space-y-4 relative overflow-hidden">
-            <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
-              <LockKeyhole size={24} className="text-muted-foreground" />
-            </div>
-            <div className="text-2xl opacity-50">💼</div>
-            <div className="opacity-50">
-              <h3 className="font-medium text-foreground text-sm">Carreira</h3>
-              <p className="text-xs text-muted-foreground mt-1">Premium</p>
-            </div>
-          </div>
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          const randomIndex = Math.floor(Math.random() * CATEGORIES.length);
-          const randomCategory = CATEGORIES[randomIndex];
-          onStartGame(randomCategory.id);
-        }}
-        className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all active:scale-95"
-        data-testid="button-random-game"
-      >
-        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Sparkles size={100} />
-        </div>
-        <div className="relative z-10 text-left space-y-2">
-          <h3 className="font-serif text-xl">Tema Aleatório</h3>
-          <p className="text-sm opacity-80">
-            Deixe o acaso escolher para você.
-          </p>
-          <div className="flex items-center space-x-2 text-sm font-medium pt-2">
-            <span>Começar agora</span>
-            <ArrowRight size={16} />
-          </div>
-        </div>
-      </button>
-    </div>
-  );
-}
 
-function GameInterface({ category, conversationMode, onBack }: any) {
+function GameInterface({ category, conversationMode, gameMode, otherPlayerName, onBack }: any) {
   const questions = QUESTIONS_BY_CATEGORY[category] || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState<'A' | 'B'>('A');
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [playerAName, setPlayerAName] = useState("Pessoa A");
+  const [playerBName, setPlayerBName] = useState(otherPlayerName || "Pessoa B");
 
   const current = questions[currentIndex];
   const categoryInfo = CATEGORIES.find(c => c.id === category);
@@ -369,19 +503,27 @@ function GameInterface({ category, conversationMode, onBack }: any) {
 export default function Questions() {
   const [isConversationMode, setIsConversationMode] = useState(false);
   const [gameCategory, setGameCategory] = useState<string | null>(null);
+  const [gameMode, setGameMode] = useState<string | null>(null);
+  const [otherPlayerName, setOtherPlayerName] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [liked, setLiked] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
   const [randomQuestion, setRandomQuestion] = useState<any | null>(null);
 
-  // If conversation mode is active, show game interface
+  // If conversation mode is active and playing, show game interface
   if (isConversationMode && gameCategory) {
     return (
       <GameInterface 
         category={gameCategory} 
         conversationMode={isConversationMode}
-        onBack={() => setGameCategory(null)}
+        gameMode={gameMode}
+        otherPlayerName={otherPlayerName}
+        onBack={() => {
+          setGameCategory(null);
+          setGameMode(null);
+          setOtherPlayerName(null);
+        }}
       />
     );
   }
@@ -391,7 +533,11 @@ export default function Questions() {
     return (
       <GameSetup 
         conversationMode={isConversationMode} 
-        onStartGame={(category: string) => setGameCategory(category)}
+        onStartGame={(category: string | null, mode: string, otherName: string) => {
+          setGameCategory(category);
+          setGameMode(mode);
+          setOtherPlayerName(otherName);
+        }}
       />
     );
   }
