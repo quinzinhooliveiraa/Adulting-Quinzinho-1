@@ -5,9 +5,8 @@ import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
-import DailyCheckIn from "@/components/DailyCheckIn";
 import { DAILY_REFLECTIONS } from "./Book";
-import { getLastCheckIn, recommendContent, RecommendedContent } from "@/utils/intelligentRecommendation";
+import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
 
 
 // Simple mock logic for auto-tagging
@@ -81,8 +80,9 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem("casa-dos-20-onboarding-complete");
   });
-  const [showCheckIn, setShowCheckIn] = useState(false);
   const [mood, setMood] = useState<string | null>(null);
+  const [checkInContext, setCheckInContext] = useState("");
+  const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
   const [isReflecting, setIsReflecting] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
   const [isSaved, setIsSaved] = useState(false);
@@ -103,14 +103,6 @@ export default function Home() {
     const lastCheckIn = getLastCheckIn();
     const content = recommendContent(lastCheckIn);
     setRecommendedContent(content);
-    
-    // Show check-in prompt if no check-in today
-    if (!lastCheckIn) {
-      // Delay to let onboarding finish if needed
-      setTimeout(() => {
-        setShowCheckIn(true);
-      }, 500);
-    }
   }, []);
 
   // Time-based greeting and User Name
@@ -161,36 +153,36 @@ export default function Home() {
   ];
 
   const handleMoodSelect = (id: string) => {
-    const now = new Date();
-    
-    // Check if there's a check-in in the last 30 minutes
-    if (checkIns.length > 0) {
-      const lastCheckIn = new Date();
-      const [hours, minutes] = checkIns[checkIns.length - 1].time.split(':');
-      lastCheckIn.setHours(parseInt(hours), parseInt(minutes));
-      
-      const diffMs = now.getTime() - lastCheckIn.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      
-      if (diffMins < 30) {
-        // Just update current mood without adding new check-in
-        setMood(id);
-        const updatedCheckIns = [...checkIns];
-        updatedCheckIns[updatedCheckIns.length - 1] = { id, time: format(now, "HH:mm") };
-        setCheckIns(updatedCheckIns);
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 2000);
-        return;
-      }
-    }
-
     setMood(id);
-    const timeStr = format(now, "HH:mm");
-    setCheckIns(prev => [...prev, { id, time: timeStr }]);
+    setCheckInContext(""); // Reset context for new check-in
+  };
+
+  const handleSubmitCheckIn = () => {
+    if (!mood) return;
     
-    // Auto-save logic for check-in
+    setIsSubmittingCheckIn(true);
+    
+    // Save check-in with intelligent analysis
+    saveCheckIn(mood, checkInContext);
+    
+    // Reload recommendations based on new check-in
+    const lastCheckIn = getLastCheckIn();
+    const content = recommendContent(lastCheckIn);
+    setRecommendedContent(content);
+    
+    // Show success and reset
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+    setTimeout(() => {
+      setIsSaved(false);
+      setMood(null);
+      setCheckInContext("");
+      setIsSubmittingCheckIn(false);
+    }, 1500);
+    
+    // Add to check-ins display
+    const now = new Date();
+    const timeStr = format(now, "HH:mm");
+    setCheckIns(prev => [...prev, { id: mood, time: timeStr }]);
   };
 
   const handleCopy = () => {
@@ -402,13 +394,6 @@ export default function Home() {
               Como você está agora?
             </h1>
           </div>
-          <button
-            onClick={() => setShowCheckIn(true)}
-            className="p-3 hover:bg-secondary rounded-full transition-colors border border-border"
-            title="Novo check-in"
-          >
-            <Brain size={20} className="text-primary" />
-          </button>
         </div>
       </header>
 
@@ -450,7 +435,26 @@ export default function Home() {
       </section>
 
       {mood && (
-        <section className="animate-in fade-in zoom-in duration-500">
+        <section className="animate-in fade-in zoom-in duration-500 space-y-4">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground font-medium">
+              O que está acontecendo? (opcional)
+            </p>
+            <Textarea
+              value={checkInContext}
+              onChange={(e) => setCheckInContext(e.target.value)}
+              placeholder="Compartilhe o contexto... qual é a situação, o que você está sentindo..."
+              className="min-h-24 rounded-xl resize-none"
+            />
+            <Button
+              onClick={handleSubmitCheckIn}
+              disabled={isSubmittingCheckIn}
+              className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-xl font-bold"
+            >
+              {isSubmittingCheckIn ? "Salvando..." : "Registrar Check-in"}
+            </Button>
+          </div>
+          
           <div className="bg-secondary/30 rounded-3xl p-6 border border-primary/5 flex items-start gap-4">
             <div className="p-3 bg-background rounded-2xl shadow-sm text-primary">
               <Sparkles size={20} />
@@ -913,16 +917,6 @@ export default function Home() {
         </div>
       )}
 
-      <DailyCheckIn
-        isOpen={showCheckIn}
-        onClose={() => setShowCheckIn(false)}
-        onComplete={(m, e) => {
-          // Reload recommended content after check-in
-          const lastCheckIn = getLastCheckIn();
-          const content = recommendContent(lastCheckIn);
-          setRecommendedContent(content);
-        }}
-      />
     </div>
   );
 }
