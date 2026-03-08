@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -17,6 +17,7 @@ interface ImageElement {
   y: number;
   rotation: number;
   zIndex: number;
+  fit?: "cover" | "contain";
 }
 
 export default function NotebookEditor({ initialContent = "", onClose, onSave }: NotebookEditorProps) {
@@ -351,7 +352,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   src={img.src}
                   alt="Note"
                   draggable={false}
-                  className="w-full h-full object-cover rounded-lg shadow-md border border-border pointer-events-none"
+                  className={`w-full h-full ${img.fit === 'contain' ? 'object-contain' : 'object-cover'} rounded-lg shadow-md border border-border pointer-events-none`}
                 />
 
                 {/* Rotate handle */}
@@ -454,6 +455,16 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                       title="Enviar para trás do texto"
                     >
                       <MoveDown size={16} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        updateImage(img.id, { fit: img.fit === 'contain' ? 'cover' : 'contain' });
+                      }}
+                      className={`p-2 bg-white ${img.fit === 'contain' ? 'text-teal-600 bg-teal-50' : 'text-teal-500 hover:bg-teal-50 hover:text-teal-600'} rounded-full transition-colors touch-none`}
+                      title={img.fit === 'contain' ? 'Preencher corte (Cover)' : 'Enquadrar inteira (Contain)'}
+                    >
+                      <Crop size={16} strokeWidth={2.5} />
                     </button>
                     <button
                       onPointerDown={(e) => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -11,6 +11,7 @@ interface ImageElement {
   y: number;
   rotation: number;
   zIndex: number;
+  fit?: "cover" | "contain";
 }
 
 interface BlogReflectionEditorProps {
@@ -374,7 +375,7 @@ export default function BlogReflectionEditor({
                     src={img.src}
                     alt="Note attachment"
                     draggable={false} // Prevent browser's native image drag behavior
-                    className="w-full h-full object-cover rounded shadow-md border border-border/50 bg-white p-1 pointer-events-none"
+                    className={`w-full h-full ${img.fit === 'contain' ? 'object-contain' : 'object-cover'} rounded shadow-md border border-border/50 bg-white p-1 pointer-events-none`}
                   />
 
                   {/* Rotate handle */}
@@ -477,6 +478,16 @@ export default function BlogReflectionEditor({
                         title="Enviar para trás do texto"
                       >
                         <MoveDown size={16} strokeWidth={2.5} />
+                      </button>
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          updateImage(img.id, { fit: img.fit === 'contain' ? 'cover' : 'contain' });
+                        }}
+                        className={`p-2 bg-white ${img.fit === 'contain' ? 'text-teal-600 bg-teal-50' : 'text-teal-500 hover:bg-teal-50 hover:text-teal-600'} rounded-full transition-colors touch-none`}
+                        title={img.fit === 'contain' ? 'Preencher corte (Cover)' : 'Enquadrar inteira (Contain)'}
+                      >
+                        <Crop size={16} strokeWidth={2.5} />
                       </button>
                       <button
                         onPointerDown={(e) => {
