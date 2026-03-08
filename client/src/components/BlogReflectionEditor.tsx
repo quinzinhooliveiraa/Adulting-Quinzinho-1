@@ -284,6 +284,7 @@ export default function BlogReflectionEditor({
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                onPointerDown={() => setSelectedImage(null)}
                 placeholder="Escreva seus pensamentos aqui..."
                 disabled={isDrawingMode}
                 className={`absolute inset-0 w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
@@ -450,40 +451,44 @@ export default function BlogReflectionEditor({
                     />
                   )}
 
-                  {/* Delete button */}
+                  {/* Action buttons */}
                   {selectedImage === img.id && !isDrawingMode && (
-                    <div className="absolute -top-3 -right-3 flex gap-1.5 z-30">
+                    <div 
+                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1.5 z-30 bg-white/90 backdrop-blur p-1.5 rounded-full shadow-lg border border-border/50"
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
                       <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                           e.stopPropagation();
                           const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
                           updateImage(img.id, { zIndex: maxZ + 1 });
                         }}
-                        className="p-1.5 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full shadow-md border border-blue-100 transition-colors"
+                        className="p-2 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full transition-colors touch-none"
                         title="Trazer para frente"
                       >
-                        <ArrowUpToLine size={14} strokeWidth={3} />
+                        <ArrowUpToLine size={16} strokeWidth={2.5} />
                       </button>
                       <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                           e.stopPropagation();
                           const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
                           updateImage(img.id, { zIndex: minZ - 1 });
                         }}
-                        className="p-1.5 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full shadow-md border border-orange-100 transition-colors"
+                        className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
                         title="Enviar para trás"
                       >
-                        <ArrowDownToLine size={14} strokeWidth={3} />
+                        <ArrowDownToLine size={16} strokeWidth={2.5} />
                       </button>
+                      <div className="w-[1px] h-6 bg-border/50 my-auto mx-0.5"></div>
                       <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                           e.stopPropagation();
                           deleteImage(img.id);
                         }}
-                        className="p-1.5 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full shadow-md border border-red-100 transition-colors"
+                        className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
                         title="Excluir imagem"
                       >
-                        <X size={14} strokeWidth={3} />
+                        <X size={16} strokeWidth={3} />
                       </button>
                     </div>
                   )}
