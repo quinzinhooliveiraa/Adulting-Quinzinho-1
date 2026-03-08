@@ -10,34 +10,60 @@ const CHAPTERS = [
     title: "A Solidão", 
     tag: "Essencial",
     excerpt: "É na solidão que nos conhecemos, mas é nas interações com os outros que crescemos.",
-    fullText: "Aprender a estar consigo mesmo é o primeiro passo para não depender da validação alheia. A solidão não é um quarto vazio, é um espaço de encontro. Solidão não é vazio, é uma oportunidade para se encontrar. Algumas pessoas estão destinadas a serem amadas apenas por um curto período de tempo. É normal se perder em alguém e ainda lutar para encontrar o seu caminho de volta.",
+    fullText: "Aprender a estar consigo mesmo é o primeiro passo para não depender da validação alheia. A solidão não é um quarto vazio, é um espaço de encontro. Solidão não é vazio, é uma oportunidade para se encontrar.\n\nAlgumas pessoas estão destinadas a serem amadas apenas por um curto período de tempo. É normal se perder em alguém e ainda lutar para encontrar o seu caminho de volta. A verdadeira solidão não é um estado de abandono, mas um convite para redescobrir quem você é quando ninguém mais está olhando.\n\nEste é apenas um trecho do capítulo. Para ler a reflexão completa com todas as nuances e ensinamentos, você precisa adquirir o livro na Amazon.",
     image: solitudeArt,
-    locked: false
+    locked: false,
+    preview: true
   },
   { 
     id: "uncertainty", 
     title: "A Incerteza", 
     tag: "Transição",
     excerpt: "Você já parou para pensar que a incerteza pode ser um presente inesperado em nossas vidas.",
-    fullText: "A incerteza não é o inimigo, é o terreno onde a coragem é cultivada. Não saber o próximo passo é o que torna a caminhada real. Confie no esforço que você está disposto a colocar, pois é ele que transforma a incerteza em oportunidade. Abraçar a incerteza é fundamental para o sucesso - é um convite para transformar as pessoas ao seu redor em colaboradores valiosos.",
-    locked: false
+    fullText: "A incerteza não é o inimigo, é o terreno onde a coragem é cultivada. Não saber o próximo passo é o que torna a caminhada real. Aqueles que nunca experimentaram a incerteza nunca realmente viveram.\n\nConfie no esforço que você está disposto a colocar, pois é ele que transforma a incerteza em oportunidade. Abraçar a incerteza é fundamental para o sucesso - é um convite para transformar as pessoas ao seu redor em colaboradores valiosos. A vida não oferece garantias, mas oferece possibilidades infinitas para quem tem coragem de enfrentar o desconhecido.",
+    locked: false,
+    preview: true
   },
   { 
     id: "identity", 
     title: "A Identidade", 
     tag: "Autoconhecimento",
     excerpt: "Você não pode se sentir confortável consigo mesmo se você não souber quem você é.",
-    fullText: "Você não é o que faz, nem o que possui. Você é o silêncio que resta quando todas as expectativas externas se calam. Assumindo Quem Você Realmente É: Encarando o Medo de Não Ser Aceito. Tirando a Máscara: Vencendo a Síndrome de Impostor. A Jornada da Excepcionalidade: Aceitando Sua Singularidade.",
-    locked: false
+    fullText: "Você não é o que faz, nem o que possui. Você é o silêncio que resta quando todas as expectativas externas se calam. Quando você finalmente para de tentar ser o que os outros esperam, você descobre quem você realmente é.\n\nAssumindo Quem Você Realmente É: Encarando o Medo de Não Ser Aceito. Tirando a Máscara: Vencendo a Síndrome de Impostor. A Jornada da Excepcionalidade: Aceitando Sua Singularidade. Sua identidade não é um destino, é um processo contínuo de descoberta e aceitação.",
+    locked: false,
+    preview: true
   },
   {
     id: "relationships",
     title: "Os Relacionamentos",
     tag: "Conexão",
     excerpt: "Se alguém quer estar na sua vida, essa pessoa estará.",
-    fullText: "Razões para relacionamentos acabarem. Navegando Relacionamentos Unilaterais: Reconhecendo o Valor Próprio. As pessoas que o seu coração escolhe, mesmo quando pensa que é na hora errada, são simplesmente as pessoas erradas. Espero que você tenha a coragem de continuar amando profundamente em um mundo que às vezes falha em fazer isso.",
-    locked: false
+    fullText: "Os relacionamentos são o espelho onde nos vemos refletidos. Cada pessoa que entra na nossa vida nos ensina algo sobre nós mesmos, seja através do amor ou da dor.\n\nRazões para relacionamentos acabarem. Navegando Relacionamentos Unilaterais: Reconhecendo o Valor Próprio. As pessoas que o seu coração escolhe, mesmo quando pensa que é na hora errada, são simplesmente as pessoas erradas. Espero que você tenha a coragem de continuar amando profundamente em um mundo que às vezes falha em fazer isso. Os relacionamentos verdadeiros não são sobre perfeição, mas sobre aceitação.",
+    locked: false,
+    preview: true
+  },
+  {
+    id: "purpose",
+    title: "O Propósito",
+    tag: "Significado",
+    excerpt: "Encontrar propósito não é uma resposta, é uma jornada de descoberta diária.",
+    fullText: "Aos vinte anos, muitos sentem a pressão de saber exatamente para onde estão indo. Mas a verdade é que o propósito não é algo que você encontra e coloca em uma prateleira.\n\nO propósito é algo que você constrói, que evolui, que muda conforme você cresce. Existem momentos em que você estará completamente perdido, e tudo bem estar perdido. Estar perdido significa que você ainda está explorando, ainda está buscando, ainda está vivo.\n\nSeu propósito pode ser ajudar alguém, criar algo, aprender tudo que puder, amar profundamente - ou tudo isso ao mesmo tempo. Não existe um único propósito correto. Existe apenas o seu.",
+    locked: false,
+    preview: true
   }
+];
+
+export const DAILY_REFLECTIONS = [
+  { id: 1, text: "A solidão não é um quarto vazio, é um espaço de encontro.", author: "Casa dos 20" },
+  { id: 2, text: "Você não é o que faz, nem o que possui. Você é o silêncio que resta quando todas as expectativas externas se calam.", author: "Casa dos 20" },
+  { id: 3, text: "A incerteza não é o inimigo, é o terreno onde a coragem é cultivada.", author: "Casa dos 20" },
+  { id: 4, text: "Se alguém quer estar na sua vida, essa pessoa estará.", author: "Casa dos 20" },
+  { id: 5, text: "O propósito é algo que você constrói, que evolui, que muda conforme você cresce.", author: "Casa dos 20" },
+  { id: 6, text: "Estar perdido significa que você ainda está explorando, ainda está buscando, ainda está vivo.", author: "Casa dos 20" },
+  { id: 7, text: "Sua identidade não é um destino, é um processo contínuo de descoberta e aceitação.", author: "Casa dos 20" },
+  { id: 8, text: "Os relacionamentos verdadeiros não são sobre perfeição, mas sobre aceitação.", author: "Casa dos 20" },
+  { id: 9, text: "A vida não oferece garantias, mas oferece possibilidades infinitas para quem tem coragem de enfrentar o desconhecido.", author: "Casa dos 20" },
+  { id: 10, text: "Cada pessoa que entra na nossa vida nos ensina algo sobre nós mesmos, seja através do amor ou da dor.", author: "Casa dos 20" },
 ];
 
 function ChapterModal({ chapter, onClose }: any) {

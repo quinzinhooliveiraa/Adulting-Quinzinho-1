@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
+import { DAILY_REFLECTIONS } from "./Book";
 
 // Refletive Question Pool
 const REFLECTION_QUESTIONS = [
@@ -139,6 +140,13 @@ export default function Home() {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
     const index = dayOfYear % REFLECTION_QUESTIONS.length;
     return REFLECTION_QUESTIONS[index];
+  }, []);
+
+  // Daily reflection from the book
+  const dailyReflectionFromBook = useMemo(() => {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+    const index = dayOfYear % DAILY_REFLECTIONS.length;
+    return DAILY_REFLECTIONS[index];
   }, []);
 
   const moodIcons = [
@@ -471,6 +479,31 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-serif text-foreground flex items-center gap-2">
+            <BookOpen size={18} className="text-primary" />
+            Reflexão do Livro
+          </h2>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Casa dos 20</span>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 rounded-3xl p-6 border border-amber-200/50 dark:border-amber-800/30 space-y-4">
+          <p className="font-serif text-lg italic text-foreground/90 leading-relaxed">
+            "{dailyReflectionFromBook.text}"
+          </p>
+          <div className="flex items-center justify-between pt-2 border-t border-amber-200/30">
+            <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">— {dailyReflectionFromBook.author}</span>
+            <button
+              onClick={() => window.open('https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/', '_blank')}
+              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 underline"
+            >
+              Ler mais →
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="space-y-4">
         <div className="flex justify-between items-end">
