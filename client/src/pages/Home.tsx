@@ -103,6 +103,14 @@ export default function Home() {
     const lastCheckIn = getLastCheckIn();
     const content = recommendContent(lastCheckIn);
     setRecommendedContent(content);
+    
+    // Show check-in prompt if no check-in today
+    if (!lastCheckIn) {
+      // Delay to let onboarding finish if needed
+      setTimeout(() => {
+        setShowCheckIn(true);
+      }, 500);
+    }
   }, []);
 
   // Time-based greeting and User Name
