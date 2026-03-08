@@ -201,7 +201,6 @@ export default function BlogReflectionEditor({
           };
           setImages(prev => [...prev, newImage]);
           setIsDrawingMode(false);
-          setEditMode("image");
         };
         img.src = event.target?.result as string;
       };

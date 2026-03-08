@@ -181,7 +181,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             textWrap: false,
           };
           setImages(prev => [...prev, newImage]);
-          setEditMode("image");
         };
         img.src = event.target?.result as string;
       };
@@ -289,7 +288,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
           </button>
           <div className="w-px h-6 bg-border mx-1" />
           <button
-            onClick={() => { setIsDrawingMode(!isDrawingMode); if (!isDrawingMode) setEditMode("text"); }}
+            onClick={() => { setIsDrawingMode(!isDrawingMode); }}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
               isDrawingMode 
                 ? "bg-primary text-primary-foreground shadow-inner" 
