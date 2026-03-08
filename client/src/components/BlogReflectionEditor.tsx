@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -48,7 +48,7 @@ export default function BlogReflectionEditor({
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
   const [isDrawing, setIsDrawing] = useState(false);
-  const [editMode, setEditMode] = useState<"text" | "image">("text");
+  
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLDivElement>(null);
@@ -242,8 +242,6 @@ export default function BlogReflectionEditor({
   };
 
   const freeImages = images.filter(img => !img.textWrap);
-  const isImageMode = editMode === "image";
-  const isTextMode = editMode === "text" && !isDrawingMode;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -285,29 +283,6 @@ export default function BlogReflectionEditor({
               <label className="text-sm font-medium text-[#7a7a7a]">Seu Texto</label>
               
               <div className="flex items-center gap-2">
-                {images.length > 0 && (
-                  <div className="flex bg-[#f0f0f0] rounded-full p-0.5 mr-2">
-                    <button
-                      onClick={() => { setEditMode("text"); setIsDrawingMode(false); setSelectedImage(null); }}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        isTextMode ? "bg-white text-[#333] shadow-sm" : "text-[#999]"
-                      }`}
-                    >
-                      <Type size={12} />
-                      Texto
-                    </button>
-                    <button
-                      onClick={() => { setEditMode("image"); setIsDrawingMode(false); }}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        isImageMode ? "bg-white text-[#333] shadow-sm" : "text-[#999]"
-                      }`}
-                    >
-                      <Move size={12} />
-                      Imagem
-                    </button>
-                  </div>
-                )}
-                
                 {isDrawingMode && (
                   <input
                     type="color"
@@ -318,7 +293,7 @@ export default function BlogReflectionEditor({
                   />
                 )}
                 <button
-                  onClick={() => { setIsDrawingMode(!isDrawingMode); if (!isDrawingMode) setEditMode("text"); }}
+                  onClick={() => { setIsDrawingMode(!isDrawingMode); }}
                   className={`flex items-center gap-1.5 text-sm transition-colors ${
                     isDrawingMode ? "text-primary font-medium" : "text-[#7a7a7a] hover:text-[#333]"
                   }`}
@@ -382,11 +357,11 @@ export default function BlogReflectionEditor({
                 >
                   <div
                     ref={editableRef}
-                    contentEditable={isTextMode}
+                    contentEditable={!isDrawingMode}
                     suppressContentEditableWarning
                     onInput={handleContentInput}
                     className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] ${
-                      !isTextMode ? "pointer-events-none opacity-60" : ""
+                      isDrawingMode ? "pointer-events-none opacity-60" : ""
                     }`}
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px' }}
                     data-placeholder="Escreva seus pensamentos aqui..."
@@ -397,7 +372,7 @@ export default function BlogReflectionEditor({
                   className="relative z-15"
                   onPointerDown={(e) => {
                     if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
-                      if (contentAreaRef.current && isImageMode) {
+                      if (contentAreaRef.current && !isDrawingMode) {
                         const rect = contentAreaRef.current.getBoundingClientRect();
                         const clickX = e.clientX - rect.left;
                         const clickY = e.clientY - rect.top;
@@ -421,10 +396,11 @@ export default function BlogReflectionEditor({
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
+                    onFocus={() => setSelectedImage(null)}
                     placeholder="Escreva seus pensamentos aqui..."
-                    disabled={isDrawingMode || isImageMode}
+                    disabled={isDrawingMode}
                     className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${
-                      (isDrawingMode || isImageMode) ? "pointer-events-none opacity-50" : "pointer-events-auto"
+                      isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"
                     }`}
                   />
                 </div>
@@ -462,7 +438,7 @@ export default function BlogReflectionEditor({
                 <div
                   key={img.id}
                   className={`absolute group ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${
-                    (isDrawingMode || isTextMode) ? "pointer-events-none opacity-80" : "pointer-events-auto"
+                    isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"
                   }`}
                   style={{
                     left: `${img.x}px`,
@@ -474,7 +450,7 @@ export default function BlogReflectionEditor({
                     zIndex: img.zIndex,
                   }}
                   onPointerDown={(e) => {
-                    if (isDrawingMode || isTextMode) return;
+                    if (isDrawingMode) return;
                     e.stopPropagation();
                     setSelectedImage(img.id);
                     
@@ -523,7 +499,7 @@ export default function BlogReflectionEditor({
                     </div>
                   )}
 
-                  {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
+                  {selectedImage === img.id && !isDrawingMode && !img.locked && (
                     <div
                       className="absolute -top-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 cursor-grab active:cursor-grabbing rounded-full flex items-center justify-center z-30"
                       style={{ touchAction: 'none' }}
@@ -558,7 +534,7 @@ export default function BlogReflectionEditor({
                     </div>
                   )}
 
-                  {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
+                  {selectedImage === img.id && !isDrawingMode && !img.locked && (
                     <div
                       className="absolute bottom-0 right-0 w-6 h-6 bg-primary/80 cursor-se-resize rounded-tl-full flex items-center justify-center z-30"
                       style={{ touchAction: 'none' }}
@@ -595,7 +571,7 @@ export default function BlogReflectionEditor({
                     />
                   )}
 
-                  {selectedImage === img.id && !isDrawingMode && isImageMode && (
+                  {selectedImage === img.id && !isDrawingMode && (
                     <div 
                       className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
@@ -663,7 +639,7 @@ export default function BlogReflectionEditor({
 
               {images.filter(img => img.textWrap).map((img) => (
                 !hasWrappedImages ? null : (
-                  selectedImage === img.id && isImageMode && (
+                  selectedImage === img.id && !isDrawingMode && (
                     <div 
                       key={`toolbar-${img.id}`}
                       className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
