@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getAllEntries, saveEntry, updateEntry, deleteEntry, getEntriesByTag, shareEntry, JournalEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
+import NotebookEditor from "@/components/NotebookEditor";
 
 const analyzeTextForTags = (text: string) => {
   const lowerText = text.toLowerCase();
@@ -31,6 +32,7 @@ export default function Journal() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showBlogEditor, setShowBlogEditor] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [showNotebook, setShowNotebook] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -149,7 +151,7 @@ export default function Journal() {
       </div>
 
       <div className="px-6 space-y-4">
-        {isWriting ? (
+        {isWriting && !showNotebook ? (
           <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
@@ -224,22 +226,13 @@ export default function Journal() {
               </Button>
               <Button
                 onClick={() => {
-                  if (entryText.trim()) {
-                    setEditingEntry({ 
-                      id: isEditing || "", 
-                      text: entryText, 
-                      tags: selectedTags, 
-                      date: "", 
-                      timestamp: Date.now() 
-                    });
-                    setShowBlogEditor(true);
-                  }
+                  setShowNotebook(true);
                 }}
                 variant="outline"
                 className="rounded-full h-14"
-                title="Expandir em editor de blog"
+                title="Abrir caderno visual"
               >
-                <PenLine size={18} />
+                📓
               </Button>
             </div>
           </div>
@@ -334,6 +327,17 @@ export default function Journal() {
           </div>
           </>
         )}
+
+      {showNotebook && (
+        <NotebookEditor
+          initialContent={entryText}
+          onClose={() => setShowNotebook(false)}
+          onSave={(content) => {
+            setEntryText(content);
+            setShowNotebook(false);
+          }}
+        />
+      )}
 
       {showBlogEditor && editingEntry && (
         <BlogReflectionEditor
