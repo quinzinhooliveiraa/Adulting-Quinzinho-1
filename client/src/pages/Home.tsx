@@ -1,25 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Lightbulb } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
 import { DAILY_REFLECTIONS } from "./Book";
 
-// Refletive Question Pool
-const REFLECTION_QUESTIONS = [
-  { id: 1, text: "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?", theme: "Identidade" },
-  { id: 2, text: "O que você tem evitado sentir ultimamente?", theme: "Ansiedade" },
-  { id: 3, text: "Como você definiria 'sucesso' se o dinheiro não existisse?", theme: "Propósito" },
-  { id: 4, text: "Qual foi a última vez que você se sentiu verdadeiramente em paz consigo mesmo?", theme: "Solidão" },
-  { id: 5, text: "Você está vivendo a vida que escolheu ou a vida que esperam de você?", theme: "Identidade" },
-  { id: 6, text: "O que o seu 'eu' de 10 anos atrás pensaria de quem você é hoje?", theme: "Crescimento" },
-  { id: 7, text: "Qual a diferença entre a solidão que dói e a solitude que cura?", theme: "Solidão" },
-  { id: 8, text: "Se você soubesse que vai dar certo, o que tentaria fazer hoje?", theme: "Incerteza" },
-  { id: 9, text: "Em que relacionamentos você sente que pode ser 100% você mesmo?", theme: "Relações" },
-  { id: 10, text: "O que você precisa perdoar em si mesmo para conseguir avançar?", theme: "Crescimento" }
-];
 
 // Simple mock logic for auto-tagging
 const analyzeTextForTags = (text: string) => {
@@ -135,15 +122,8 @@ export default function Home() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
-  // Rotate daily question based on the day of the year
-  const dailyQuestion = useMemo(() => {
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-    const index = dayOfYear % REFLECTION_QUESTIONS.length;
-    return REFLECTION_QUESTIONS[index];
-  }, []);
-
-  // Daily reflection from the book
-  const dailyReflectionFromBook = useMemo(() => {
+  // Daily reflection/question rotating
+  const dailyReflection = useMemo(() => {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
     const index = dayOfYear % DAILY_REFLECTIONS.length;
     return DAILY_REFLECTIONS[index];
@@ -481,49 +461,27 @@ export default function Home() {
       )}
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <h2 className="text-lg font-serif text-foreground flex items-center gap-2">
-            <BookOpen size={18} className="text-primary" />
-            Reflexão do Livro
+            <Sparkles size={16} className="text-primary" />
+            Reflexão para Hoje
           </h2>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Casa dos 20</span>
-        </div>
-
-        <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 rounded-3xl p-6 border border-amber-200/50 dark:border-amber-800/30 space-y-4">
-          <p className="font-serif text-lg italic text-foreground/90 leading-relaxed">
-            "{dailyReflectionFromBook.text}"
-          </p>
-          <div className="flex items-center justify-between pt-2 border-t border-amber-200/30">
-            <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">— {dailyReflectionFromBook.author}</span>
-            <button
-              onClick={() => window.open('https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/', '_blank')}
-              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 underline"
-            >
-              Ler mais →
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex justify-between items-end">
-          <h2 className="text-lg font-serif text-foreground flex items-center gap-2">
-            Reflexão Diária
-            <Sparkles size={14} className="text-primary opacity-60" />
-          </h2>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md">
-            {dailyQuestion.theme}
-          </span>
+          {dailyReflection.fromBook && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200/50 dark:border-amber-800/30">
+              <BookOpen size={10} />
+              Do Livro
+            </span>
+          )}
         </div>
         
-        <div className="glass-card rounded-3xl p-6 md:p-8 relative overflow-hidden group">
+        <div className={`${dailyReflection.fromBook ? 'bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border-amber-200/50 dark:border-amber-800/30' : 'glass-card'} rounded-3xl p-6 md:p-8 relative overflow-hidden group border`}>
           <div className="absolute top-0 right-0 p-8 opacity-5">
-            <PenLine size={120} />
+            <Sparkles size={120} />
           </div>
           
           <div className="relative z-10 space-y-6">
             <p className="font-serif text-xl md:text-2xl reading-text text-foreground">
-              "{dailyQuestion.text}"
+              "{dailyReflection.text}"
             </p>
             
             {!isReflecting && !reflectionText && (
@@ -533,7 +491,7 @@ export default function Home() {
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full h-12 text-base font-medium shadow-sm transition-all active:scale-[0.98]"
                 >
                   <PenLine className="mr-2" size={18} />
-                  Escrever sobre isso
+                  Refletir sobre isso
                 </Button>
                 <Button 
                   variant="outline" 
