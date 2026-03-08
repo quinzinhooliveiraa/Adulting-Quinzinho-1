@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, X } from "lucide-react";
+import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, MessageCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -98,7 +98,10 @@ const QUESTIONS_BY_CATEGORY: Record<string, any[]> = {
   ],
 };
 
-function QuestionCard({ question, liked, saved, onLike, onSave, onShare }: any) {
+// Flatten all questions for random selection
+const ALL_QUESTIONS = Object.values(QUESTIONS_BY_CATEGORY).flat();
+
+function QuestionCard({ question, liked, saved, onLike, onSave, onShare, conversationMode }: any) {
   const themeColors: Record<string, string> = {
     orange: "from-orange-50 to-amber-50",
     blue: "from-blue-50 to-cyan-50",
@@ -114,6 +117,73 @@ function QuestionCard({ question, liked, saved, onLike, onSave, onShare }: any) 
     rose: "border-rose-200",
     slate: "border-slate-200"
   };
+
+  if (conversationMode) {
+    return (
+      <div className="space-y-6">
+        {/* Person 1 */}
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 font-bold text-sm">A</div>
+          <div className="flex-1 space-y-2">
+            <p className="text-xs font-bold text-primary uppercase">Pessoa 1</p>
+            <div className="bg-primary/5 rounded-2xl p-4 rounded-tl-none border border-primary/20">
+              <p className="text-sm text-foreground leading-relaxed">"{question.question}"</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Person 2 - with response prompt */}
+        <div className="flex gap-4 flex-row-reverse">
+          <div className="w-10 h-10 rounded-full bg-secondary text-foreground flex items-center justify-center flex-shrink-0 font-bold text-sm">B</div>
+          <div className="flex-1 space-y-2">
+            <p className="text-xs font-bold text-muted-foreground uppercase">Pessoa 2</p>
+            <div className="bg-secondary/30 rounded-2xl p-4 rounded-tr-none border border-secondary/40 placeholder-text-sm text-muted-foreground italic">
+              Sua resposta...
+            </div>
+          </div>
+        </div>
+
+        {/* Explanation */}
+        <div className="bg-muted/30 rounded-2xl p-4 border border-muted/50">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Tema</p>
+          <p className="text-sm font-serif text-foreground/80 italic">{question.explanation}</p>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 justify-center pt-4 border-t border-border/40">
+          <button
+            onClick={() => onLike(question.id)}
+            className={`p-3 rounded-full transition-all active:scale-95 ${
+              liked.includes(question.id)
+                ? "bg-rose-100 text-rose-600"
+                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+            }`}
+            data-testid="button-like-question"
+          >
+            <Heart size={18} fill={liked.includes(question.id) ? "currentColor" : "none"} />
+          </button>
+          <button
+            onClick={() => onSave(question.id)}
+            className={`p-3 rounded-full transition-all active:scale-95 ${
+              saved.includes(question.id)
+                ? "bg-amber-100 text-amber-600"
+                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+            }`}
+            data-testid="button-save-question"
+          >
+            <Bookmark size={18} fill={saved.includes(question.id) ? "currentColor" : "none"} />
+          </button>
+          <button
+            onClick={() => onShare(question)}
+            className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-all active:scale-95"
+            data-testid="button-share-question"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative bg-gradient-to-br ${themeColors[question.theme]} border-2 ${themeBorder[question.theme]} rounded-3xl shadow-lg overflow-hidden`}>
@@ -194,6 +264,7 @@ export default function Questions() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [liked, setLiked] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
+  const [randomQuestion, setRandomQuestion] = useState<any | null>(null);
 
   const handleLike = (id: number) => {
     setLiked(liked.includes(id) ? liked.filter(x => x !== id) : [...liked, id]);
@@ -215,6 +286,52 @@ export default function Questions() {
       window.open(url, '_blank');
     }
   };
+
+  const handleRandomQuestion = () => {
+    const randomIndex = Math.floor(Math.random() * ALL_QUESTIONS.length);
+    setRandomQuestion(ALL_QUESTIONS[randomIndex]);
+  };
+
+  // Random question modal
+  if (randomQuestion) {
+    return (
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-serif text-foreground">Pergunta Aleatória</h1>
+            <button
+              onClick={() => setRandomQuestion(null)}
+              className="p-2 rounded-full hover:bg-muted transition-all"
+              data-testid="button-close-random"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-6 space-y-6">
+          <QuestionCard
+            question={randomQuestion}
+            liked={liked}
+            saved={saved}
+            onLike={handleLike}
+            onSave={handleSave}
+            onShare={handleShare}
+            conversationMode={isConversationMode}
+          />
+
+          <button
+            onClick={handleRandomQuestion}
+            className="w-full p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary font-medium hover:bg-primary/20 transition-all active:scale-95"
+            data-testid="button-another-random"
+          >
+            <Sparkles size={16} className="inline mr-2" />
+            Sortear Outra
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedCategory) {
     const questions = QUESTIONS_BY_CATEGORY[selectedCategory] || [];
@@ -253,6 +370,7 @@ export default function Questions() {
               onLike={handleLike}
               onSave={handleSave}
               onShare={handleShare}
+              conversationMode={isConversationMode}
             />
           )}
 
@@ -371,21 +489,25 @@ export default function Questions() {
         </div>
       </div>
 
-      <div className="mt-8 p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
+      <button
+        onClick={handleRandomQuestion}
+        className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all active:scale-95"
+        data-testid="button-random-question"
+      >
+        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
           <Sparkles size={100} />
         </div>
-        <div className="relative z-10">
-          <h3 className="font-serif text-xl mb-2">Pergunta Aleatória</h3>
-          <p className="text-sm opacity-80 mb-6 max-w-[80%]">
+        <div className="relative z-10 text-left space-y-2">
+          <h3 className="font-serif text-xl">Pergunta Aleatória</h3>
+          <p className="text-sm opacity-80">
             Deixe o acaso guiar sua próxima reflexão.
           </p>
-          <button className="flex items-center space-x-2 text-sm font-medium bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition-all">
+          <div className="flex items-center space-x-2 text-sm font-medium pt-2">
             <span>Sortear agora</span>
             <ArrowRight size={16} />
-          </button>
+          </div>
         </div>
-      </div>
+      </button>
 
     </div>
   );
