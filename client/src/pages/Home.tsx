@@ -9,6 +9,7 @@ import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
 import { saveEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
+import ReflectionEditor from "@/components/ReflectionEditor";
 
 
 // Simple mock logic for auto-tagging
@@ -97,6 +98,7 @@ export default function Home() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [recommendedContent, setRecommendedContent] = useState<RecommendedContent | null>(null);
+  const [showReflectionEditor, setShowReflectionEditor] = useState(false);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
@@ -550,11 +552,11 @@ export default function Home() {
             {!isReflecting && !reflectionText && (
               <div className="flex flex-col space-y-3 pt-4">
                 <Button 
-                  onClick={() => setIsReflecting(true)}
+                  onClick={() => setShowReflectionEditor(true)}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full h-12 text-base font-medium shadow-sm transition-all active:scale-[0.98]"
                 >
                   <PenLine className="mr-2" size={18} />
-                  Refletir sobre isso
+                  Expandir e Refletir
                 </Button>
                 <Button 
                   variant="outline" 
@@ -931,6 +933,22 @@ export default function Home() {
         </div>
       )}
 
+      {showReflectionEditor && (
+        <ReflectionEditor
+          title="Reflexão Expandida"
+          initialText={dailyReflection.text}
+          origin={dailyReflection.fromBook ? "Do Livro 'Casa dos 20'" : `${dailyReflection.type === 'question' ? 'Pergunta' : 'Reflexão'} Diária`}
+          onClose={() => setShowReflectionEditor(false)}
+          onSave={(text, imageUrl) => {
+            saveEntry(text, selectedTags.length > 0 ? selectedTags : [dailyReflection.type || 'reflexão'], mood || undefined);
+            addNotification({
+              type: "journal",
+              title: "✍️ Reflexão Completa Guardada",
+              message: "Sua reflexão expandida foi salva com sucesso!",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

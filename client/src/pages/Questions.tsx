@@ -3,6 +3,8 @@ import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, He
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ReflectionEditor from "@/components/ReflectionEditor";
+import { addNotification } from "@/utils/notificationService";
 
 const CATEGORIES = [
   { id: 'identity', title: 'Identidade', count: 24, icon: '🎭' },
@@ -41,6 +43,8 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState<'A' | 'B'>('A');
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const [showEditor, setShowEditor] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
   const current = questions[currentIndex];
   const categoryInfo = CATEGORIES.find(c => c.id === category);
@@ -61,6 +65,16 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
         setCurrentPlayer(currentPlayer === 'A' ? 'B' : 'A');
       }
     }
+  };
+
+  const handleSaveQuestion = (text: string) => {
+    addNotification({
+      type: "journal",
+      title: "💭 Resposta da Pergunta Guardada",
+      message: `Sua resposta foi salva no diário!`,
+    });
+    setShowEditor(false);
+    setSelectedQuestion(null);
   };
 
   const progressPercentage = Math.round((currentIndex + 1) / questions.length * 100);
@@ -117,13 +131,24 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
                   placeholder="Sua resposta..."
                   className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-300 resize-none text-sm"
                 />
-                <button
-                  onClick={handleNext}
-                  disabled={!currentResponse.trim()}
-                  className="w-full p-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50"
-                >
-                  Responder
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedQuestion(current);
+                      setShowEditor(true);
+                    }}
+                    className="flex-1 p-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200"
+                  >
+                    💾 Salvar
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!currentResponse.trim()}
+                    className="flex-1 p-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50"
+                  >
+                    Próxima
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white/60 rounded-2xl p-4 border border-blue-100 min-h-32 flex items-center">
@@ -155,13 +180,24 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
                   placeholder="Sua resposta..."
                   className="w-full h-32 p-4 bg-white border border-rose-200 rounded-2xl focus:ring-2 focus:ring-rose-300 resize-none text-sm"
                 />
-                <button
-                  onClick={handleNext}
-                  disabled={!currentResponse.trim()}
-                  className="w-full p-3 bg-rose-600 text-white rounded-xl font-medium disabled:opacity-50"
-                >
-                  Responder
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedQuestion(current);
+                      setShowEditor(true);
+                    }}
+                    className="flex-1 p-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200"
+                  >
+                    💾 Salvar
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!currentResponse.trim()}
+                    className="flex-1 p-3 bg-rose-600 text-white rounded-xl font-medium disabled:opacity-50"
+                  >
+                    Próxima
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white/60 rounded-2xl p-4 border border-rose-100 min-h-32 flex items-center">
@@ -177,6 +213,18 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Turno: <span className="font-bold text-primary">{currentPlayer}</span></p>
         </div>
       </div>
+
+      {showEditor && selectedQuestion && (
+        <ReflectionEditor
+          title={`Resposta: "${selectedQuestion.question.substring(0, 50)}..."`}
+          initialText={currentResponse}
+          origin={`De: ${categoryInfo?.title || 'Pergunta'}`}
+          onClose={() => setShowEditor(false)}
+          onSave={(text) => {
+            handleSaveQuestion(text);
+          }}
+        />
+      )}
     </div>
   );
 }
