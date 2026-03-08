@@ -5,101 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const CATEGORIES = [
-  { 
-    id: 'identity', 
-    title: 'Identidade', 
-    count: 24, 
-    icon: '🎭', 
-    color: 'bg-orange-50',
-    borderColor: 'border-orange-200',
-    textColor: 'text-orange-600'
-  },
-  { 
-    id: 'purpose', 
-    title: 'Propósito', 
-    count: 18, 
-    icon: '🧭', 
-    color: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    textColor: 'text-blue-600'
-  },
-  { 
-    id: 'relationships', 
-    title: 'Relações', 
-    count: 32, 
-    icon: '🤍', 
-    color: 'bg-rose-50',
-    borderColor: 'border-rose-200',
-    textColor: 'text-rose-600'
-  },
-  { 
-    id: 'uncertainty', 
-    title: 'Incerteza', 
-    count: 15, 
-    icon: '🌫️', 
-    color: 'bg-slate-100',
-    borderColor: 'border-slate-200',
-    textColor: 'text-slate-600'
-  },
+  { id: 'identity', title: 'Identidade', count: 24, icon: '🎭' },
+  { id: 'purpose', title: 'Propósito', count: 18, icon: '🧭' },
+  { id: 'relationships', title: 'Relações', count: 32, icon: '🤍' },
+  { id: 'uncertainty', title: 'Incerteza', count: 15, icon: '🌫️' },
 ];
 
 const QUESTIONS_BY_CATEGORY: Record<string, any[]> = {
   identity: [
-    {
-      id: 1,
-      category: "Identidade",
-      emoji: "🎭",
-      question: "Se você não precisasse provar nada a ninguém, o que estaria fazendo da sua vida agora?",
-      topic: "A pressão das expectativas externas",
-      explanation: "Essa pergunta nos convida a separar o que queremos fazer do que acreditamos que devemos fazer. Aos 20 anos, é fácil viver uma vida desenhada por terceiros. Este é um convite para você se reimaginar.",
-      theme: "orange"
-    },
-    {
-      id: 2,
-      category: "Identidade",
-      emoji: "🎭",
-      question: "Você está vivendo a vida que escolheu ou a vida que esperam de você?",
-      topic: "O chamado para viver autenticamente",
-      explanation: "Aos 20 anos, essa distinção nunca foi tão importante. Viver conforme os outros esperam é uma forma lenta de desaparecer. É hora de recuperar a autoria da sua vida.",
-      theme: "orange"
-    },
+    { id: 1, category: "Identidade", emoji: "🎭", question: "Se você não precisasse provar nada a ninguém, o que estaria fazendo?", topic: "As expectativas externas" },
+    { id: 2, category: "Identidade", emoji: "🎭", question: "Você está vivendo a vida que escolheu?", topic: "Autenticidade na vida adulta" },
   ],
   purpose: [
-    {
-      id: 3,
-      category: "Propósito",
-      emoji: "🧭",
-      question: "Como você definiria 'sucesso' se o dinheiro não existisse?",
-      topic: "Redefinindo o sucesso na vida adulta",
-      explanation: "Libertando-se da métrica financeira, qual seria sua verdadeira medida de uma vida bem vivida? Essa resposta é mais reveladora do que qualquer plano de carreira.",
-      theme: "blue"
-    },
+    { id: 3, category: "Propósito", emoji: "🧭", question: "Como você definiria sucesso sem dinheiro?", topic: "Redefinindo sucesso" },
   ],
   relationships: [
-    {
-      id: 4,
-      category: "Relações",
-      emoji: "🤍",
-      question: "Em que relacionamentos você sente que pode ser 100% você mesmo?",
-      topic: "A autenticidade nas conexões",
-      explanation: "Relacionamentos verdadeiros só existem quando podemos ser quem realmente somos. Que espaços em sua vida permitem essa vulnerabilidade?",
-      theme: "rose"
-    },
+    { id: 4, category: "Relações", emoji: "🤍", question: "Em que relacionamentos você é 100% você mesmo?", topic: "Autenticidade nas conexões" },
   ],
   uncertainty: [
-    {
-      id: 5,
-      category: "Incerteza",
-      emoji: "🌫️",
-      question: "Se você soubesse que vai dar certo, o que tentaria fazer hoje?",
-      topic: "O medo como bússola",
-      explanation: "A incerteza paralisa porque inventamos futuros que não existem. E se você confiasse no processo sem precisar ver o final?",
-      theme: "slate"
-    },
+    { id: 5, category: "Incerteza", emoji: "🌫️", question: "Se soubesse que vai dar certo, o que tentaria?", topic: "O medo como bússola" },
   ],
 };
 
-// Flatten all questions for random selection
 const ALL_QUESTIONS = Object.values(QUESTIONS_BY_CATEGORY).flat();
 
 const GAME_MODES = [
@@ -109,232 +36,135 @@ const GAME_MODES = [
   { id: 'family', title: 'Para Família', icon: '👨‍👩‍👧‍👦', color: 'from-amber-50 to-orange-50', border: 'border-amber-200' },
 ];
 
-function RoomSetup({ selectedMode, onBack, onCreateRoom }: any) {
-  const [playerName, setPlayerName] = useState("");
-  const mode = GAME_MODES.find(m => m.id === selectedMode);
-
-  return (
-    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-      <div className="px-6 pt-12 pb-6">
-        <button
-          onClick={onBack}
-          className="p-2 rounded-full hover:bg-muted transition-all mb-4"
-          data-testid="button-back-to-mode-select"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-3xl font-serif text-foreground">{mode?.title}</h1>
-        <p className="text-sm text-muted-foreground mt-2">Crie uma sala para jogar</p>
-      </div>
-
-      <div className="px-6 space-y-8">
-        <div className={`bg-gradient-to-br ${mode?.color} border-2 ${mode?.border} rounded-3xl p-8 text-center space-y-4`}>
-          <div className="text-6xl">{mode?.icon}</div>
-          <h2 className="font-serif text-2xl text-foreground">{mode?.title}</h2>
-          <p className="text-sm text-foreground/70">Modo de jogo para aproveitar reflexões profundas</p>
-        </div>
-
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-foreground">Como você quer ser chamado?</label>
-          <Input
-            type="text"
-            placeholder="Seu nome"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            className="h-12 rounded-xl bg-card border-border text-center"
-            data-testid="input-player-name"
-          />
-        </div>
-
-        <button
-          onClick={() => onCreateRoom(playerName)}
-          disabled={!playerName.trim()}
-          className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
-          data-testid="button-create-room"
-        >
-          Criar Sala
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function RoomWaiting({ roomCode, playerName, mode, onCopyCode, onStartGame }: any) {
-  const modeInfo = GAME_MODES.find(m => m.id === mode);
-  const [otherPlayerName, setOtherPlayerName] = useState("");
-
-  return (
-    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-      <div className="px-6 pt-12 pb-6 text-center space-y-4">
-        <h1 className="text-3xl font-serif text-foreground">Sala Criada!</h1>
-        <p className="text-sm text-muted-foreground">Aguardando outro jogador</p>
-      </div>
-
-      <div className="px-6 space-y-8">
-        {/* Room Code */}
-        <div className="bg-primary/5 border-2 border-primary/30 rounded-3xl p-8 space-y-4 text-center">
-          <p className="text-xs uppercase tracking-widest text-primary font-bold">Código da Sala</p>
-          <div className="text-4xl font-bold text-primary font-mono tracking-widest">{roomCode}</div>
-          <button
-            onClick={() => onCopyCode(roomCode)}
-            className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            data-testid="button-copy-code"
-          >
-            <Copy size={14} />
-            Copiar código
-          </button>
-          <p className="text-xs text-muted-foreground mt-4">Compartilhe este código com outro jogador</p>
-        </div>
-
-        {/* Players */}
-        <div className="space-y-3">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Jogadores</p>
-          
-          {/* Player 1 */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
-              <div>
-                <p className="font-medium text-foreground text-sm">{playerName}</p>
-                <p className="text-xs text-muted-foreground">Você</p>
-              </div>
-            </div>
-            <Check size={18} className="text-green-600" />
-          </div>
-
-          {/* Player 2 - Input */}
-          <div className="bg-card border border-dashed border-border rounded-2xl p-4">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-3">Outro Jogador</p>
-            <Input
-              type="text"
-              placeholder="Nome do outro jogador"
-              value={otherPlayerName}
-              onChange={(e) => setOtherPlayerName(e.target.value)}
-              className="h-10 rounded-lg text-sm"
-              data-testid="input-other-player-name"
-            />
-          </div>
-        </div>
-
-        {/* Start Button */}
-        <button
-          onClick={() => onStartGame(otherPlayerName)}
-          disabled={!otherPlayerName.trim()}
-          className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
-          data-testid="button-start-game"
-        >
-          Começar Jogo
-        </button>
-
-        {/* Share Instructions */}
-        <div className="bg-secondary/30 rounded-2xl p-4 text-center">
-          <p className="text-xs text-foreground/70">
-            💡 <strong>Dica:</strong> Compartilhe o código {roomCode} para que seu parceiro entre na sala
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GameSetup({ conversationMode, onStartGame }: any) {
+function GameSetup({ onStartGame }: any) {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState("");
 
-  const generateRoomCode = (name: string) => {
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(code);
-    setPlayerName(name);
-  };
+  const mode = GAME_MODES.find(m => m.id === selectedMode);
 
-  if (roomCode) {
+  if (roomCode && selectedMode) {
+    const modeInfo = GAME_MODES.find(m => m.id === selectedMode);
+    const [otherPlayerName, setOtherPlayerName] = useState("");
     return (
-      <RoomWaiting
-        roomCode={roomCode}
-        playerName={playerName}
-        mode={selectedMode}
-        onCopyCode={(code: string) => {
-          navigator.clipboard.writeText(code);
-          alert("Código copiado!");
-        }}
-        onStartGame={(otherName: string) => {
-          onStartGame(null, selectedMode, otherName);
-        }}
-      />
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6 text-center space-y-4">
+          <h1 className="text-3xl font-serif text-foreground">Sala Criada!</h1>
+          <p className="text-sm text-muted-foreground">Código: <strong>{roomCode}</strong></p>
+        </div>
+        <div className="px-6 space-y-8">
+          <div className="bg-primary/5 border-2 border-primary/30 rounded-3xl p-8 space-y-4 text-center">
+            <p className="text-xs uppercase tracking-widest text-primary font-bold">Compartilhe o código</p>
+            <button
+              onClick={() => navigator.clipboard.writeText(roomCode).then(() => alert("Copiado!"))}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary"
+            >
+              <Copy size={14} /> Copiar {roomCode}
+            </button>
+          </div>
+          <Input
+            placeholder="Nome do outro jogador"
+            value={otherPlayerName}
+            onChange={(e) => setOtherPlayerName(e.target.value)}
+            className="h-12 rounded-xl"
+          />
+          <button
+            onClick={() => {
+              if (otherPlayerName.trim()) {
+                onStartGame(null, selectedMode, otherPlayerName);
+              }
+            }}
+            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
+          >
+            Começar Jogo
+          </button>
+        </div>
+      </div>
     );
   }
 
   if (selectedMode) {
+    const [nameInput, setNameInput] = useState("");
     return (
-      <RoomSetup
-        selectedMode={selectedMode}
-        onBack={() => setSelectedMode(null)}
-        onCreateRoom={generateRoomCode}
-      />
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+        <div className="px-6 pt-12 pb-6">
+          <button onClick={() => setSelectedMode(null)} className="p-2 mb-4">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-3xl font-serif text-foreground">{mode?.title}</h1>
+        </div>
+        <div className="px-6 space-y-8">
+          <div className={`bg-gradient-to-br ${mode?.color} border-2 ${mode?.border} rounded-3xl p-8 text-center space-y-4`}>
+            <div className="text-6xl">{mode?.icon}</div>
+            <h2 className="font-serif text-2xl text-foreground">{mode?.title}</h2>
+          </div>
+          <Input
+            placeholder="Seu nome"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            className="h-12 rounded-xl"
+          />
+          <button
+            onClick={() => {
+              if (nameInput.trim()) {
+                setPlayerName(nameInput);
+                setRoomCode(Math.random().toString(36).substring(2, 8).toUpperCase());
+              }
+            }}
+            className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium"
+          >
+            Criar Sala
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
       <header className="space-y-4">
         <h1 className="text-3xl font-serif text-foreground">Jogo de Perguntas</h1>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Escolha o modo e comece a jogar
-        </p>
+        <p className="text-muted-foreground text-sm">Escolha um modo e comece a jogar</p>
       </header>
 
       <div className="space-y-4">
         <h2 className="font-serif text-xl text-foreground">Escolha um Modo</h2>
-        
         <div className="grid grid-cols-2 gap-4">
-          {GAME_MODES.map((mode) => (
+          {GAME_MODES.map((m) => (
             <button
-              key={mode.id}
-              onClick={() => setSelectedMode(mode.id)}
-              className={`p-5 rounded-2xl bg-gradient-to-br ${mode.color} border-2 ${mode.border} shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:shadow-lg transition-all active:scale-95`}
-              data-testid={`button-game-mode-${mode.id}`}
+              key={m.id}
+              onClick={() => setSelectedMode(m.id)}
+              className={`p-5 rounded-2xl bg-gradient-to-br ${m.color} border-2 ${m.border} flex flex-col justify-between space-y-4`}
             >
-              <div className="text-3xl">{mode.icon}</div>
+              <div className="text-3xl">{m.icon}</div>
               <div className="text-left">
-                <h3 className="font-medium text-foreground text-sm">{mode.title}</h3>
+                <h3 className="font-medium text-foreground text-sm">{m.title}</h3>
               </div>
             </button>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
 
-
-function GameInterface({ category, conversationMode, gameMode, otherPlayerName, onBack }: any) {
+function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
   const questions = QUESTIONS_BY_CATEGORY[category] || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState<'A' | 'B'>('A');
   const [responses, setResponses] = useState<Record<string, string>>({});
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
-  const [playerAName, setPlayerAName] = useState("Pessoa A");
-  const [playerBName, setPlayerBName] = useState(otherPlayerName || "Pessoa B");
 
   const current = questions[currentIndex];
   const categoryInfo = CATEGORIES.find(c => c.id === category);
-  
   const responseKey = `q${current.id}_${currentPlayer}`;
   const currentResponse = responses[responseKey] || "";
-  
-  const handleInputChange = (text: string) => {
-    setResponses({
-      ...responses,
-      [responseKey]: text
-    });
-  };
 
   const handleNext = () => {
     if (currentResponse.trim()) {
-      const newCompleted = new Set(completed);
-      newCompleted.add(responseKey);
-      setCompleted(newCompleted);
+      const newResponses = { ...responses, [responseKey]: currentResponse };
+      setResponses(newResponses);
 
-      // If both players answered, move to next question
-      if (newCompleted.has(`q${current.id}_A`) && newCompleted.has(`q${current.id}_B`)) {
+      if (newResponses[`q${current.id}_A`] && newResponses[`q${current.id}_B`]) {
         if (currentIndex < questions.length - 1) {
           setCurrentIndex(currentIndex + 1);
           setCurrentPlayer('A');
@@ -345,95 +175,64 @@ function GameInterface({ category, conversationMode, gameMode, otherPlayerName, 
     }
   };
 
-  const getPlayerColor = (player: 'A' | 'B') => {
-    return player === 'A' ? 'from-blue-50 to-cyan-50' : 'from-rose-50 to-pink-50';
-  };
-
-  const getPlayerBorder = (player: 'A' | 'B') => {
-    return player === 'A' ? 'border-blue-200' : 'border-rose-200';
-  };
-
   const progressPercentage = Math.round((currentIndex + 1) / questions.length * 100);
 
   return (
     <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-      {/* Header */}
       <div className="px-6 pt-12 pb-6 border-b border-border/30">
         <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-full hover:bg-muted transition-all"
-            data-testid="button-back-to-setup"
-          >
+          <button onClick={onBack} className="p-2 rounded-full hover:bg-muted">
             <ChevronLeft size={24} />
           </button>
           <div>
             <h1 className="text-2xl font-serif text-foreground">{categoryInfo?.title}</h1>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Jogo de Perguntas</p>
+            <p className="text-xs text-muted-foreground uppercase mt-1">Jogo de Perguntas</p>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Pergunta {currentIndex + 1} de {questions.length}</span>
             <span className="font-bold text-primary">{progressPercentage}%</span>
           </div>
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary rounded-full transition-all duration-300" 
-              style={{ width: `${progressPercentage}%` }}
-            />
+            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressPercentage}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Game Content */}
       <div className="px-6 py-8 space-y-6">
-        {/* Question Card */}
         <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 space-y-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">A Pergunta</p>
-              <h2 className="font-serif text-xl text-foreground leading-snug">"{current.question}"</h2>
-            </div>
-            <span className="text-3xl">{current.emoji}</span>
-          </div>
-          <p className="text-sm text-foreground/70 italic font-serif border-t border-primary/10 pt-3">
-            {current.explanation}
-          </p>
+          <h2 className="font-serif text-xl text-foreground">"{current.question}"</h2>
+          <p className="text-sm text-foreground/70 italic font-serif border-t border-primary/10 pt-3">{current.topic}</p>
         </div>
 
-        {/* Players Cards */}
         <div className="grid grid-cols-1 gap-6">
-          {/* Player A */}
-          <div className={`bg-gradient-to-br ${currentPlayer === 'A' ? 'from-blue-50 to-cyan-50 border-2 border-blue-300' : 'from-blue-50/50 to-cyan-50/50 border-2 border-blue-200'} rounded-3xl p-6 transition-all duration-300`}>
+          <div className={`bg-gradient-to-br ${currentPlayer === 'A' ? 'from-blue-50 to-cyan-50 border-2 border-blue-300' : 'from-blue-50/50 to-cyan-50/50 border-2 border-blue-200'} rounded-3xl p-6`}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Pessoa A</p>
-                {currentPlayer === 'A' && (
-                  <p className="text-xs text-blue-600 mt-1 animate-pulse">Sua vez de responder</p>
-                )}
+                <p className="text-xs font-bold text-blue-600 uppercase">Pessoa A</p>
+                {currentPlayer === 'A' && <p className="text-xs text-blue-600 mt-1 animate-pulse">Sua vez</p>}
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
-                A
-              </div>
+              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">A</div>
             </div>
-            
+
             {currentPlayer === 'A' ? (
               <div className="space-y-3">
                 <textarea
                   value={currentResponse}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Digite sua resposta..."
-                  className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none text-sm"
-                  data-testid="input-player-a-response"
+                  onChange={(e) => {
+                    const newResponses = { ...responses };
+                    newResponses[responseKey] = e.target.value;
+                    setResponses(newResponses);
+                  }}
+                  placeholder="Sua resposta..."
+                  className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-300 resize-none text-sm"
                 />
                 <button
                   onClick={handleNext}
                   disabled={!currentResponse.trim()}
-                  className="w-full p-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors active:scale-95"
-                  data-testid="button-submit-response"
+                  className="w-full p-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50"
                 >
                   Responder
                 </button>
@@ -441,40 +240,37 @@ function GameInterface({ category, conversationMode, gameMode, otherPlayerName, 
             ) : (
               <div className="bg-white/60 rounded-2xl p-4 border border-blue-100 min-h-32 flex items-center">
                 <p className={`text-sm ${responses[`q${current.id}_A`] ? 'text-foreground' : 'text-muted-foreground italic'}`}>
-                  {responses[`q${current.id}_A`] || "Aguardando resposta..."}
+                  {responses[`q${current.id}_A`] || "Aguardando..."}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Player B */}
-          <div className={`bg-gradient-to-br ${currentPlayer === 'B' ? 'from-rose-50 to-pink-50 border-2 border-rose-300' : 'from-rose-50/50 to-pink-50/50 border-2 border-rose-200'} rounded-3xl p-6 transition-all duration-300`}>
+          <div className={`bg-gradient-to-br ${currentPlayer === 'B' ? 'from-rose-50 to-pink-50 border-2 border-rose-300' : 'from-rose-50/50 to-pink-50/50 border-2 border-rose-200'} rounded-3xl p-6`}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">Pessoa B</p>
-                {currentPlayer === 'B' && (
-                  <p className="text-xs text-rose-600 mt-1 animate-pulse">Sua vez de responder</p>
-                )}
+                <p className="text-xs font-bold text-rose-600 uppercase">{otherPlayerName || 'Pessoa B'}</p>
+                {currentPlayer === 'B' && <p className="text-xs text-rose-600 mt-1 animate-pulse">Sua vez</p>}
               </div>
-              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg">
-                B
-              </div>
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold">B</div>
             </div>
-            
+
             {currentPlayer === 'B' ? (
               <div className="space-y-3">
                 <textarea
                   value={currentResponse}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Digite sua resposta..."
-                  className="w-full h-32 p-4 bg-white border border-rose-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none text-sm"
-                  data-testid="input-player-b-response"
+                  onChange={(e) => {
+                    const newResponses = { ...responses };
+                    newResponses[responseKey] = e.target.value;
+                    setResponses(newResponses);
+                  }}
+                  placeholder="Sua resposta..."
+                  className="w-full h-32 p-4 bg-white border border-rose-200 rounded-2xl focus:ring-2 focus:ring-rose-300 resize-none text-sm"
                 />
                 <button
                   onClick={handleNext}
                   disabled={!currentResponse.trim()}
-                  className="w-full p-3 bg-rose-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-700 transition-colors active:scale-95"
-                  data-testid="button-submit-response-b"
+                  className="w-full p-3 bg-rose-600 text-white rounded-xl font-medium disabled:opacity-50"
                 >
                   Responder
                 </button>
@@ -482,18 +278,15 @@ function GameInterface({ category, conversationMode, gameMode, otherPlayerName, 
             ) : (
               <div className="bg-white/60 rounded-2xl p-4 border border-rose-100 min-h-32 flex items-center">
                 <p className={`text-sm ${responses[`q${current.id}_B`] ? 'text-foreground' : 'text-muted-foreground italic'}`}>
-                  {responses[`q${current.id}_B`] || "Aguardando resposta..."}
+                  {responses[`q${current.id}_B`] || "Aguardando..."}
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Turn indicator */}
         <div className="text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">
-            Turno: <span className="font-bold text-primary">{currentPlayer}</span>
-          </p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Turno: <span className="font-bold text-primary">{currentPlayer}</span></p>
         </div>
       </div>
     </div>
@@ -505,18 +298,11 @@ export default function Questions() {
   const [gameCategory, setGameCategory] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<string | null>(null);
   const [otherPlayerName, setOtherPlayerName] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [liked, setLiked] = useState<number[]>([]);
-  const [saved, setSaved] = useState<number[]>([]);
-  const [randomQuestion, setRandomQuestion] = useState<any | null>(null);
 
-  // If conversation mode is active and playing, show game interface
   if (isConversationMode && gameCategory) {
     return (
-      <GameInterface 
-        category={gameCategory} 
-        conversationMode={isConversationMode}
+      <GameInterface
+        category={gameCategory}
         gameMode={gameMode}
         otherPlayerName={otherPlayerName}
         onBack={() => {
@@ -528,11 +314,9 @@ export default function Questions() {
     );
   }
 
-  // If conversation mode is active, show game setup
   if (isConversationMode) {
     return (
-      <GameSetup 
-        conversationMode={isConversationMode} 
+      <GameSetup
         onStartGame={(category: string | null, mode: string, otherName: string) => {
           setGameCategory(category);
           setGameMode(mode);
@@ -542,13 +326,12 @@ export default function Questions() {
     );
   }
 
-  // Normal mode - regular interface
   return (
-    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
       <header className="space-y-4">
         <h1 className="text-3xl font-serif text-foreground">Perguntas Profundas</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Explore questionamentos que te ajudam a se entender melhor e a navegar a transição para a vida adulta.
+          Explore questionamentos que te ajudam a se entender melhor.
         </p>
       </header>
 
@@ -562,26 +345,19 @@ export default function Questions() {
             <p className="text-[11px] text-muted-foreground">Para jogar online ou pessoalmente</p>
           </div>
         </div>
-        <Switch 
+        <Switch
           checked={isConversationMode}
           onCheckedChange={setIsConversationMode}
-          data-testid="toggle-conversation-mode"
         />
       </div>
 
       <div className="space-y-4">
         <h2 className="font-serif text-xl text-foreground">Coleções</h2>
-        
         <div className="grid grid-cols-2 gap-4">
           {CATEGORIES.map((cat) => (
             <button
-              key={cat.id} 
-              onClick={() => {
-                setSelectedCategory(cat.id);
-                setCurrentQuestionIndex(0);
-              }}
-              className={`p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:border-primary/30 transition-all group`}
-              data-testid={`button-category-${cat.id}`}
+              key={cat.id}
+              className={`p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:border-primary/30 transition-all`}
             >
               <div className="text-2xl">{cat.icon}</div>
               <div>
@@ -590,8 +366,6 @@ export default function Questions() {
               </div>
             </button>
           ))}
-
-          {/* Premium Lock example */}
           <div className="p-5 rounded-2xl bg-muted/50 border border-border flex flex-col justify-between space-y-4 relative overflow-hidden">
             <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
               <LockKeyhole size={24} className="text-muted-foreground" />
@@ -605,22 +379,13 @@ export default function Questions() {
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          const randomIndex = Math.floor(Math.random() * ALL_QUESTIONS.length);
-          setRandomQuestion(ALL_QUESTIONS[randomIndex]);
-        }}
-        className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all active:scale-95"
-        data-testid="button-random-question"
-      >
+      <button className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all">
         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
           <Sparkles size={100} />
         </div>
         <div className="relative z-10 text-left space-y-2">
           <h3 className="font-serif text-xl">Pergunta Aleatória</h3>
-          <p className="text-sm opacity-80">
-            Deixe o acaso guiar sua próxima reflexão.
-          </p>
+          <p className="text-sm opacity-80">Deixe o acaso guiar sua próxima reflexão.</p>
           <div className="flex items-center space-x-2 text-sm font-medium pt-2">
             <span>Sortear agora</span>
             <ArrowRight size={16} />
