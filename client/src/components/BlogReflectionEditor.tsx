@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Maximize, Trash2 } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -499,37 +499,6 @@ export default function BlogReflectionEditor({
                         title="Trazer para frente"
                       >
                         <ArrowUpToLine size={16} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                          if (contentAreaRef.current) {
-                            const frameW = contentAreaRef.current.offsetWidth;
-                            const frameH = contentAreaRef.current.offsetHeight;
-                            const natW = img.naturalWidth || img.width;
-                            const natH = img.naturalHeight || img.height;
-                            const ratio = natW / natH;
-                            let fitW: number, fitH: number;
-                            if (frameW / frameH > ratio) {
-                              fitH = frameH;
-                              fitW = frameH * ratio;
-                            } else {
-                              fitW = frameW;
-                              fitH = frameW / ratio;
-                            }
-                            updateImage(img.id, {
-                              x: Math.round((frameW - fitW) / 2),
-                              y: Math.round((frameH - fitH) / 2),
-                              width: Math.round(fitW),
-                              height: Math.round(fitH),
-                              rotation: 0
-                            });
-                          }
-                        }}
-                        className="p-2 bg-white text-green-500 hover:bg-green-50 hover:text-green-600 rounded-full transition-colors touch-none"
-                        title="Enquadrar imagem"
-                      >
-                        <Maximize size={16} strokeWidth={2.5} />
                       </button>
                       <button
                         onPointerDown={(e) => {
