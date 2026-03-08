@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
 import { DAILY_REFLECTIONS } from "./Book";
-import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
-import { saveEntry } from "@/utils/journalStorage";
+import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn, analyzeCheckIn } from "@/utils/intelligentRecommendation";
 import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreateEntry } from "@/hooks/useJournal";
+import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
 
 
 // Simple mock logic for auto-tagging
@@ -80,6 +82,11 @@ const DEFAULT_REMINDERS = [
 ];
 
 export default function Home() {
+  const { user, isLoading: authLoading } = useAuth();
+  const createEntry = useCreateEntry();
+  const createCheckin = useCreateCheckin();
+  const { data: latestCheckin } = useLatestCheckin();
+
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem("casa-dos-20-onboarding-complete");
   });
@@ -102,25 +109,35 @@ export default function Home() {
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
-  // Load recommended content from last check-in
   useEffect(() => {
-    const lastCheckIn = getLastCheckIn();
-    const content = recommendContent(lastCheckIn);
-    setRecommendedContent(content);
-  }, []);
+    if (latestCheckin) {
+      const checkinData = {
+        date: latestCheckin.date,
+        mood: latestCheckin.mood,
+        entry: latestCheckin.entry,
+        tags: latestCheckin.tags,
+        timestamp: new Date(latestCheckin.createdAt).getTime(),
+      };
+      const content = recommendContent(checkinData);
+      setRecommendedContent(content);
+    } else {
+      const localCheckIn = getLastCheckIn();
+      const content = recommendContent(localCheckIn);
+      setRecommendedContent(content);
+    }
+  }, [latestCheckin]);
 
-  // Time-based greeting and User Name
   const { greeting, userName } = useMemo(() => {
     const hour = new Date().getHours();
-    const storedName = localStorage.getItem("casa-dos-20-user-name") || "";
-    const nameStr = storedName ? `, ${storedName.split(' ')[0]}` : "";
+    const displayName = user?.name || localStorage.getItem("casa-dos-20-user-name") || "";
+    const nameStr = displayName ? `, ${displayName.split(' ')[0]}` : "";
     
     let g = "Bom dia";
     if (hour >= 12 && hour < 18) g = "Boa tarde";
     else if (hour >= 18 || hour < 5) g = "Boa noite";
     
     return { greeting: g, userName: nameStr };
-  }, []);
+  }, [user]);
 
   // Intelligent Reminder Selection
   const dailyReminder = useMemo(() => {
@@ -161,32 +178,36 @@ export default function Home() {
     setCheckInContext(""); // Reset context for new check-in
   };
 
-  const handleSubmitCheckIn = () => {
+  const handleSubmitCheckIn = async () => {
     if (!mood) return;
     
     setIsSubmittingCheckIn(true);
+    const tags = analyzeCheckIn(mood, checkInContext);
     
-    // Save check-in with intelligent analysis
-    saveCheckIn(mood, checkInContext);
-    
-    // Reload recommendations based on new check-in
-    const lastCheckIn = getLastCheckIn();
-    const content = recommendContent(lastCheckIn);
-    setRecommendedContent(content);
-    
-    // Show success and reset
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      setMood(null);
-      setCheckInContext("");
+    try {
+      if (user) {
+        await createCheckin.mutateAsync({ mood, entry: checkInContext, tags });
+      }
+      saveCheckIn(mood, checkInContext);
+      
+      const lastCheckIn = getLastCheckIn();
+      const content = recommendContent(lastCheckIn);
+      setRecommendedContent(content);
+      
+      setIsSaved(true);
+      setTimeout(() => {
+        setIsSaved(false);
+        setMood(null);
+        setCheckInContext("");
+        setIsSubmittingCheckIn(false);
+      }, 1500);
+      
+      const now = new Date();
+      const timeStr = format(now, "HH:mm");
+      setCheckIns(prev => [...prev, { id: mood, time: timeStr }]);
+    } catch {
       setIsSubmittingCheckIn(false);
-    }, 1500);
-    
-    // Add to check-ins display
-    const now = new Date();
-    const timeStr = format(now, "HH:mm");
-    setCheckIns(prev => [...prev, { id: mood, time: timeStr }]);
+    }
   };
 
   const handleCopy = () => {
@@ -237,20 +258,27 @@ export default function Home() {
     };
   }, [checkIns]);
 
-  const handleSaveReflection = () => {
+  const handleSaveReflection = async () => {
     if (!reflectionText.trim()) return;
     
-    // Auto-select top suggested tags if none selected
     let finalTags = selectedTags;
     if (selectedTags.length === 0 && suggestedTags.length > 0) {
       finalTags = [suggestedTags[0]];
       setSelectedTags(finalTags);
     }
 
-    // Save to persistent storage
-    saveEntry(reflectionText, finalTags, mood || undefined);
+    try {
+      if (user) {
+        await createEntry.mutateAsync({
+          text: reflectionText,
+          tags: finalTags,
+          mood: mood || undefined,
+        });
+      }
+    } catch {
+      // Fallback handled below
+    }
     
-    // Send notification
     addNotification({
       type: "journal",
       title: "✍️ Reflexão Guardada",
@@ -941,9 +969,13 @@ export default function Home() {
           topic={dailyReflection.text}
           showTitleEdit={true}
           onClose={() => setShowReflectionEditor(false)}
-          onSave={(title, content, tags) => {
+          onSave={async (title, content, tags) => {
             const finalTags = tags.length > 0 ? tags : [dailyReflection.type || 'reflexão'];
-            saveEntry(content, finalTags, mood || undefined);
+            try {
+              if (user) {
+                await createEntry.mutateAsync({ text: content, tags: finalTags, mood: mood || undefined });
+              }
+            } catch {}
             addNotification({
               type: "journal",
               title: "✍️ Pensamento Guardado",

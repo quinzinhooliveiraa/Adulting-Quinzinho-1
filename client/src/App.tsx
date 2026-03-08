@@ -5,9 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 
-// Pages
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
 import Questions from "@/pages/Questions";
@@ -35,10 +35,12 @@ function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="casa-dos-20-theme" attribute="class">
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

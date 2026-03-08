@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { getAllEntries, saveEntry, updateEntry, deleteEntry, getEntriesByTag, shareEntry, JournalEntry } from "@/utils/journalStorage";
+import { shareEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import NotebookEditor from "@/components/NotebookEditor";
+import { useAuth } from "@/hooks/useAuth";
+import { useJournalEntries, useCreateEntry, useUpdateEntry, useDeleteEntry } from "@/hooks/useJournal";
+import type { JournalEntry } from "@shared/schema";
 
 const analyzeTextForTags = (text: string) => {
   const lowerText = text.toLowerCase();
@@ -24,23 +27,41 @@ const analyzeTextForTags = (text: string) => {
 
 const TAGS = ["Todas", "ansiedade", "propósito", "identidade", "solidão", "crescimento", "amor", "incerteza", "relações"];
 
+interface LocalJournalEntry {
+  id: number | string;
+  date: string;
+  text: string;
+  tags: string[];
+  mood?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  userId?: string;
+  timestamp?: number;
+}
+
 export default function Journal() {
+  const { user } = useAuth();
+  const { data: apiEntries = [], isLoading } = useJournalEntries();
+  const createEntryMut = useCreateEntry();
+  const updateEntryMut = useUpdateEntry();
+  const deleteEntryMut = useDeleteEntry();
+
   const [activeTag, setActiveTag] = useState("Todas");
   const [isWriting, setIsWriting] = useState(false);
-  const [isEditing, setIsEditing] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<number | null>(null);
   const [entryText, setEntryText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showBlogEditor, setShowBlogEditor] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<LocalJournalEntry | null>(null);
   const [showNotebook, setShowNotebook] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [showShare, setShowShare] = useState<string | null>(null);
+  const [showShare, setShowShare] = useState<string | number | null>(null);
 
-  useEffect(() => {
-    setEntries(getAllEntries());
-  }, []);
+  const entries: LocalJournalEntry[] = apiEntries.map(e => ({
+    ...e,
+    date: e.date || new Date(e.createdAt).toLocaleDateString("pt-BR"),
+  }));
 
   useEffect(() => {
     if (entryText.length > 15) {
@@ -59,7 +80,7 @@ export default function Journal() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!entryText.trim()) return;
     
     let finalTags = selectedTags;
@@ -68,16 +89,17 @@ export default function Journal() {
       setSelectedTags(finalTags);
     }
 
-    if (isEditing) {
-      updateEntry(isEditing, entryText, finalTags);
-      setIsEditing(null);
-    } else {
-      saveEntry(entryText, finalTags);
+    try {
+      if (isEditing) {
+        await updateEntryMut.mutateAsync({ id: isEditing, text: entryText, tags: finalTags });
+        setIsEditing(null);
+      } else {
+        await createEntryMut.mutateAsync({ text: entryText, tags: finalTags });
+      }
+    } catch {
+      // Will show error via UI
     }
 
-    setEntries(getAllEntries());
-    
-    // Send notification
     addNotification({
       type: "journal",
       title: "✍️ Diário Atualizado",
@@ -93,22 +115,26 @@ export default function Journal() {
     }, 1500);
   };
 
-  const handleEdit = (entry: JournalEntry) => {
-    setIsEditing(entry.id);
+  const handleEdit = (entry: LocalJournalEntry) => {
+    setIsEditing(entry.id as number);
     setEntryText(entry.text);
     setSelectedTags(entry.tags);
     setIsWriting(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: number | string) => {
     if (confirm("Tem certeza que deseja deletar esta entrada?")) {
-      deleteEntry(id);
-      setEntries(getAllEntries());
+      try {
+        await deleteEntryMut.mutateAsync(id as number);
+      } catch {
+        // Error handling
+      }
     }
   };
 
-  const handleShare = (entry: JournalEntry, platform: string) => {
-    const url = shareEntry(entry, platform);
+  const handleShare = (entry: LocalJournalEntry, platform: string) => {
+    const shareData = { id: String(entry.id), date: entry.date, text: entry.text, tags: entry.tags, timestamp: Date.now() };
+    const url = shareEntry(shareData, platform);
     if (platform === "instagram") {
       const text = `"${entry.text}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
       navigator.clipboard.writeText(text);
@@ -119,7 +145,7 @@ export default function Journal() {
     setShowShare(null);
   };
 
-  const filteredEntries = getEntriesByTag(activeTag);
+  const filteredEntries = activeTag === "Todas" ? entries : entries.filter(e => e.tags.includes(activeTag));
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
@@ -221,7 +247,7 @@ export default function Journal() {
                 onClick={() => {
                   if (entryText.trim()) {
                     setEditingEntry({ 
-                      id: isEditing || "", 
+                      id: isEditing || 0, 
                       text: entryText, 
                       tags: selectedTags, 
                       date: "", 
@@ -229,9 +255,8 @@ export default function Journal() {
                     });
                     setShowBlogEditor(true);
                   } else {
-                    // Open empty editor
                     setEditingEntry({ 
-                      id: "", 
+                      id: 0, 
                       text: "", 
                       tags: [], 
                       date: "", 
@@ -368,14 +393,17 @@ export default function Journal() {
             setShowBlogEditor(false);
             setEditingEntry(null);
           }}
-          onSave={(title, content, tags) => {
+          onSave={async (title, content, tags) => {
             const finalTags = tags.length > 0 ? tags : editingEntry.tags;
-            if (isEditing) {
-              updateEntry(isEditing, content, finalTags);
-            } else {
-              saveEntry(content, finalTags);
+            try {
+              if (isEditing) {
+                await updateEntryMut.mutateAsync({ id: isEditing, text: content, tags: finalTags });
+              } else {
+                await createEntryMut.mutateAsync({ text: content, tags: finalTags });
+              }
+            } catch {
+              // Error handling
             }
-            setEntries(getAllEntries());
             addNotification({
               type: "journal",
               title: "✍️ Pensamento Guardado",

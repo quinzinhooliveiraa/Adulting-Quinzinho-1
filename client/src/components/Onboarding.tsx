@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowRight, Sparkles, Bell, Mail, LockKeyhole, Check, Map } from "lucide-react";
+import { ArrowRight, Sparkles, Bell, Mail, LockKeyhole, Check, Map, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/useAuth";
 import bookCover from "@/assets/images/book-cover.png";
 
 const ONBOARDING_STEPS = [
@@ -57,15 +58,33 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [notifications, setNotifications] = useState(true);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState("");
+  const { register } = useAuth();
 
-  const next = () => {
+  const next = async () => {
     if (step < ONBOARDING_STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      localStorage.setItem("casa-dos-20-user-name", name);
-      // Small delay to ensure state is saved before transitioning
-      setTimeout(() => onComplete(), 100);
+      setIsRegistering(true);
+      setError("");
+      try {
+        await register(name, email, password);
+        localStorage.setItem("casa-dos-20-user-name", name);
+        localStorage.setItem("casa-dos-20-onboarding-complete", "true");
+        setTimeout(() => onComplete(), 100);
+      } catch (err: any) {
+        const msg = err?.message || "";
+        if (msg.includes("409")) {
+          setError("Este email já está cadastrado. Tente outro.");
+        } else {
+          setError("Erro ao criar conta. Tente novamente.");
+        }
+      } finally {
+        setIsRegistering(false);
+      }
     }
   };
 
@@ -125,6 +144,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans mb-2 focus-visible:ring-primary/20"
+              data-testid="input-name"
             />
             <Input 
               type="email" 
@@ -132,7 +152,19 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans"
+              data-testid="input-email"
             />
+            <Input 
+              type="password" 
+              placeholder="Crie uma senha (min. 4 caracteres)" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans"
+              data-testid="input-password"
+            />
+            {error && (
+              <p className="text-xs text-red-500 text-center">{error}</p>
+            )}
             <p className="text-[10px] text-muted-foreground px-4">
               Ao continuar, você concorda com nossos Termos de Uso e Política de Privacidade.
             </p>
@@ -152,11 +184,18 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         
         <Button 
           onClick={next}
-          disabled={current.type === "email" && (!email.includes("@") || !name.trim())}
+          disabled={isRegistering || (current.type === "email" && (!email.includes("@") || !name.trim() || password.length < 4))}
           className="w-full h-14 rounded-full bg-primary text-primary-foreground text-lg font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
+          data-testid="button-onboarding-next"
         >
-          {step === ONBOARDING_STEPS.length - 1 ? "Começar Jornada" : current.type === "premium" ? "Ver planos" : "Próximo"}
-          <ArrowRight className="ml-2" size={20} />
+          {isRegistering ? (
+            <Loader2 className="animate-spin" size={20} />
+          ) : (
+            <>
+              {step === ONBOARDING_STEPS.length - 1 ? "Começar Jornada" : current.type === "premium" ? "Ver planos" : "Próximo"}
+              <ArrowRight className="ml-2" size={20} />
+            </>
+          )}
         </Button>
         
         {step > 0 && (
