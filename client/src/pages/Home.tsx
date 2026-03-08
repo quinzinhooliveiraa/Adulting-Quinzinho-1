@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
+import DailyCheckIn from "@/components/DailyCheckIn";
 import { DAILY_REFLECTIONS } from "./Book";
+import { getLastCheckIn, recommendContent, RecommendedContent } from "@/utils/intelligentRecommendation";
 
 
 // Simple mock logic for auto-tagging
@@ -79,6 +81,7 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem("casa-dos-20-onboarding-complete");
   });
+  const [showCheckIn, setShowCheckIn] = useState(false);
   const [mood, setMood] = useState<string | null>(null);
   const [isReflecting, setIsReflecting] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
@@ -91,8 +94,16 @@ export default function Home() {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recommendedContent, setRecommendedContent] = useState<RecommendedContent | null>(null);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
+
+  // Load recommended content from last check-in
+  useEffect(() => {
+    const lastCheckIn = getLastCheckIn();
+    const content = recommendContent(lastCheckIn);
+    setRecommendedContent(content);
+  }, []);
 
   // Time-based greeting and User Name
   const { greeting, userName } = useMemo(() => {
@@ -122,12 +133,15 @@ export default function Home() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
-  // Daily reflection/question rotating
+  // Daily reflection/question rotating - uses intelligent recommendation if available
   const dailyReflection = useMemo(() => {
+    if (recommendedContent?.reflection) {
+      return recommendedContent.reflection;
+    }
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
     const index = dayOfYear % DAILY_REFLECTIONS.length;
     return DAILY_REFLECTIONS[index];
-  }, []);
+  }, [recommendedContent]);
 
   const moodIcons = [
     { id: "terrible", icon: Frown, label: "Difícil" },
@@ -380,11 +394,13 @@ export default function Home() {
               Como você está agora?
             </h1>
           </div>
-          {checkIns.length > 0 && (
-            <div className="bg-secondary/50 p-2 rounded-xl text-[10px] font-medium text-primary border border-primary/10">
-              {checkIns.length} check-ins hoje
-            </div>
-          )}
+          <button
+            onClick={() => setShowCheckIn(true)}
+            className="p-3 hover:bg-secondary rounded-full transition-colors border border-border"
+            title="Novo check-in"
+          >
+            <Brain size={20} className="text-primary" />
+          </button>
         </div>
       </header>
 
@@ -889,6 +905,16 @@ export default function Home() {
         </div>
       )}
 
+      <DailyCheckIn
+        isOpen={showCheckIn}
+        onClose={() => setShowCheckIn(false)}
+        onComplete={(m, e) => {
+          // Reload recommended content after check-in
+          const lastCheckIn = getLastCheckIn();
+          const content = recommendContent(lastCheckIn);
+          setRecommendedContent(content);
+        }}
+      />
     </div>
   );
 }
