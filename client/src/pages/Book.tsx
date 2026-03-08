@@ -604,6 +604,8 @@ function ChapterModal({ chapter, onClose }: any) {
   );
 }
 
+import authorImg from "../assets/author.webp";
+
 export default function Book() {
   const [selectedChapter, setSelectedChapter] = useState<any>(null);
 
@@ -627,8 +629,8 @@ export default function Book() {
 
         {/* Contact Author Section */}
         <div className="mb-12 bg-card rounded-3xl p-6 border border-border shadow-sm flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-background shadow-md">
-             <span className="font-serif text-2xl text-primary">QO</span>
+          <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-background shadow-md">
+             <img src={authorImg} alt="Quinzinho Oliveira" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
           </div>
           <div>
             <h3 className="font-serif text-lg text-foreground">Converse com o Autor</h3>
