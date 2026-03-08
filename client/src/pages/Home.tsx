@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
 import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
+import { saveEntry } from "@/utils/journalStorage";
 
 
 // Simple mock logic for auto-tagging
@@ -243,9 +244,14 @@ export default function Home() {
       setSelectedTags(finalTags);
     }
 
+    // Save to persistent storage
+    saveEntry(reflectionText, finalTags, mood || undefined);
+
     setIsSaved(true);
     setTimeout(() => {
       setIsReflecting(false);
+      setReflectionText("");
+      setSelectedTags([]);
       setIsSaved(false);
     }, 1500);
   };

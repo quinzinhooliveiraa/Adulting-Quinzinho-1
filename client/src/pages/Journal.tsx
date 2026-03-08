@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check } from "lucide-react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { getAllEntries, saveEntry, updateEntry, deleteEntry, getEntriesByTag, shareEntry, JournalEntry } from "@/utils/journalStorage";
 
-// Simple mock logic for auto-tagging
 const analyzeTextForTags = (text: string) => {
   const lowerText = text.toLowerCase();
   const foundTags = new Set<string>();
@@ -19,36 +19,22 @@ const analyzeTextForTags = (text: string) => {
   return Array.from(foundTags).slice(0, 3);
 };
 
-const MOCK_ENTRIES = [
-  {
-    id: 1,
-    date: "Ontem",
-    preview: "Acho que estou me cobrando demais sobre onde eu deveria estar aos 25. Todo mundo parece ter um plano...",
-    tags: ["ansiedade", "identidade"]
-  },
-  {
-    id: 2,
-    date: "12 de Março",
-    preview: "Hoje percebi que a solidão não precisa ser vazia. Foi bom ter um momento só para mim.",
-    tags: ["solidão", "crescimento"]
-  },
-  {
-    id: 3,
-    date: "05 de Março",
-    preview: "O que é sucesso para mim? Talvez não seja o que meus pais esperavam.",
-    tags: ["propósito"]
-  }
-];
-
 const TAGS = ["Todas", "ansiedade", "propósito", "identidade", "solidão", "crescimento", "amor", "incerteza", "relações"];
 
 export default function Journal() {
   const [activeTag, setActiveTag] = useState("Todas");
   const [isWriting, setIsWriting] = useState(false);
+  const [isEditing, setIsEditing] = useState<string | null>(null);
   const [entryText, setEntryText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [showShare, setShowShare] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEntries(getAllEntries());
+  }, []);
 
   useEffect(() => {
     if (entryText.length > 15) {
@@ -69,6 +55,21 @@ export default function Journal() {
 
   const handleSave = () => {
     if (!entryText.trim()) return;
+    
+    let finalTags = selectedTags;
+    if (selectedTags.length === 0 && suggestedTags.length > 0) {
+      finalTags = [suggestedTags[0]];
+      setSelectedTags(finalTags);
+    }
+
+    if (isEditing) {
+      updateEntry(isEditing, entryText, finalTags);
+      setIsEditing(null);
+    } else {
+      saveEntry(entryText, finalTags);
+    }
+
+    setEntries(getAllEntries());
     setIsSaved(true);
     setTimeout(() => {
       setIsWriting(false);
@@ -78,11 +79,42 @@ export default function Journal() {
     }, 1500);
   };
 
+  const handleEdit = (entry: JournalEntry) => {
+    setIsEditing(entry.id);
+    setEntryText(entry.text);
+    setSelectedTags(entry.tags);
+    setIsWriting(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja deletar esta entrada?")) {
+      deleteEntry(id);
+      setEntries(getAllEntries());
+    }
+  };
+
+  const handleShare = (entry: JournalEntry, platform: string) => {
+    const url = shareEntry(entry, platform);
+    if (platform === "instagram") {
+      const text = `"${entry.text}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
+      navigator.clipboard.writeText(text);
+      alert("Texto copiado! Cole no Instagram direto.");
+    } else {
+      window.open(url, "_blank");
+    }
+    setShowShare(null);
+  };
+
+  const filteredEntries = getEntriesByTag(activeTag);
+
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
       <div className="px-6 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-serif text-foreground">Diário</h1>
+          <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
+            {entries.length} entradas
+          </span>
         </div>
 
         {!isWriting && (
@@ -108,9 +140,16 @@ export default function Journal() {
         {isWriting ? (
           <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Nova Reflexão</h2>
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
+                {isEditing ? "Editar" : "Nova"} Reflexão
+              </h2>
               <Button 
-                onClick={() => setIsWriting(false)}
+                onClick={() => {
+                  setIsWriting(false);
+                  setIsEditing(null);
+                  setEntryText("");
+                  setSelectedTags([]);
+                }}
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-foreground"
@@ -168,46 +207,96 @@ export default function Journal() {
               disabled={!entryText.trim() || isSaved}
               className="w-full bg-primary text-primary-foreground rounded-full h-14 text-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
             >
-              {isSaved ? "Reflexão Guardada" : "Guardar no Diário"}
+              {isSaved ? "Guardado!" : isEditing ? "Atualizar" : "Guardar no Diário"}
             </Button>
           </div>
         ) : (
           <div className="space-y-4 animate-in fade-in duration-700">
-            {MOCK_ENTRIES.filter(e => activeTag === "Todas" || e.tags.includes(activeTag)).map(entry => (
-              <div 
-                key={entry.id} 
-                className="group p-6 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
-                data-testid={`journal-entry-${entry.id}`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                    {entry.date}
-                  </span>
-                  <ChevronRight size={18} className="text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                </div>
-                
-                <p className="text-foreground text-lg leading-relaxed mb-6 line-clamp-3 font-serif italic">
-                  "{entry.preview}"
-                </p>
-                
-                <div className="flex flex-wrap gap-2">
-                  {entry.tags.map(tag => (
-                    <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
-                      #{tag}
+            {filteredEntries.length > 0 ? (
+              filteredEntries.map(entry => (
+                <div 
+                  key={entry.id} 
+                  className="group p-6 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all duration-300"
+                  data-testid={`journal-entry-${entry.id}`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                      {entry.date}
                     </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEdit(entry)}
+                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <Edit2 size={16} className="text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => setShowShare(entry.id)}
+                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        title="Compartilhar"
+                      >
+                        <Share2 size={16} className="text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(entry.id)}
+                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Deletar"
+                      >
+                        <Trash2 size={16} className="text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <p className="text-foreground text-lg leading-relaxed mb-6 font-serif italic">
+                    "{entry.text}"
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {entry.tags.map(tag => (
+                      <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
 
-            <div className="mt-8 p-10 rounded-3xl border-2 border-dashed border-border flex flex-col items-center justify-center text-center space-y-4 opacity-40">
-              <div className="p-4 rounded-full bg-muted">
-                <PenLine size={32} className="text-muted-foreground" />
+                  {showShare === entry.id && (
+                    <div className="mt-4 flex gap-2 animate-in slide-in-from-bottom">
+                      <Button
+                        size="sm"
+                        onClick={() => handleShare(entry, "twitter")}
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                      >
+                        Twitter
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleShare(entry, "substack")}
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                      >
+                        Substack
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleShare(entry, "instagram")}
+                        className="flex-1 bg-pink-500 hover:bg-pink-600 text-white"
+                      >
+                        Instagram
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="mt-8 p-10 rounded-3xl border-2 border-dashed border-border flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                <div className="p-4 rounded-full bg-muted">
+                  <PenLine size={32} className="text-muted-foreground" />
+                </div>
+                <p className="font-serif text-lg text-muted-foreground italic">
+                  Sua mente é um espaço sagrado.<br/>O que você precisa libertar hoje?
+                </p>
               </div>
-              <p className="font-serif text-lg text-muted-foreground italic">
-                Sua mente é um espaço sagrado.<br/>O que você precisa libertar hoje?
-              </p>
-            </div>
+            )}
           </div>
         )}
       </div>
