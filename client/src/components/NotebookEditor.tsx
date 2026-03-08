@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -16,6 +16,7 @@ interface ImageElement {
   x: number;
   y: number;
   rotation: number;
+  zIndex: number;
 }
 
 export default function NotebookEditor({ initialContent = "", onClose, onSave }: NotebookEditorProps) {
@@ -97,6 +98,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
+          const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
           const newImage: ImageElement = {
             id: `img-${Date.now()}`,
             src: event.target?.result as string,
@@ -105,6 +107,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             x: 20,
             y: 20,
             rotation: 0,
+            zIndex: maxZ + 1,
           };
           setImages([...images, newImage]);
         };
@@ -290,8 +293,8 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Escreva seus pensamentos aqui..."
-              className="w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50"
-              style={{ lineHeight: "28px" }}
+              className="w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 relative"
+              style={{ lineHeight: "28px", zIndex: 15 }}
             />
 
             {/* Images with positioning */}
@@ -306,6 +309,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   height: `${img.height}px`,
                   transform: `rotate(${img.rotation}deg)`,
                   touchAction: 'none',
+                  zIndex: img.zIndex,
                 }}
                 onPointerDown={(e) => {
                   if (isDrawingMode) return;
@@ -424,13 +428,41 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                 )}
 
                 {/* Delete button */}
-                {selectedImage === img.id && (
-                  <button
-                    onClick={() => deleteImage(img.id)}
-                    className="absolute -top-3 -right-3 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-md"
-                  >
-                    <X size={14} />
-                  </button>
+                {selectedImage === img.id && !isDrawingMode && (
+                  <div className="absolute -top-3 -right-3 flex gap-1.5 z-30">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
+                        updateImage(img.id, { zIndex: maxZ + 1 });
+                      }}
+                      className="p-1.5 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full shadow-md border border-blue-100 transition-colors"
+                      title="Trazer para frente"
+                    >
+                      <ArrowUpToLine size={14} strokeWidth={3} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
+                        updateImage(img.id, { zIndex: minZ - 1 });
+                      }}
+                      className="p-1.5 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full shadow-md border border-orange-100 transition-colors"
+                      title="Enviar para trás"
+                    >
+                      <ArrowDownToLine size={14} strokeWidth={3} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteImage(img.id);
+                      }}
+                      className="p-1.5 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full shadow-md border border-red-100 transition-colors"
+                      title="Excluir imagem"
+                    >
+                      <X size={14} strokeWidth={3} />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

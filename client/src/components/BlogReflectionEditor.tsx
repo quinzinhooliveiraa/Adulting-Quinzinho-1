@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -10,6 +10,7 @@ interface ImageElement {
   x: number;
   y: number;
   rotation: number;
+  zIndex: number;
 }
 
 interface BlogReflectionEditorProps {
@@ -122,6 +123,7 @@ export default function BlogReflectionEditor({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
+          const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
           const newImage: ImageElement = {
             id: `img-${Date.now()}`,
             src: event.target?.result as string,
@@ -130,6 +132,7 @@ export default function BlogReflectionEditor({
             x: 20,
             y: 20,
             rotation: 0,
+            zIndex: maxZ + 1,
           };
           setImages([...images, newImage]);
           setIsDrawingMode(false); // Switch out of drawing mode to place image
@@ -284,6 +287,7 @@ export default function BlogReflectionEditor({
                 placeholder="Escreva seus pensamentos aqui..."
                 disabled={isDrawingMode}
                 className={`absolute inset-0 w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
+                style={{ zIndex: 15 }}
               />
 
               {/* Drawing Canvas Layer - On Top */}
@@ -319,7 +323,7 @@ export default function BlogReflectionEditor({
               {images.map((img) => (
                 <div
                   key={img.id}
-                  className={`absolute group z-20 cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"}`}
+                  className={`absolute group cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"}`}
                   style={{
                     left: `${img.x}px`,
                     top: `${img.y}px`,
@@ -327,6 +331,7 @@ export default function BlogReflectionEditor({
                     height: `${img.height}px`,
                     transform: `rotate(${img.rotation}deg)`,
                     touchAction: 'none',
+                    zIndex: img.zIndex,
                   }}
                   onPointerDown={(e) => {
                     if (isDrawingMode) return;
@@ -447,15 +452,40 @@ export default function BlogReflectionEditor({
 
                   {/* Delete button */}
                   {selectedImage === img.id && !isDrawingMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteImage(img.id);
-                      }}
-                      className="absolute -top-3 -right-3 p-1.5 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full shadow-md border border-red-100 transition-colors"
-                    >
-                      <X size={14} strokeWidth={3} />
-                    </button>
+                    <div className="absolute -top-3 -right-3 flex gap-1.5 z-30">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
+                          updateImage(img.id, { zIndex: maxZ + 1 });
+                        }}
+                        className="p-1.5 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full shadow-md border border-blue-100 transition-colors"
+                        title="Trazer para frente"
+                      >
+                        <ArrowUpToLine size={14} strokeWidth={3} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
+                          updateImage(img.id, { zIndex: minZ - 1 });
+                        }}
+                        className="p-1.5 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full shadow-md border border-orange-100 transition-colors"
+                        title="Enviar para trás"
+                      >
+                        <ArrowDownToLine size={14} strokeWidth={3} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteImage(img.id);
+                        }}
+                        className="p-1.5 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full shadow-md border border-red-100 transition-colors"
+                        title="Excluir imagem"
+                      >
+                        <X size={14} strokeWidth={3} />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
