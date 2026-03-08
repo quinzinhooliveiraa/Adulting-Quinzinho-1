@@ -218,21 +218,39 @@ export default function Journal() {
 
             <div className="flex gap-3">
               <Button 
-                onClick={handleSave}
-                disabled={!entryText.trim() || isSaved}
+                onClick={() => {
+                  if (entryText.trim()) {
+                    setEditingEntry({ 
+                      id: isEditing || "", 
+                      text: entryText, 
+                      tags: selectedTags, 
+                      date: "", 
+                      timestamp: Date.now() 
+                    });
+                    setShowBlogEditor(true);
+                  } else {
+                    // Open empty editor
+                    setEditingEntry({ 
+                      id: "", 
+                      text: "", 
+                      tags: [], 
+                      date: "", 
+                      timestamp: Date.now() 
+                    });
+                    setShowBlogEditor(true);
+                  }
+                }}
                 className="flex-1 bg-primary text-primary-foreground rounded-full h-14 font-medium shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
               >
-                {isSaved ? "Guardado!" : isEditing ? "Atualizar" : "Guardar"}
+                Abrir Editor Completo
               </Button>
-              <Button
-                onClick={() => {
-                  setShowNotebook(true);
-                }}
+              <Button 
+                onClick={handleSave}
+                disabled={!entryText.trim() || isSaved}
                 variant="outline"
-                className="rounded-full h-14"
-                title="Abrir caderno visual"
+                className="rounded-full h-14 px-6 font-medium"
               >
-                📓
+                {isSaved ? "Guardado!" : "Salvar Rápido"}
               </Button>
             </div>
           </div>
