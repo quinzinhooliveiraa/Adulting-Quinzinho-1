@@ -232,7 +232,10 @@ export default function BlogReflectionEditor({
               </div>
             </div>
             
-            <div className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" ref={contentAreaRef}>
+            <div 
+              className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" 
+              ref={contentAreaRef}
+            >
               
               {/* Text Area - Underneath */}
               <textarea
@@ -282,43 +285,66 @@ export default function BlogReflectionEditor({
                     top: `${img.y}px`,
                     width: `${img.width}px`,
                     height: `${img.height}px`,
+                    touchAction: 'none',
                   }}
-                  draggable={!isDrawingMode}
-                  onDragStart={(e) => {
+                  onPointerDown={(e) => {
+                    if (isDrawingMode) return;
+                    e.stopPropagation();
                     setSelectedImage(img.id);
-                    e.dataTransfer.setData("imageId", img.id);
+                    
+                    // Prevenir scroll e ações padrão do navegador
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const initialImageX = img.x;
+                    const initialImageY = img.y;
+
+                    const handlePointerMove = (moveEvent: PointerEvent) => {
+                      const deltaX = moveEvent.clientX - startX;
+                      const deltaY = moveEvent.clientY - startY;
+                      
+                      updateImage(img.id, { 
+                        x: Math.max(0, initialImageX + deltaX), 
+                        y: Math.max(0, initialImageY + deltaY) 
+                      });
+                    };
+
+                    const handlePointerUp = (upEvent: PointerEvent) => {
+                      document.removeEventListener("pointermove", handlePointerMove);
+                      document.removeEventListener("pointerup", handlePointerUp);
+                      const target = upEvent.target as HTMLElement;
+                      if (target.releasePointerCapture) {
+                        try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                      }
+                    };
+
+                    document.addEventListener("pointermove", handlePointerMove);
+                    document.addEventListener("pointerup", handlePointerUp);
                   }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const rect = contentAreaRef.current?.getBoundingClientRect();
-                    if (rect) {
-                      const newX = e.clientX - rect.left - img.width / 2;
-                      const newY = e.clientY - rect.top - img.height / 2;
-                      updateImage(img.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
-                    }
-                  }}
-                  onClick={() => setSelectedImage(img.id)}
                 >
                   <img
                     src={img.src}
                     alt="Note attachment"
-                    className="w-full h-full object-cover rounded shadow-md border border-border/50 bg-white p-1"
+                    draggable={false} // Prevent browser's native image drag behavior
+                    className="w-full h-full object-cover rounded shadow-md border border-border/50 bg-white p-1 pointer-events-none"
                   />
 
                   {/* Resize handle */}
                   {selectedImage === img.id && !isDrawingMode && (
                     <div
-                      className="absolute bottom-0 right-0 w-5 h-5 bg-primary/80 cursor-se-resize rounded-tl-full"
-                      draggable
-                      onDragStart={(e) => {
+                      className="absolute bottom-0 right-0 w-6 h-6 bg-primary/80 cursor-se-resize rounded-tl-full flex items-center justify-center z-30"
+                      style={{ touchAction: 'none' }}
+                      onPointerDown={(e) => {
                         e.stopPropagation();
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        
                         const startX = e.clientX;
                         const startY = e.clientY;
                         const startWidth = img.width;
                         const startHeight = img.height;
 
-                        const handleDragMove = (moveEvent: DragEvent) => {
+                        const handlePointerMove = (moveEvent: PointerEvent) => {
                           const deltaX = moveEvent.clientX - startX;
                           const deltaY = moveEvent.clientY - startY;
                           updateImage(img.id, {
@@ -327,13 +353,17 @@ export default function BlogReflectionEditor({
                           });
                         };
 
-                        const handleDragEnd = () => {
-                          document.removeEventListener("dragover", handleDragMove);
-                          document.removeEventListener("drop", handleDragEnd);
+                        const handlePointerUp = (upEvent: PointerEvent) => {
+                          document.removeEventListener("pointermove", handlePointerMove);
+                          document.removeEventListener("pointerup", handlePointerUp);
+                          const target = upEvent.target as HTMLElement;
+                          if (target.releasePointerCapture) {
+                            try { target.releasePointerCapture(upEvent.pointerId); } catch(e){}
+                          }
                         };
 
-                        document.addEventListener("dragover", handleDragMove);
-                        document.addEventListener("drop", handleDragEnd);
+                        document.addEventListener("pointermove", handlePointerMove);
+                        document.addEventListener("pointerup", handlePointerUp);
                       }}
                     />
                   )}

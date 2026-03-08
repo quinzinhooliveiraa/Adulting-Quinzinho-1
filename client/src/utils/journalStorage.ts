@@ -65,11 +65,10 @@ export function getEntriesByTag(tag: string): JournalEntry[] {
 
 export function shareEntry(entry: JournalEntry, platform: string): string {
   const text = `"${entry.text}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
-  const baseUrl = window.location.origin;
   
   switch (platform) {
     case "substack":
-      return `https://substack.com/new?text=${encodeURIComponent(text)}`;
+      return `https://substack.com/create-post?body=${encodeURIComponent(text)}`;
     case "twitter":
       return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     case "instagram":
