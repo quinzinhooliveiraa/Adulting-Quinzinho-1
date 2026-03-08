@@ -63,9 +63,16 @@ function ChapterModal({ chapter, onClose }: any) {
             </p>
           </div>
           
+          <button
+            onClick={() => window.open('https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/', '_blank')}
+            className="w-full p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-2xl font-bold text-sm hover:shadow-lg transition-all active:scale-95"
+          >
+            📖 Ler Mais na Amazon
+          </button>
+          
           <div className="bg-primary/5 rounded-2xl p-4 border border-primary/20">
             <p className="text-xs text-muted-foreground">
-              Este é um trecho do livro "A Casa dos 20" por Quinzinho Oliveira. Para acessar o conteúdo completo, obtenha a versão premium.
+              Este é um trecho do livro "A Casa dos 20" por Quinzinho Oliveira. Clique acima para comprar o livro completo na Amazon.
             </p>
           </div>
         </div>
