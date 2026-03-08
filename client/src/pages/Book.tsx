@@ -1,14 +1,16 @@
-import { Bookmark, LockKeyhole, ChevronRight, BookOpen, Instagram, Mail, MessageCircle } from "lucide-react";
-import bookCover from "@/assets/images/book-cover.png";
+import { Bookmark, LockKeyhole, ChevronRight, BookOpen, Instagram, Mail, MessageCircle, X } from "lucide-react";
+import bookCover from "@/assets/images/book-cover-oficial.png";
 import solitudeArt from "@/assets/images/solitude.png";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 const CHAPTERS = [
   { 
     id: "solitude", 
     title: "A Solidão", 
     tag: "Essencial",
-    excerpt: "Aprender a estar consigo mesmo é o primeiro passo para não depender da validação alheia. A solidão não é um quarto vazio, é um espaço de encontro.",
+    excerpt: "É na solidão que nos conhecemos, mas é nas interações com os outros que crescemos.",
+    fullText: "Aprender a estar consigo mesmo é o primeiro passo para não depender da validação alheia. A solidão não é um quarto vazio, é um espaço de encontro. Solidão não é vazio, é uma oportunidade para se encontrar. Algumas pessoas estão destinadas a serem amadas apenas por um curto período de tempo. É normal se perder em alguém e ainda lutar para encontrar o seu caminho de volta.",
     image: solitudeArt,
     locked: false
   },
@@ -16,19 +18,65 @@ const CHAPTERS = [
     id: "uncertainty", 
     title: "A Incerteza", 
     tag: "Transição",
-    excerpt: "A incerteza não é o inimigo, é o terreno onde a coragem é cultivada. Não saber o próximo passo é o que torna a caminhada real.",
-    locked: true
+    excerpt: "Você já parou para pensar que a incerteza pode ser um presente inesperado em nossas vidas.",
+    fullText: "A incerteza não é o inimigo, é o terreno onde a coragem é cultivada. Não saber o próximo passo é o que torna a caminhada real. Confie no esforço que você está disposto a colocar, pois é ele que transforma a incerteza em oportunidade. Abraçar a incerteza é fundamental para o sucesso - é um convite para transformar as pessoas ao seu redor em colaboradores valiosos.",
+    locked: false
   },
   { 
     id: "identity", 
     title: "A Identidade", 
     tag: "Autoconhecimento",
-    excerpt: "Você não é o que faz, nem o que possui. Você é o silêncio que resta quando todas as expectativas externas se calam.",
-    locked: true
+    excerpt: "Você não pode se sentir confortável consigo mesmo se você não souber quem você é.",
+    fullText: "Você não é o que faz, nem o que possui. Você é o silêncio que resta quando todas as expectativas externas se calam. Assumindo Quem Você Realmente É: Encarando o Medo de Não Ser Aceito. Tirando a Máscara: Vencendo a Síndrome de Impostor. A Jornada da Excepcionalidade: Aceitando Sua Singularidade.",
+    locked: false
+  },
+  {
+    id: "relationships",
+    title: "Os Relacionamentos",
+    tag: "Conexão",
+    excerpt: "Se alguém quer estar na sua vida, essa pessoa estará.",
+    fullText: "Razões para relacionamentos acabarem. Navegando Relacionamentos Unilaterais: Reconhecendo o Valor Próprio. As pessoas que o seu coração escolhe, mesmo quando pensa que é na hora errada, são simplesmente as pessoas erradas. Espero que você tenha a coragem de continuar amando profundamente em um mundo que às vezes falha em fazer isso.",
+    locked: false
   }
 ];
 
+function ChapterModal({ chapter, onClose }: any) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="bg-background rounded-3xl max-h-[90vh] overflow-y-auto w-full max-w-lg animate-in slide-in-from-bottom duration-300">
+        <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border">
+          <h2 className="font-serif text-2xl text-foreground">{chapter.title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">{chapter.tag}</p>
+            <p className="font-serif text-lg italic text-foreground/80">"{chapter.excerpt}"</p>
+          </div>
+          
+          <div className="border-t border-border pt-6">
+            <p className="font-serif text-base leading-relaxed text-foreground/80">
+              {chapter.fullText}
+            </p>
+          </div>
+          
+          <div className="bg-primary/5 rounded-2xl p-4 border border-primary/20">
+            <p className="text-xs text-muted-foreground">
+              Este é um trecho do livro "A Casa dos 20" por Quinzinho Oliveira. Para acessar o conteúdo completo, obtenha a versão premium.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Book() {
+  const [selectedChapter, setSelectedChapter] = useState<any>(null);
+
   return (
     <div className="min-h-screen bg-background animate-in fade-in duration-700">
       <div className="px-6 pt-12 pb-24">
@@ -75,9 +123,10 @@ export default function Book() {
 
           <div className="grid gap-6">
             {CHAPTERS.map((chapter) => (
-              <div 
-                key={chapter.id} 
-                className={`glass-card rounded-3xl overflow-hidden group transition-all duration-500 ${chapter.locked ? 'opacity-80' : 'hover:shadow-lg'}`}
+              <button
+                key={chapter.id}
+                onClick={() => setSelectedChapter(chapter)}
+                className={`glass-card rounded-3xl overflow-hidden group transition-all duration-500 text-left hover:shadow-lg ${chapter.locked ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 {!chapter.locked && chapter.image && (
                   <div className="h-40 overflow-hidden relative">
@@ -102,25 +151,29 @@ export default function Book() {
                     </p>
                     {chapter.locked && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <button className="bg-primary text-primary-foreground px-6 py-2 rounded-full text-xs font-bold shadow-md hover:bg-primary/90 transition-all active:scale-95">
+                        <span className="bg-primary text-primary-foreground px-6 py-2 rounded-full text-xs font-bold shadow-md">
                           Desbloquear com Premium
-                        </button>
+                        </span>
                       </div>
                     )}
                   </div>
                   
                   {!chapter.locked && (
-                    <button className="mt-6 flex items-center space-x-2 text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">
-                      <span>LER CAPÍTULO</span>
+                    <div className="mt-6 flex items-center space-x-2 text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">
+                      <span>LER REFLEXÃO</span>
                       <ChevronRight size={14} />
-                    </button>
+                    </div>
                   )}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
       </div>
+
+      {selectedChapter && (
+        <ChapterModal chapter={selectedChapter} onClose={() => setSelectedChapter(null)} />
+      )}
     </div>
   );
 }
