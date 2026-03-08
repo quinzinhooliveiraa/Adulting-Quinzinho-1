@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize, Crop } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Maximize, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -287,6 +287,25 @@ export default function BlogReflectionEditor({
                 onPointerDown={(e) => {
                   // Only deselect if we didn't click on an image
                   if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                    // Custom hit detection for images behind text (zIndex < 15)
+                    if (contentAreaRef.current) {
+                      const rect = contentAreaRef.current.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      const clickY = e.clientY - rect.top;
+                      
+                      const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
+                      for (const img of bgImages) {
+                        // Account for rotation (simplified bounding box hit check)
+                        if (
+                          clickX >= img.x && clickX <= img.x + img.width &&
+                          clickY >= img.y && clickY <= img.y + img.height
+                        ) {
+                          e.preventDefault();
+                          setSelectedImage(img.id);
+                          return;
+                        }
+                      }
+                    }
                     setSelectedImage(null);
                   }
                 }}
@@ -296,12 +315,7 @@ export default function BlogReflectionEditor({
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Escreva seus pensamentos aqui..."
                   disabled={isDrawingMode}
-                  className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "opacity-50" : ""} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
-                  style={{ 
-                    // When an image is behind text (z<15), we need pointer-events: none on the textarea
-                    // so clicks can pass through to the image layer (which is at z:10)
-                    pointerEvents: isDrawingMode || (images.some(img => img.zIndex < 15) && !selectedImage) ? 'none' : 'auto'
-                  }}
+                  className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
                 />
               </div>
 
@@ -485,26 +499,6 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { zIndex: 10 }); // Back behind text
-                        }}
-                        className="p-2 bg-white text-purple-500 hover:bg-purple-50 hover:text-purple-600 rounded-full transition-colors touch-none"
-                        title="Enviar para trás do texto"
-                      >
-                        <MoveDown size={16} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                          updateImage(img.id, { fit: img.fit === 'contain' ? 'cover' : 'contain' });
-                        }}
-                        className={`p-2 bg-white ${img.fit === 'contain' ? 'text-teal-600 bg-teal-50' : 'text-teal-500 hover:bg-teal-50 hover:text-teal-600'} rounded-full transition-colors touch-none`}
-                        title={img.fit === 'contain' ? 'Preencher corte (Cover)' : 'Enquadrar inteira (Contain)'}
-                      >
-                        <Crop size={16} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
                           if (contentAreaRef.current) {
                             updateImage(img.id, {
                               x: 0,
@@ -523,11 +517,10 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
-                          updateImage(img.id, { zIndex: Math.max(20, minZ - 1) });
+                          updateImage(img.id, { zIndex: 10 }); // Back behind text
                         }}
                         className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
-                        title="Enviar para trás das imagens"
+                        title="Enviar para trás do texto"
                       >
                         <ArrowDownToLine size={16} strokeWidth={2.5} />
                       </button>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, MoveDown, Maximize, Crop } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Maximize, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -294,6 +294,24 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               className="relative z-15"
               onPointerDown={(e) => {
                 if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                  // Custom hit detection for images behind text (zIndex < 15)
+                  if (notebookRef.current) {
+                    const rect = notebookRef.current.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
+                    for (const img of bgImages) {
+                      if (
+                        clickX >= img.x && clickX <= img.x + img.width &&
+                        clickY >= img.y && clickY <= img.y + img.height
+                      ) {
+                        e.preventDefault();
+                        setSelectedImage(img.id);
+                        return;
+                      }
+                    }
+                  }
                   setSelectedImage(null);
                 }
               }}
@@ -302,11 +320,9 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Escreva seus pensamentos aqui..."
-                className="w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50"
-                style={{ 
-                  lineHeight: "28px",
-                  pointerEvents: images.some(img => img.zIndex < 15) && !selectedImage ? 'none' : 'auto'
-                }}
+                disabled={isDrawingMode}
+                className={`w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"}`}
+                style={{ lineHeight: "28px" }}
               />
             </div>
 
@@ -314,7 +330,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             {images.map((img) => (
               <div
                 key={img.id}
-                className={`absolute group cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""}`}
+                className={`absolute group cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"}`}
                 style={{
                   left: `${img.x}px`,
                   top: `${img.y}px`,
@@ -460,26 +476,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
-                        updateImage(img.id, { zIndex: 10 }); // Back behind text
-                      }}
-                      className="p-2 bg-white text-purple-500 hover:bg-purple-50 hover:text-purple-600 rounded-full transition-colors touch-none"
-                      title="Enviar para trás do texto"
-                    >
-                      <MoveDown size={16} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        updateImage(img.id, { fit: img.fit === 'contain' ? 'cover' : 'contain' });
-                      }}
-                      className={`p-2 bg-white ${img.fit === 'contain' ? 'text-teal-600 bg-teal-50' : 'text-teal-500 hover:bg-teal-50 hover:text-teal-600'} rounded-full transition-colors touch-none`}
-                      title={img.fit === 'contain' ? 'Preencher corte (Cover)' : 'Enquadrar inteira (Contain)'}
-                    >
-                      <Crop size={16} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
                         if (notebookRef.current) {
                           updateImage(img.id, {
                             x: 0,
@@ -498,11 +494,10 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
-                        const minZ = images.reduce((min, i) => Math.min(min, i.zIndex || 30), 30);
-                        updateImage(img.id, { zIndex: Math.max(20, minZ - 1) });
+                        updateImage(img.id, { zIndex: 10 }); // Back behind text
                       }}
                       className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
-                      title="Enviar para trás das imagens"
+                      title="Enviar para trás do texto"
                     >
                       <ArrowDownToLine size={16} strokeWidth={2.5} />
                     </button>
