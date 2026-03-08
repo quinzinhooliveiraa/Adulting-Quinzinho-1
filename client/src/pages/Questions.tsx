@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, MessageCircle } from "lucide-react";
+import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Heart, Share2, Bookmark, Brain, Volume2, Copy } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -101,157 +101,265 @@ const QUESTIONS_BY_CATEGORY: Record<string, any[]> = {
 // Flatten all questions for random selection
 const ALL_QUESTIONS = Object.values(QUESTIONS_BY_CATEGORY).flat();
 
-function QuestionCard({ question, liked, saved, onLike, onSave, onShare, conversationMode }: any) {
-  const themeColors: Record<string, string> = {
-    orange: "from-orange-50 to-amber-50",
-    blue: "from-blue-50 to-cyan-50",
-    green: "from-emerald-50 to-teal-50",
-    rose: "from-rose-50 to-pink-50",
-    slate: "from-slate-50 to-gray-50"
-  };
+function GameSetup({ conversationMode, onStartGame }: any) {
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <header className="space-y-4">
+        <h1 className="text-3xl font-serif text-foreground">Jogo de Perguntas</h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {conversationMode 
+            ? "Escolha um tema e comece a jogar com alguém online ou pessoalmente"
+            : "Explore questionamentos que te ajudam a se entender melhor"}
+        </p>
+      </header>
 
-  const themeBorder: Record<string, string> = {
-    orange: "border-orange-200",
-    blue: "border-blue-200",
-    green: "border-emerald-200",
-    rose: "border-rose-200",
-    slate: "border-slate-200"
-  };
+      <div className="space-y-4">
+        <h2 className="font-serif text-xl text-foreground">Escolha um Tema</h2>
+        
+        <div className="grid grid-cols-2 gap-4">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id} 
+              onClick={() => onStartGame(cat.id)}
+              className={`p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 cursor-pointer hover:border-primary/30 transition-all group active:scale-95`}
+              data-testid={`button-game-category-${cat.id}`}
+            >
+              <div className="text-2xl">{cat.icon}</div>
+              <div>
+                <h3 className="font-medium text-foreground text-sm">{cat.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{cat.count} perguntas</p>
+              </div>
+            </button>
+          ))}
 
-  if (conversationMode) {
-    return (
-      <div className="space-y-6">
-        {/* Person 1 */}
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 font-bold text-sm">A</div>
-          <div className="flex-1 space-y-2">
-            <p className="text-xs font-bold text-primary uppercase">Pessoa 1</p>
-            <div className="bg-primary/5 rounded-2xl p-4 rounded-tl-none border border-primary/20">
-              <p className="text-sm text-foreground leading-relaxed">"{question.question}"</p>
+          {/* Premium Lock example */}
+          <div className="p-5 rounded-2xl bg-muted/50 border border-border flex flex-col justify-between space-y-4 relative overflow-hidden">
+            <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+              <LockKeyhole size={24} className="text-muted-foreground" />
+            </div>
+            <div className="text-2xl opacity-50">💼</div>
+            <div className="opacity-50">
+              <h3 className="font-medium text-foreground text-sm">Carreira</h3>
+              <p className="text-xs text-muted-foreground mt-1">Premium</p>
             </div>
           </div>
-        </div>
-
-        {/* Person 2 - with response prompt */}
-        <div className="flex gap-4 flex-row-reverse">
-          <div className="w-10 h-10 rounded-full bg-secondary text-foreground flex items-center justify-center flex-shrink-0 font-bold text-sm">B</div>
-          <div className="flex-1 space-y-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase">Pessoa 2</p>
-            <div className="bg-secondary/30 rounded-2xl p-4 rounded-tr-none border border-secondary/40 placeholder-text-sm text-muted-foreground italic">
-              Sua resposta...
-            </div>
-          </div>
-        </div>
-
-        {/* Explanation */}
-        <div className="bg-muted/30 rounded-2xl p-4 border border-muted/50">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Tema</p>
-          <p className="text-sm font-serif text-foreground/80 italic">{question.explanation}</p>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-3 justify-center pt-4 border-t border-border/40">
-          <button
-            onClick={() => onLike(question.id)}
-            className={`p-3 rounded-full transition-all active:scale-95 ${
-              liked.includes(question.id)
-                ? "bg-rose-100 text-rose-600"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-            data-testid="button-like-question"
-          >
-            <Heart size={18} fill={liked.includes(question.id) ? "currentColor" : "none"} />
-          </button>
-          <button
-            onClick={() => onSave(question.id)}
-            className={`p-3 rounded-full transition-all active:scale-95 ${
-              saved.includes(question.id)
-                ? "bg-amber-100 text-amber-600"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-            data-testid="button-save-question"
-          >
-            <Bookmark size={18} fill={saved.includes(question.id) ? "currentColor" : "none"} />
-          </button>
-          <button
-            onClick={() => onShare(question)}
-            className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-all active:scale-95"
-            data-testid="button-share-question"
-          >
-            <Share2 size={18} />
-          </button>
         </div>
       </div>
-    );
-  }
+
+      <button
+        onClick={() => {
+          const randomIndex = Math.floor(Math.random() * CATEGORIES.length);
+          const randomCategory = CATEGORIES[randomIndex];
+          onStartGame(randomCategory.id);
+        }}
+        className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all active:scale-95"
+        data-testid="button-random-game"
+      >
+        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Sparkles size={100} />
+        </div>
+        <div className="relative z-10 text-left space-y-2">
+          <h3 className="font-serif text-xl">Tema Aleatório</h3>
+          <p className="text-sm opacity-80">
+            Deixe o acaso escolher para você.
+          </p>
+          <div className="flex items-center space-x-2 text-sm font-medium pt-2">
+            <span>Começar agora</span>
+            <ArrowRight size={16} />
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function GameInterface({ category, conversationMode, onBack }: any) {
+  const questions = QUESTIONS_BY_CATEGORY[category] || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentPlayer, setCurrentPlayer] = useState<'A' | 'B'>('A');
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+
+  const current = questions[currentIndex];
+  const categoryInfo = CATEGORIES.find(c => c.id === category);
+  
+  const responseKey = `q${current.id}_${currentPlayer}`;
+  const currentResponse = responses[responseKey] || "";
+  
+  const handleInputChange = (text: string) => {
+    setResponses({
+      ...responses,
+      [responseKey]: text
+    });
+  };
+
+  const handleNext = () => {
+    if (currentResponse.trim()) {
+      const newCompleted = new Set(completed);
+      newCompleted.add(responseKey);
+      setCompleted(newCompleted);
+
+      // If both players answered, move to next question
+      if (newCompleted.has(`q${current.id}_A`) && newCompleted.has(`q${current.id}_B`)) {
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+          setCurrentPlayer('A');
+        }
+      } else {
+        setCurrentPlayer(currentPlayer === 'A' ? 'B' : 'A');
+      }
+    }
+  };
+
+  const getPlayerColor = (player: 'A' | 'B') => {
+    return player === 'A' ? 'from-blue-50 to-cyan-50' : 'from-rose-50 to-pink-50';
+  };
+
+  const getPlayerBorder = (player: 'A' | 'B') => {
+    return player === 'A' ? 'border-blue-200' : 'border-rose-200';
+  };
+
+  const progressPercentage = Math.round((currentIndex + 1) / questions.length * 100);
 
   return (
-    <div className={`relative bg-gradient-to-br ${themeColors[question.theme]} border-2 ${themeBorder[question.theme]} rounded-3xl shadow-lg overflow-hidden`}>
-      <div className="absolute top-0 right-0 opacity-5 pointer-events-none">
-        <Brain size={200} />
+    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
+      {/* Header */}
+      <div className="px-6 pt-12 pb-6 border-b border-border/30">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-full hover:bg-muted transition-all"
+            data-testid="button-back-to-setup"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-serif text-foreground">{categoryInfo?.title}</h1>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">Jogo de Perguntas</p>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Pergunta {currentIndex + 1} de {questions.length}</span>
+            <span className="font-bold text-primary">{progressPercentage}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary rounded-full transition-all duration-300" 
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="relative z-10 p-8 md:p-10 space-y-8">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-5xl">{question.emoji}</span>
+      {/* Game Content */}
+      <div className="px-6 py-8 space-y-6">
+        {/* Question Card */}
+        <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 space-y-3">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                {question.category}
-              </p>
-              <h2 className="text-sm font-medium text-foreground mt-0.5">Uma pergunta para você</h2>
+              <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">A Pergunta</p>
+              <h2 className="font-serif text-xl text-foreground leading-snug">"{current.question}"</h2>
             </div>
+            <span className="text-3xl">{current.emoji}</span>
+          </div>
+          <p className="text-sm text-foreground/70 italic font-serif border-t border-primary/10 pt-3">
+            {current.explanation}
+          </p>
+        </div>
+
+        {/* Players Cards */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Player A */}
+          <div className={`bg-gradient-to-br ${currentPlayer === 'A' ? 'from-blue-50 to-cyan-50 border-2 border-blue-300' : 'from-blue-50/50 to-cyan-50/50 border-2 border-blue-200'} rounded-3xl p-6 transition-all duration-300`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Pessoa A</p>
+                {currentPlayer === 'A' && (
+                  <p className="text-xs text-blue-600 mt-1 animate-pulse">Sua vez de responder</p>
+                )}
+              </div>
+              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                A
+              </div>
+            </div>
+            
+            {currentPlayer === 'A' ? (
+              <div className="space-y-3">
+                <textarea
+                  value={currentResponse}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  placeholder="Digite sua resposta..."
+                  className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none text-sm"
+                  data-testid="input-player-a-response"
+                />
+                <button
+                  onClick={handleNext}
+                  disabled={!currentResponse.trim()}
+                  className="w-full p-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors active:scale-95"
+                  data-testid="button-submit-response"
+                >
+                  Responder
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white/60 rounded-2xl p-4 border border-blue-100 min-h-32 flex items-center">
+                <p className={`text-sm ${responses[`q${current.id}_A`] ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+                  {responses[`q${current.id}_A`] || "Aguardando resposta..."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Player B */}
+          <div className={`bg-gradient-to-br ${currentPlayer === 'B' ? 'from-rose-50 to-pink-50 border-2 border-rose-300' : 'from-rose-50/50 to-pink-50/50 border-2 border-rose-200'} rounded-3xl p-6 transition-all duration-300`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">Pessoa B</p>
+                {currentPlayer === 'B' && (
+                  <p className="text-xs text-rose-600 mt-1 animate-pulse">Sua vez de responder</p>
+                )}
+              </div>
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg">
+                B
+              </div>
+            </div>
+            
+            {currentPlayer === 'B' ? (
+              <div className="space-y-3">
+                <textarea
+                  value={currentResponse}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  placeholder="Digite sua resposta..."
+                  className="w-full h-32 p-4 bg-white border border-rose-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none text-sm"
+                  data-testid="input-player-b-response"
+                />
+                <button
+                  onClick={handleNext}
+                  disabled={!currentResponse.trim()}
+                  className="w-full p-3 bg-rose-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-700 transition-colors active:scale-95"
+                  data-testid="button-submit-response-b"
+                >
+                  Responder
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white/60 rounded-2xl p-4 border border-rose-100 min-h-32 flex items-center">
+                <p className={`text-sm ${responses[`q${current.id}_B`] ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+                  {responses[`q${current.id}_B`] || "Aguardando resposta..."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-widest text-primary font-bold">Tópico</p>
-            <h3 className="font-serif text-xl md:text-2xl text-foreground leading-snug">
-              "{question.question}"
-            </h3>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-border/40">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
-              {question.topic}
-            </p>
-            <p className="text-sm leading-relaxed text-foreground/80 font-serif italic">
-              {question.explanation}
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-4 flex gap-3 justify-end border-t border-border/40">
-          <button
-            onClick={() => onLike(question.id)}
-            className={`p-3 rounded-full transition-all active:scale-95 ${
-              liked.includes(question.id)
-                ? "bg-rose-100 text-rose-600"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-            data-testid="button-like-question"
-          >
-            <Heart size={18} fill={liked.includes(question.id) ? "currentColor" : "none"} />
-          </button>
-          <button
-            onClick={() => onSave(question.id)}
-            className={`p-3 rounded-full transition-all active:scale-95 ${
-              saved.includes(question.id)
-                ? "bg-amber-100 text-amber-600"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-            data-testid="button-save-question"
-          >
-            <Bookmark size={18} fill={saved.includes(question.id) ? "currentColor" : "none"} />
-          </button>
-          <button
-            onClick={() => onShare(question)}
-            className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-all active:scale-95"
-            data-testid="button-share-question"
-          >
-            <Share2 size={18} />
-          </button>
+        {/* Turn indicator */}
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">
+            Turno: <span className="font-bold text-primary">{currentPlayer}</span>
+          </p>
         </div>
       </div>
     </div>
@@ -260,173 +368,35 @@ function QuestionCard({ question, liked, saved, onLike, onSave, onShare, convers
 
 export default function Questions() {
   const [isConversationMode, setIsConversationMode] = useState(false);
+  const [gameCategory, setGameCategory] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [liked, setLiked] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
   const [randomQuestion, setRandomQuestion] = useState<any | null>(null);
 
-  const handleLike = (id: number) => {
-    setLiked(liked.includes(id) ? liked.filter(x => x !== id) : [...liked, id]);
-  };
-
-  const handleSave = (id: number) => {
-    setSaved(saved.includes(id) ? saved.filter(x => x !== id) : [...saved, id]);
-  };
-
-  const handleShare = (question: any) => {
-    const text = `"${question.question}" - Casa dos 20`;
-    if (navigator.share) {
-      navigator.share({
-        title: 'Casa dos 20',
-        text: text,
-      }).catch(console.error);
-    } else {
-      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-    }
-  };
-
-  const handleRandomQuestion = () => {
-    const randomIndex = Math.floor(Math.random() * ALL_QUESTIONS.length);
-    setRandomQuestion(ALL_QUESTIONS[randomIndex]);
-  };
-
-  // Random question modal
-  if (randomQuestion) {
+  // If conversation mode is active, show game interface
+  if (isConversationMode && gameCategory) {
     return (
-      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-        <div className="px-6 pt-12 pb-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-serif text-foreground">Pergunta Aleatória</h1>
-            <button
-              onClick={() => setRandomQuestion(null)}
-              className="p-2 rounded-full hover:bg-muted transition-all"
-              data-testid="button-close-random"
-            >
-              <ChevronLeft size={24} />
-            </button>
-          </div>
-        </div>
-
-        <div className="px-6 space-y-6">
-          <QuestionCard
-            question={randomQuestion}
-            liked={liked}
-            saved={saved}
-            onLike={handleLike}
-            onSave={handleSave}
-            onShare={handleShare}
-            conversationMode={isConversationMode}
-          />
-
-          <button
-            onClick={handleRandomQuestion}
-            className="w-full p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary font-medium hover:bg-primary/20 transition-all active:scale-95"
-            data-testid="button-another-random"
-          >
-            <Sparkles size={16} className="inline mr-2" />
-            Sortear Outra
-          </button>
-        </div>
-      </div>
+      <GameInterface 
+        category={gameCategory} 
+        conversationMode={isConversationMode}
+        onBack={() => setGameCategory(null)}
+      />
     );
   }
 
-  if (selectedCategory) {
-    const questions = QUESTIONS_BY_CATEGORY[selectedCategory] || [];
-    const current = questions[currentQuestionIndex];
-    const category = CATEGORIES.find(c => c.id === selectedCategory);
-
+  // If conversation mode is active, show game setup
+  if (isConversationMode) {
     return (
-      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-700">
-        <div className="px-6 pt-12 pb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                setSelectedCategory(null);
-                setCurrentQuestionIndex(0);
-              }}
-              className="p-2 rounded-full hover:bg-muted transition-all"
-              data-testid="button-back-to-categories"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <div>
-              <h1 className="text-3xl font-serif text-foreground">{category?.title}</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {currentQuestionIndex + 1} de {questions.length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 space-y-6">
-          {current && (
-            <QuestionCard
-              question={current}
-              liked={liked}
-              saved={saved}
-              onLike={handleLike}
-              onSave={handleSave}
-              onShare={handleShare}
-              conversationMode={isConversationMode}
-            />
-          )}
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-                disabled={currentQuestionIndex === 0}
-                className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                data-testid="button-prev-question"
-              >
-                <ChevronLeft size={20} />
-              </button>
-
-              <div className="flex-1 mx-4">
-                <div className="flex gap-1.5 justify-center">
-                  {questions.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentQuestionIndex(i)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        i === currentQuestionIndex ? "w-8 bg-primary" : "w-2 bg-muted hover:bg-muted/70"
-                      }`}
-                      data-testid={`progress-dot-${i}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setCurrentQuestionIndex(Math.min(questions.length - 1, currentQuestionIndex + 1))}
-                disabled={currentQuestionIndex === questions.length - 1}
-                className="p-3 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                data-testid="button-next-question"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Heart size={14} />
-                <span>{liked.length} salva</span>
-              </div>
-              <div className="text-muted-foreground/30">•</div>
-              <div className="flex items-center gap-1">
-                <Bookmark size={14} />
-                <span>{saved.length} marcada</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameSetup 
+        conversationMode={isConversationMode} 
+        onStartGame={(category: string) => setGameCategory(category)}
+      />
     );
   }
 
+  // Normal mode - regular interface
   return (
     <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="space-y-4">
@@ -443,7 +413,7 @@ export default function Questions() {
           </div>
           <div>
             <h3 className="font-medium text-foreground text-sm">Modo Conversa</h3>
-            <p className="text-[11px] text-muted-foreground">Para responder a dois</p>
+            <p className="text-[11px] text-muted-foreground">Para jogar online ou pessoalmente</p>
           </div>
         </div>
         <Switch 
@@ -490,7 +460,10 @@ export default function Questions() {
       </div>
 
       <button
-        onClick={handleRandomQuestion}
+        onClick={() => {
+          const randomIndex = Math.floor(Math.random() * ALL_QUESTIONS.length);
+          setRandomQuestion(ALL_QUESTIONS[randomIndex]);
+        }}
         className="mt-8 w-full p-6 bg-primary text-primary-foreground rounded-3xl relative overflow-hidden group hover:shadow-lg transition-all active:scale-95"
         data-testid="button-random-question"
       >
@@ -508,7 +481,6 @@ export default function Questions() {
           </div>
         </div>
       </button>
-
     </div>
   );
 }
