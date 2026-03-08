@@ -9,7 +9,7 @@ import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
 import { saveEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
-import ReflectionEditor from "@/components/ReflectionEditor";
+import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 
 
 // Simple mock logic for auto-tagging
@@ -934,17 +934,18 @@ export default function Home() {
       )}
 
       {showReflectionEditor && (
-        <ReflectionEditor
-          title="Reflexão Expandida"
+        <BlogReflectionEditor
+          initialTitle={dailyReflection.text.substring(0, 50) + "..."}
           initialText={dailyReflection.text}
           origin={dailyReflection.fromBook ? "Do Livro 'Casa dos 20'" : `${dailyReflection.type === 'question' ? 'Pergunta' : 'Reflexão'} Diária`}
+          showTitleEdit={true}
           onClose={() => setShowReflectionEditor(false)}
-          onSave={(text, imageUrl) => {
-            saveEntry(text, selectedTags.length > 0 ? selectedTags : [dailyReflection.type || 'reflexão'], mood || undefined);
+          onSave={(title, content) => {
+            saveEntry(content, selectedTags.length > 0 ? selectedTags : [dailyReflection.type || 'reflexão'], mood || undefined);
             addNotification({
               type: "journal",
-              title: "✍️ Reflexão Completa Guardada",
-              message: "Sua reflexão expandida foi salva com sucesso!",
+              title: "✍️ Reflexão Publicada",
+              message: `"${title}" foi salva com sucesso!`,
             });
           }}
         />

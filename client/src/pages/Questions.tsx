@@ -3,8 +3,9 @@ import { Users, LockKeyhole, Sparkles, ArrowRight, ChevronLeft, ChevronRight, He
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ReflectionEditor from "@/components/ReflectionEditor";
+import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import { addNotification } from "@/utils/notificationService";
+import { saveEntry } from "@/utils/journalStorage";
 
 const CATEGORIES = [
   { id: 'identity', title: 'Identidade', count: 24, icon: '🎭' },
@@ -67,11 +68,12 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
     }
   };
 
-  const handleSaveQuestion = (text: string) => {
+  const handleSaveQuestion = (title: string, content: string) => {
+    saveEntry(content, ["pergunta"], undefined);
     addNotification({
       type: "journal",
-      title: "💭 Resposta da Pergunta Guardada",
-      message: `Sua resposta foi salva no diário!`,
+      title: "💭 Resposta Publicada",
+      message: `"${title}" foi salva no diário!`,
     });
     setShowEditor(false);
     setSelectedQuestion(null);
@@ -215,13 +217,14 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
       </div>
 
       {showEditor && selectedQuestion && (
-        <ReflectionEditor
-          title={`Resposta: "${selectedQuestion.question.substring(0, 50)}..."`}
+        <BlogReflectionEditor
+          initialTitle={`Resposta: ${selectedQuestion.question.substring(0, 40)}...`}
           initialText={currentResponse}
           origin={`De: ${categoryInfo?.title || 'Pergunta'}`}
+          showTitleEdit={true}
           onClose={() => setShowEditor(false)}
-          onSave={(text) => {
-            handleSaveQuestion(text);
+          onSave={(title, content) => {
+            handleSaveQuestion(title, content);
           }}
         />
       )}
