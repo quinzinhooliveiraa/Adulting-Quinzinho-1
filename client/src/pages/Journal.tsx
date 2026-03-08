@@ -3,6 +3,7 @@ import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2 } 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getAllEntries, saveEntry, updateEntry, deleteEntry, getEntriesByTag, shareEntry, JournalEntry } from "@/utils/journalStorage";
+import { addNotification } from "@/utils/notificationService";
 
 const analyzeTextForTags = (text: string) => {
   const lowerText = text.toLowerCase();
@@ -70,6 +71,14 @@ export default function Journal() {
     }
 
     setEntries(getAllEntries());
+    
+    // Send notification
+    addNotification({
+      type: "journal",
+      title: "✍️ Diário Atualizado",
+      message: isEditing ? "Sua reflexão foi atualizada!" : "Nova reflexão adicionada ao diário!",
+    });
+    
     setIsSaved(true);
     setTimeout(() => {
       setIsWriting(false);

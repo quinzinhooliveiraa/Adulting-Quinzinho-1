@@ -8,6 +8,7 @@ import Onboarding from "@/components/Onboarding";
 import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn } from "@/utils/intelligentRecommendation";
 import { saveEntry } from "@/utils/journalStorage";
+import { addNotification } from "@/utils/notificationService";
 
 
 // Simple mock logic for auto-tagging
@@ -246,6 +247,13 @@ export default function Home() {
 
     // Save to persistent storage
     saveEntry(reflectionText, finalTags, mood || undefined);
+    
+    // Send notification
+    addNotification({
+      type: "journal",
+      title: "✍️ Reflexão Guardada",
+      message: "Sua entrada foi salva no diário com sucesso!",
+    });
 
     setIsSaved(true);
     setTimeout(() => {
