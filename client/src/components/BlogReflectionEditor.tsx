@@ -282,15 +282,28 @@ export default function BlogReflectionEditor({
               )}
               
               {/* Text Area - Underneath */}
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onPointerDown={() => setSelectedImage(null)}
-                placeholder="Escreva seus pensamentos aqui..."
-                disabled={isDrawingMode}
-                className={`absolute inset-0 w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
-                style={{ zIndex: 15 }}
-              />
+              <div 
+                className="absolute inset-0 z-15"
+                onPointerDown={(e) => {
+                  // Only deselect if we didn't click on an image
+                  if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                    setSelectedImage(null);
+                  }
+                }}
+              >
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Escreva seus pensamentos aqui..."
+                  disabled={isDrawingMode}
+                  className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "opacity-50" : ""} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
+                  style={{ 
+                    // When an image is behind text (z<15), we need pointer-events: none on the textarea
+                    // so clicks can pass through to the image layer (which is at z:10)
+                    pointerEvents: isDrawingMode || (images.some(img => img.zIndex < 15) && !selectedImage) ? 'none' : 'auto'
+                  }}
+                />
+              </div>
 
               {/* Drawing Canvas Layer - On Top */}
               <canvas

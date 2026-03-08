@@ -290,14 +290,25 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             )}
 
             {/* Editable Text */}
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onPointerDown={() => setSelectedImage(null)}
-              placeholder="Escreva seus pensamentos aqui..."
-              className="w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 relative"
-              style={{ lineHeight: "28px", zIndex: 15 }}
-            />
+            <div 
+              className="relative z-15"
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                  setSelectedImage(null);
+                }
+              }}
+            >
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Escreva seus pensamentos aqui..."
+                className="w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50"
+                style={{ 
+                  lineHeight: "28px",
+                  pointerEvents: images.some(img => img.zIndex < 15) && !selectedImage ? 'none' : 'auto'
+                }}
+              />
+            </div>
 
             {/* Images with positioning */}
             {images.map((img) => (
