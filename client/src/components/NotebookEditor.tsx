@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { X, Eye, EyeOff, ImagePlus, Type, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NotebookEditorProps {
@@ -19,6 +19,8 @@ interface ImageElement {
   y: number;
   rotation: number;
   zIndex: number;
+  locked: boolean;
+  textWrap: boolean;
   fit?: "cover" | "contain";
 }
 
@@ -30,17 +32,23 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
+  const [editMode, setEditMode] = useState<"text" | "image">("text");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const notebookRef = useRef<HTMLDivElement>(null);
+  const editableRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const contentInitialized = useRef(false);
+
+  const hasWrappedImages = images.some(img => img.textWrap);
+  const isImageMode = editMode === "image";
+  const isTextMode = editMode === "text" && !isDrawingMode;
 
   useEffect(() => {
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      // Set actual size in memory (scaled to account for extra pixel density)
       canvas.width = canvas.offsetWidth * 2;
       canvas.height = canvas.offsetHeight * 2;
       
@@ -54,13 +62,70 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
         ctxRef.current = ctx;
       }
     }
-  }, [showText, bannerUrl, images.length]); // Re-init when layout might change
+  }, [isDrawingMode, images.length]);
 
   useEffect(() => {
     if (ctxRef.current) {
       ctxRef.current.strokeStyle = drawingColor;
     }
   }, [drawingColor]);
+
+  useEffect(() => {
+    if (editableRef.current && !contentInitialized.current && hasWrappedImages) {
+      editableRef.current.innerText = content;
+      contentInitialized.current = true;
+    }
+  }, [hasWrappedImages]);
+
+  useEffect(() => {
+    if (!editableRef.current || !hasWrappedImages) return;
+    const el = editableRef.current;
+    
+    el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
+    
+    const wrapImages = images.filter(img => img.textWrap);
+    wrapImages.forEach(img => {
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-float-img', img.id);
+      wrapper.contentEditable = 'false';
+      const side = img.x < 150 ? 'left' : 'right';
+      const marginSide = side === 'left' ? 'margin: 0 16px 12px 0' : 'margin: 0 0 12px 16px';
+      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; ${marginSide}; border-radius: 8px; overflow: hidden; user-select: none; position: relative;`;
+      
+      if (selectedImage === img.id) {
+        wrapper.style.outline = '2px solid hsl(var(--primary))';
+        wrapper.style.outlineOffset = '2px';
+      }
+      
+      const imgEl = document.createElement('img');
+      imgEl.src = img.src;
+      imgEl.draggable = false;
+      imgEl.style.cssText = 'width: 100%; display: block; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+      wrapper.appendChild(imgEl);
+
+      if (img.locked) {
+        const lockBadge = document.createElement('div');
+        lockBadge.style.cssText = 'position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: flex;';
+        lockBadge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        wrapper.appendChild(lockBadge);
+      }
+
+      wrapper.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        setSelectedImage(img.id);
+      });
+      
+      el.insertBefore(wrapper, el.firstChild);
+    });
+  }, [images, selectedImage, hasWrappedImages]);
+
+  const handleContentInput = useCallback(() => {
+    if (editableRef.current) {
+      const clone = editableRef.current.cloneNode(true) as HTMLDivElement;
+      clone.querySelectorAll('[data-float-img]').forEach(el => el.remove());
+      setContent(clone.innerText);
+    }
+  }, []);
 
   const startDrawing = ({ nativeEvent }: any) => {
     if (!isDrawingMode || !ctxRef.current) return;
@@ -113,8 +178,11 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             y: 20,
             rotation: 0,
             zIndex: maxZ + 1,
+            locked: false,
+            textWrap: false,
           };
-          setImages([...images, newImage]);
+          setImages(prev => [...prev, newImage]);
+          setEditMode("image");
         };
         img.src = event.target?.result as string;
       };
@@ -123,15 +191,15 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   };
 
   const updateImage = (id: string, updates: Partial<ImageElement>) => {
-    setImages(images.map(img => img.id === id ? { ...img, ...updates } : img));
+    setImages(prev => prev.map(img => img.id === id ? { ...img, ...updates } : img));
   };
 
   const deleteImage = (id: string) => {
-    setImages(images.filter(img => img.id !== id));
+    setImages(prev => prev.filter(img => img.id !== id));
+    if (selectedImage === id) setSelectedImage(null);
   };
 
   const handleSave = () => {
-    // Serialize images as JSON in content
     const serialized = JSON.stringify({
       text: content,
       images,
@@ -140,6 +208,8 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
     onSave(serialized);
     onClose();
   };
+
+  const freeImages = images.filter(img => !img.textWrap);
 
   if (showText) {
     return (
@@ -186,7 +256,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300">
       <div className="bg-background rounded-t-3xl max-h-[95vh] overflow-hidden w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col">
-        {/* Header */}
         <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border z-10">
           <h2 className="font-serif text-xl">Caderno de Anotações</h2>
           <div className="flex gap-2">
@@ -203,45 +272,66 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
           </div>
         </div>
 
-        {/* Tools */}
-        <div className="flex gap-2 px-6 py-4 border-b border-border overflow-x-auto items-center">
+        <div className="flex gap-2 px-6 py-3 border-b border-border overflow-x-auto items-center">
+          {images.length > 0 && (
+            <>
+              <div className="flex bg-muted rounded-full p-0.5 mr-1">
+                <button
+                  onClick={() => { setEditMode("text"); setIsDrawingMode(false); setSelectedImage(null); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    isTextMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  <Type size={12} />
+                  Texto
+                </button>
+                <button
+                  onClick={() => { setEditMode("image"); setIsDrawingMode(false); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    isImageMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  <Move size={12} />
+                  Imagem
+                </button>
+              </div>
+              <div className="w-px h-6 bg-border mx-1" />
+            </>
+          )}
           <button
             onClick={() => bannerInputRef.current?.click()}
-            className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap"
+            className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap"
           >
-            📸 Banner
+            📸
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap flex items-center gap-2"
+            className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors whitespace-nowrap flex items-center gap-1"
           >
-            <ImagePlus size={16} /> Imagem
+            <ImagePlus size={14} /> +
           </button>
-          <div className="w-px h-6 bg-border mx-2" />
+          <div className="w-px h-6 bg-border mx-1" />
           <button
-            onClick={() => setIsDrawingMode(!isDrawingMode)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+            onClick={() => { setIsDrawingMode(!isDrawingMode); if (!isDrawingMode) setEditMode("text"); }}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
               isDrawingMode 
                 ? "bg-primary text-primary-foreground shadow-inner" 
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            <PenTool size={16} /> {isDrawingMode ? "Desenhando" : "Desenhar"}
+            <PenTool size={14} />
           </button>
           {isDrawingMode && (
-            <div className="flex items-center gap-2 px-2">
-              <input
-                type="color"
-                value={drawingColor}
-                onChange={(e) => setDrawingColor(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-none p-0"
-                title="Cor da caneta"
-              />
-            </div>
+            <input
+              type="color"
+              value={drawingColor}
+              onChange={(e) => setDrawingColor(e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer border-none p-0"
+              title="Cor da caneta"
+            />
           )}
         </div>
 
-        {/* Notebook Canvas */}
         <div className="flex-1 overflow-y-auto bg-notebook-pattern">
           <div
             ref={notebookRef}
@@ -251,7 +341,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               backgroundSize: "100% 28px",
             }}
           >
-            {/* Drawing Canvas Layer */}
             <canvas
               ref={canvasRef}
               onMouseDown={startDrawing}
@@ -269,7 +358,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               }}
               onTouchMove={(e) => {
                 if(isDrawingMode) {
-                  // e.preventDefault(); // Prevent scrolling while drawing on mobile
                   const touch = e.touches[0];
                   const rect = canvasRef.current?.getBoundingClientRect();
                   if(rect) {
@@ -280,9 +368,9 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               onTouchEnd={stopDrawing}
               className={`absolute inset-0 w-full h-full z-20 ${isDrawingMode ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
             />
-            {/* Banner */}
+
             {bannerUrl && (
-              <div className="mb-6 rounded-lg overflow-hidden shadow-md border-2 border-dashed border-border">
+              <div className="mb-6 rounded-lg overflow-hidden shadow-md border-2 border-dashed border-border relative">
                 <img src={bannerUrl} alt="Banner" className="w-full h-auto" />
                 <button
                   onClick={() => setBannerUrl("")}
@@ -293,48 +381,70 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               </div>
             )}
 
-            {/* Editable Text */}
-            <div 
-              className="relative z-15"
-              onPointerDown={(e) => {
-                if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
-                  // Custom hit detection for images behind text (zIndex < 15)
-                  if (notebookRef.current) {
-                    const rect = notebookRef.current.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    const clickY = e.clientY - rect.top;
-                    
-                    const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
-                    for (const img of bgImages) {
-                      if (
-                        clickX >= img.x && clickX <= img.x + img.width &&
-                        clickY >= img.y && clickY <= img.y + img.height
-                      ) {
-                        e.preventDefault();
-                        setSelectedImage(img.id);
-                        return;
+            {hasWrappedImages ? (
+              <div 
+                className="relative z-15"
+                onPointerDown={(e) => {
+                  if (e.target === e.currentTarget) setSelectedImage(null);
+                }}
+              >
+                <div
+                  ref={editableRef}
+                  contentEditable={isTextMode}
+                  suppressContentEditableWarning
+                  onInput={handleContentInput}
+                  className={`w-full min-h-96 bg-transparent focus:outline-none font-serif text-base leading-7 ${
+                    !isTextMode ? "pointer-events-none opacity-60" : ""
+                  }`}
+                  style={{ lineHeight: "28px", whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                  data-placeholder="Escreva seus pensamentos aqui..."
+                />
+              </div>
+            ) : (
+              <div 
+                className="relative z-15"
+                onPointerDown={(e) => {
+                  if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                    if (notebookRef.current && isImageMode) {
+                      const rect = notebookRef.current.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      const clickY = e.clientY - rect.top;
+                      
+                      const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
+                      for (const img of bgImages) {
+                        if (
+                          clickX >= img.x && clickX <= img.x + img.width &&
+                          clickY >= img.y && clickY <= img.y + img.height
+                        ) {
+                          e.preventDefault();
+                          setSelectedImage(img.id);
+                          return;
+                        }
                       }
                     }
+                    setSelectedImage(null);
                   }
-                  setSelectedImage(null);
-                }
-              }}
-            >
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Escreva seus pensamentos aqui..."
-                disabled={isDrawingMode}
-                className={`w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"}`}
-                style={{ lineHeight: "28px" }}
-              />
-            </div>
+                }}
+              >
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Escreva seus pensamentos aqui..."
+                  disabled={isDrawingMode || isImageMode}
+                  className={`w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 ${
+                    (isDrawingMode || isImageMode) ? "pointer-events-none opacity-50" : "pointer-events-auto"
+                  }`}
+                  style={{ lineHeight: "28px" }}
+                />
+              </div>
+            )}
 
-            {/* Images with positioning */}
-            {images.map((img) => (
+            {freeImages.map((img) => (
               <div
                 key={img.id}
-                className={`absolute group cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"}`}
+                className={`absolute group ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${
+                  (isDrawingMode || isTextMode) ? "pointer-events-none opacity-80" : "pointer-events-auto"
+                }`}
                 style={{
                   left: `${img.x}px`,
                   top: `${img.y}px`,
@@ -345,9 +455,11 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   zIndex: img.zIndex,
                 }}
                 onPointerDown={(e) => {
-                  if (isDrawingMode) return;
+                  if (isDrawingMode || isTextMode) return;
                   e.stopPropagation();
                   setSelectedImage(img.id);
+                  
+                  if (img.locked) return;
                   
                   e.currentTarget.setPointerCapture(e.pointerId);
                   
@@ -386,8 +498,13 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   className={`w-full h-full ${img.fit === 'contain' ? 'object-contain' : 'object-cover'} rounded-lg shadow-md border border-border pointer-events-none`}
                 />
 
-                {/* Rotate handle */}
-                {selectedImage === img.id && !isDrawingMode && (
+                {img.locked && (
+                  <div className="absolute top-1 right-1 p-1 bg-black/50 rounded-full">
+                    <Lock size={10} className="text-white" />
+                  </div>
+                )}
+
+                {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
                   <div
                     className="absolute -top-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 cursor-grab active:cursor-grabbing rounded-full flex items-center justify-center z-30"
                     style={{ touchAction: 'none' }}
@@ -401,7 +518,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
 
                       const handlePointerMove = (moveEvent: PointerEvent) => {
                         const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
-                        const degrees = (angle * 180) / Math.PI + 90; // +90 because handle is at top
+                        const degrees = (angle * 180) / Math.PI + 90;
                         updateImage(img.id, { rotation: degrees });
                       };
 
@@ -422,8 +539,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   </div>
                 )}
 
-                {/* Resize handle */}
-                {selectedImage === img.id && !isDrawingMode && (
+                {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
                   <div
                     className="absolute bottom-0 right-0 w-6 h-6 bg-primary cursor-se-resize rounded-tl z-30 flex items-center justify-center"
                     style={{ touchAction: 'none' }}
@@ -460,12 +576,35 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   />
                 )}
 
-                {/* Action buttons */}
-                {selectedImage === img.id && !isDrawingMode && (
+                {selectedImage === img.id && !isDrawingMode && isImageMode && (
                   <div 
-                    className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1.5 z-30 bg-white/90 backdrop-blur p-1.5 rounded-full shadow-lg border border-border/50"
+                    className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                     onPointerDown={(e) => e.stopPropagation()}
                   >
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        updateImage(img.id, { locked: !img.locked });
+                      }}
+                      className={`p-2 rounded-full transition-colors touch-none ${
+                        img.locked 
+                          ? "bg-amber-50 text-amber-600" 
+                          : "bg-white text-gray-500 hover:bg-gray-50"
+                      }`}
+                      title={img.locked ? "Destrancar" : "Trancar"}
+                    >
+                      {img.locked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
+                    </button>
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
+                      }}
+                      className="p-2 bg-white text-teal-500 hover:bg-teal-50 hover:text-teal-600 rounded-full transition-colors touch-none"
+                      title="Texto contorna imagem"
+                    >
+                      <WrapText size={15} strokeWidth={2.5} />
+                    </button>
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -475,17 +614,17 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                       className="p-2 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full transition-colors touch-none"
                       title="Trazer para frente"
                     >
-                      <ArrowUpToLine size={16} strokeWidth={2.5} />
+                      <ArrowUpToLine size={15} strokeWidth={2.5} />
                     </button>
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
-                        updateImage(img.id, { zIndex: 10 }); // Back behind text
+                        updateImage(img.id, { zIndex: 10 });
                       }}
                       className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
-                      title="Enviar para trás do texto"
+                      title="Enviar para trás"
                     >
-                      <ArrowDownToLine size={16} strokeWidth={2.5} />
+                      <ArrowDownToLine size={15} strokeWidth={2.5} />
                     </button>
                     <div className="w-[1px] h-6 bg-border/50 my-auto mx-0.5"></div>
                     <button
@@ -494,18 +633,63 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                         deleteImage(img.id);
                       }}
                       className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
-                      title="Excluir imagem"
+                      title="Excluir"
                     >
-                      <X size={16} strokeWidth={3} />
+                      <X size={15} strokeWidth={3} />
                     </button>
                   </div>
                 )}
               </div>
             ))}
+
+            {images.filter(img => img.textWrap).map((img) => (
+              selectedImage === img.id && isImageMode && (
+                <div 
+                  key={`toolbar-${img.id}`}
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      updateImage(img.id, { locked: !img.locked });
+                    }}
+                    className={`p-2 rounded-full transition-colors touch-none ${
+                      img.locked 
+                        ? "bg-amber-50 text-amber-600" 
+                        : "bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                    title={img.locked ? "Destrancar" : "Trancar"}
+                  >
+                    {img.locked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
+                  </button>
+                  <button
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      updateImage(img.id, { textWrap: false, zIndex: 20 });
+                    }}
+                    className="p-2 bg-teal-50 text-teal-600 rounded-full transition-colors touch-none"
+                    title="Modo livre"
+                  >
+                    <WrapText size={15} strokeWidth={2.5} />
+                  </button>
+                  <div className="w-[1px] h-6 bg-border/50 my-auto mx-0.5"></div>
+                  <button
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      deleteImage(img.id);
+                    }}
+                    className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
+                    title="Excluir"
+                  >
+                    <X size={15} strokeWidth={3} />
+                  </button>
+                </div>
+              )
+            ))}
           </div>
         </div>
 
-        {/* Actions */}
         <div className="px-6 py-4 border-t border-border bg-background flex gap-3">
           <Button onClick={onClose} variant="outline" className="flex-1 rounded-xl">
             Cancelar
@@ -518,7 +702,6 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
           </Button>
         </div>
 
-        {/* File inputs */}
         <input
           ref={fileInputRef}
           type="file"

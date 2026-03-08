@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { X, ImagePlus, Hash, PenTool, Palette, Type, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageElement {
@@ -13,6 +13,8 @@ interface ImageElement {
   y: number;
   rotation: number;
   zIndex: number;
+  locked: boolean;
+  textWrap: boolean;
   fit?: "cover" | "contain";
 }
 
@@ -40,32 +42,33 @@ export default function BlogReflectionEditor({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Notebook/Canvas states
   const [images, setImages] = useState<ImageElement[]>([]);
   const [bannerUrl, setBannerUrl] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
   const [isDrawing, setIsDrawing] = useState(false);
+  const [editMode, setEditMode] = useState<"text" | "image">("text");
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  const editableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const contentInitialized = useRef(false);
 
-  // Auto-suggest hashtags from topic
+  const hasWrappedImages = images.some(img => img.textWrap);
+
   const suggestedTags = topic
     ? topic.split(" ").map(word => word.toLowerCase()).filter(w => w.length > 3).slice(0, 3)
     : [];
 
-  // Init canvas
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {
       const canvas = canvasRef.current;
-      // Match canvas size to the content area
       canvas.width = contentAreaRef.current.offsetWidth * 2;
-      canvas.height = Math.max(contentAreaRef.current.offsetHeight * 2, 800); // minimum height
+      canvas.height = Math.max(contentAreaRef.current.offsetHeight * 2, 800);
       
       const ctx = canvas.getContext("2d");
       if (ctx) {
@@ -77,7 +80,7 @@ export default function BlogReflectionEditor({
         ctxRef.current = ctx;
       }
     }
-  }, [isDrawingMode, images.length]); // Re-init when layout changes
+  }, [isDrawingMode, images.length]);
 
   useEffect(() => {
     if (ctxRef.current) {
@@ -85,7 +88,63 @@ export default function BlogReflectionEditor({
     }
   }, [drawingColor]);
 
-  // Drawing handlers
+  useEffect(() => {
+    if (editableRef.current && !contentInitialized.current && hasWrappedImages) {
+      editableRef.current.innerText = content;
+      contentInitialized.current = true;
+    }
+  }, [hasWrappedImages]);
+
+  useEffect(() => {
+    if (!editableRef.current || !hasWrappedImages) return;
+    const el = editableRef.current;
+    
+    el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
+    
+    const wrapImages = images.filter(img => img.textWrap);
+    wrapImages.forEach(img => {
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-float-img', img.id);
+      wrapper.contentEditable = 'false';
+      const side = img.x < 150 ? 'left' : 'right';
+      const marginSide = side === 'left' ? 'margin: 0 16px 12px 0' : 'margin: 0 0 12px 16px';
+      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; ${marginSide}; border-radius: 12px; overflow: hidden; user-select: none; position: relative;`;
+      
+      if (selectedImage === img.id) {
+        wrapper.style.outline = '2px solid hsl(var(--primary))';
+        wrapper.style.outlineOffset = '2px';
+      }
+      
+      const imgEl = document.createElement('img');
+      imgEl.src = img.src;
+      imgEl.draggable = false;
+      imgEl.style.cssText = 'width: 100%; display: block; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+      wrapper.appendChild(imgEl);
+
+      if (img.locked) {
+        const lockBadge = document.createElement('div');
+        lockBadge.style.cssText = 'position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: flex;';
+        lockBadge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        wrapper.appendChild(lockBadge);
+      }
+
+      wrapper.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        setSelectedImage(img.id);
+      });
+      
+      el.insertBefore(wrapper, el.firstChild);
+    });
+  }, [images, selectedImage, hasWrappedImages]);
+
+  const handleContentInput = useCallback(() => {
+    if (editableRef.current) {
+      const clone = editableRef.current.cloneNode(true) as HTMLDivElement;
+      clone.querySelectorAll('[data-float-img]').forEach(el => el.remove());
+      setContent(clone.innerText);
+    }
+  }, []);
+
   const startDrawing = ({ nativeEvent }: any) => {
     if (!isDrawingMode || !ctxRef.current) return;
     const { offsetX, offsetY } = nativeEvent;
@@ -107,7 +166,6 @@ export default function BlogReflectionEditor({
     setIsDrawing(false);
   };
 
-  // Image handlers
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -138,9 +196,12 @@ export default function BlogReflectionEditor({
             y: 20,
             rotation: 0,
             zIndex: maxZ + 1,
+            locked: false,
+            textWrap: false,
           };
-          setImages([...images, newImage]);
-          setIsDrawingMode(false); // Switch out of drawing mode to place image
+          setImages(prev => [...prev, newImage]);
+          setIsDrawingMode(false);
+          setEditMode("image");
         };
         img.src = event.target?.result as string;
       };
@@ -149,14 +210,14 @@ export default function BlogReflectionEditor({
   };
 
   const updateImage = (id: string, updates: Partial<ImageElement>) => {
-    setImages(images.map(img => img.id === id ? { ...img, ...updates } : img));
+    setImages(prev => prev.map(img => img.id === id ? { ...img, ...updates } : img));
   };
 
   const deleteImage = (id: string) => {
-    setImages(images.filter(img => img.id !== id));
+    setImages(prev => prev.filter(img => img.id !== id));
+    if (selectedImage === id) setSelectedImage(null);
   };
 
-  // Tags and Save
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter(t => t !== tag));
@@ -169,7 +230,6 @@ export default function BlogReflectionEditor({
     if (!title.trim() && !content.trim() && images.length === 0) return;
     setIsSaving(true);
     
-    // Package content with images data if we have them
     const finalContent = (images.length > 0 || bannerUrl)
       ? JSON.stringify({ text: content, images, banner: bannerUrl }) 
       : content;
@@ -181,11 +241,14 @@ export default function BlogReflectionEditor({
     }, 800);
   };
 
+  const freeImages = images.filter(img => !img.textWrap);
+  const isImageMode = editMode === "image";
+  const isTextMode = editMode === "text" && !isDrawingMode;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="bg-[#faf9f7] rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl">
         
-        {/* Header - matching the screenshot exactly */}
         <div className="sticky top-0 bg-[#faf9f7] z-30 flex items-center justify-between px-8 py-6 border-b border-border/40">
           <h2 className="font-serif text-[28px] text-[#4a4a4a]">Guardar Pensamento</h2>
           <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors text-[#4a4a4a]">
@@ -193,7 +256,6 @@ export default function BlogReflectionEditor({
           </button>
         </div>
 
-        {/* Origin Badge */}
         {origin && (
           <div className="px-8 pt-6 pb-2">
             <p className="text-[11px] text-muted-foreground uppercase tracking-[0.15em] font-medium">
@@ -202,9 +264,7 @@ export default function BlogReflectionEditor({
           </div>
         )}
 
-        {/* Content Body */}
         <div className="p-8 space-y-8 flex-1">
-          {/* Title Input */}
           {showTitleEdit && (
             <div className="space-y-3">
               <label className="text-sm font-medium text-[#7a7a7a]">Título</label>
@@ -220,13 +280,34 @@ export default function BlogReflectionEditor({
             </div>
           )}
 
-          {/* Text/Canvas Area */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-[#7a7a7a]">Seu Texto</label>
               
-              {/* Note Tools */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                {images.length > 0 && (
+                  <div className="flex bg-[#f0f0f0] rounded-full p-0.5 mr-2">
+                    <button
+                      onClick={() => { setEditMode("text"); setIsDrawingMode(false); setSelectedImage(null); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        isTextMode ? "bg-white text-[#333] shadow-sm" : "text-[#999]"
+                      }`}
+                    >
+                      <Type size={12} />
+                      Texto
+                    </button>
+                    <button
+                      onClick={() => { setEditMode("image"); setIsDrawingMode(false); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        isImageMode ? "bg-white text-[#333] shadow-sm" : "text-[#999]"
+                      }`}
+                    >
+                      <Move size={12} />
+                      Imagem
+                    </button>
+                  </div>
+                )}
+                
                 {isDrawingMode && (
                   <input
                     type="color"
@@ -237,27 +318,26 @@ export default function BlogReflectionEditor({
                   />
                 )}
                 <button
-                  onClick={() => setIsDrawingMode(!isDrawingMode)}
+                  onClick={() => { setIsDrawingMode(!isDrawingMode); if (!isDrawingMode) setEditMode("text"); }}
                   className={`flex items-center gap-1.5 text-sm transition-colors ${
                     isDrawingMode ? "text-primary font-medium" : "text-[#7a7a7a] hover:text-[#333]"
                   }`}
                 >
-                  {isDrawingMode ? <Type size={16} /> : <PenTool size={16} />}
-                  {isDrawingMode ? "Modo Texto" : "Desenhar"}
+                  <PenTool size={16} />
                 </button>
                 <button
                   onClick={() => bannerInputRef.current?.click()}
                   className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
                 >
                   <ImagePlus size={16} />
-                  Banner
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
+                  title="Adicionar imagem"
                 >
                   <ImagePlus size={16} />
-                  Imagem
+                  <span className="text-xs">+</span>
                 </button>
               </div>
             </div>
@@ -266,7 +346,6 @@ export default function BlogReflectionEditor({
               className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" 
               ref={contentAreaRef}
             >
-              {/* Banner Layer - Background */}
               {bannerUrl && (
                 <div className="absolute top-0 left-0 w-full h-48 sm:h-64 z-0 group cursor-pointer" onClick={() => bannerInputRef.current?.click()}>
                   <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
@@ -285,45 +364,63 @@ export default function BlogReflectionEditor({
                 </div>
               )}
               
-              {/* Text Area - Underneath */}
-              <div 
-                className="absolute inset-0 z-15"
-                onPointerDown={(e) => {
-                  // Only deselect if we didn't click on an image
-                  if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
-                    // Custom hit detection for images behind text (zIndex < 15)
-                    if (contentAreaRef.current) {
-                      const rect = contentAreaRef.current.getBoundingClientRect();
-                      const clickX = e.clientX - rect.left;
-                      const clickY = e.clientY - rect.top;
-                      
-                      const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
-                      for (const img of bgImages) {
-                        // Account for rotation (simplified bounding box hit check)
-                        if (
-                          clickX >= img.x && clickX <= img.x + img.width &&
-                          clickY >= img.y && clickY <= img.y + img.height
-                        ) {
-                          e.preventDefault();
-                          setSelectedImage(img.id);
-                          return;
+              {hasWrappedImages ? (
+                <div 
+                  className={`absolute inset-0 z-15 ${bannerUrl ? "pt-48 sm:pt-64" : ""}`}
+                  onPointerDown={(e) => {
+                    if (e.target === e.currentTarget) setSelectedImage(null);
+                  }}
+                >
+                  <div
+                    ref={editableRef}
+                    contentEditable={isTextMode}
+                    suppressContentEditableWarning
+                    onInput={handleContentInput}
+                    className={`w-full h-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] ${
+                      !isTextMode ? "pointer-events-none opacity-60" : ""
+                    }`}
+                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px' }}
+                    data-placeholder="Escreva seus pensamentos aqui..."
+                  />
+                </div>
+              ) : (
+                <div 
+                  className="absolute inset-0 z-15"
+                  onPointerDown={(e) => {
+                    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                      if (contentAreaRef.current && isImageMode) {
+                        const rect = contentAreaRef.current.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const clickY = e.clientY - rect.top;
+                        
+                        const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
+                        for (const img of bgImages) {
+                          if (
+                            clickX >= img.x && clickX <= img.x + img.width &&
+                            clickY >= img.y && clickY <= img.y + img.height
+                          ) {
+                            e.preventDefault();
+                            setSelectedImage(img.id);
+                            return;
+                          }
                         }
                       }
+                      setSelectedImage(null);
                     }
-                    setSelectedImage(null);
-                  }
-                }}
-              >
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Escreva seus pensamentos aqui..."
-                  disabled={isDrawingMode}
-                  className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"} ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
-                />
-              </div>
+                  }}
+                >
+                  <textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Escreva seus pensamentos aqui..."
+                    disabled={isDrawingMode || isImageMode}
+                    className={`w-full h-full p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${
+                      (isDrawingMode || isImageMode) ? "pointer-events-none opacity-50" : "pointer-events-auto"
+                    } ${bannerUrl ? "pt-56 sm:pt-72" : ""}`}
+                  />
+                </div>
+              )}
 
-              {/* Drawing Canvas Layer - On Top */}
               <canvas
                 ref={canvasRef}
                 onMouseDown={startDrawing}
@@ -352,11 +449,12 @@ export default function BlogReflectionEditor({
                 className={`absolute inset-0 w-full h-full z-10 ${isDrawingMode ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
               />
 
-              {/* Draggable Images Layer - Highest */}
-              {images.map((img) => (
+              {freeImages.map((img) => (
                 <div
                   key={img.id}
-                  className={`absolute group cursor-move ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"}`}
+                  className={`absolute group ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${
+                    (isDrawingMode || isTextMode) ? "pointer-events-none opacity-80" : "pointer-events-auto"
+                  }`}
                   style={{
                     left: `${img.x}px`,
                     top: `${img.y}px`,
@@ -367,11 +465,12 @@ export default function BlogReflectionEditor({
                     zIndex: img.zIndex,
                   }}
                   onPointerDown={(e) => {
-                    if (isDrawingMode) return;
+                    if (isDrawingMode || isTextMode) return;
                     e.stopPropagation();
                     setSelectedImage(img.id);
                     
-                    // Prevenir scroll e ações padrão do navegador
+                    if (img.locked) return;
+                    
                     e.currentTarget.setPointerCapture(e.pointerId);
                     
                     const startX = e.clientX;
@@ -405,12 +504,17 @@ export default function BlogReflectionEditor({
                   <img
                     src={img.src}
                     alt="Note attachment"
-                    draggable={false} // Prevent browser's native image drag behavior
+                    draggable={false}
                     className={`w-full h-full ${img.fit === 'contain' ? 'object-contain' : 'object-cover'} rounded shadow-md border border-border/50 bg-white p-1 pointer-events-none`}
                   />
 
-                  {/* Rotate handle */}
-                  {selectedImage === img.id && !isDrawingMode && (
+                  {img.locked && (
+                    <div className="absolute top-1 right-1 p-1 bg-black/50 rounded-full">
+                      <Lock size={10} className="text-white" />
+                    </div>
+                  )}
+
+                  {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
                     <div
                       className="absolute -top-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 cursor-grab active:cursor-grabbing rounded-full flex items-center justify-center z-30"
                       style={{ touchAction: 'none' }}
@@ -424,7 +528,7 @@ export default function BlogReflectionEditor({
 
                         const handlePointerMove = (moveEvent: PointerEvent) => {
                           const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
-                          const degrees = (angle * 180) / Math.PI + 90; // +90 because handle is at top
+                          const degrees = (angle * 180) / Math.PI + 90;
                           updateImage(img.id, { rotation: degrees });
                         };
 
@@ -445,8 +549,7 @@ export default function BlogReflectionEditor({
                     </div>
                   )}
 
-                  {/* Resize handle */}
-                  {selectedImage === img.id && !isDrawingMode && (
+                  {selectedImage === img.id && !isDrawingMode && !img.locked && isImageMode && (
                     <div
                       className="absolute bottom-0 right-0 w-6 h-6 bg-primary/80 cursor-se-resize rounded-tl-full flex items-center justify-center z-30"
                       style={{ touchAction: 'none' }}
@@ -483,12 +586,35 @@ export default function BlogReflectionEditor({
                     />
                   )}
 
-                  {/* Action buttons */}
-                  {selectedImage === img.id && !isDrawingMode && (
+                  {selectedImage === img.id && !isDrawingMode && isImageMode && (
                     <div 
-                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1.5 z-30 bg-white/90 backdrop-blur p-1.5 rounded-full shadow-lg border border-border/50"
+                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
                     >
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          updateImage(img.id, { locked: !img.locked });
+                        }}
+                        className={`p-2 rounded-full transition-colors touch-none ${
+                          img.locked 
+                            ? "bg-amber-50 text-amber-600" 
+                            : "bg-white text-gray-500 hover:bg-gray-50"
+                        }`}
+                        title={img.locked ? "Destrancar" : "Trancar"}
+                      >
+                        {img.locked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
+                      </button>
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
+                        }}
+                        className="p-2 bg-white text-teal-500 hover:bg-teal-50 hover:text-teal-600 rounded-full transition-colors touch-none"
+                        title="Texto contorna imagem"
+                      >
+                        <WrapText size={15} strokeWidth={2.5} />
+                      </button>
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
@@ -498,17 +624,17 @@ export default function BlogReflectionEditor({
                         className="p-2 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full transition-colors touch-none"
                         title="Trazer para frente"
                       >
-                        <ArrowUpToLine size={16} strokeWidth={2.5} />
+                        <ArrowUpToLine size={15} strokeWidth={2.5} />
                       </button>
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { zIndex: 10 }); // Back behind text
+                          updateImage(img.id, { zIndex: 10 });
                         }}
                         className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
-                        title="Enviar para trás do texto"
+                        title="Enviar para trás"
                       >
-                        <ArrowDownToLine size={16} strokeWidth={2.5} />
+                        <ArrowDownToLine size={15} strokeWidth={2.5} />
                       </button>
                       <div className="w-[1px] h-6 bg-border/50 my-auto mx-0.5"></div>
                       <button
@@ -517,13 +643,61 @@ export default function BlogReflectionEditor({
                           deleteImage(img.id);
                         }}
                         className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
-                        title="Excluir imagem"
+                        title="Excluir"
                       >
-                        <X size={16} strokeWidth={3} />
+                        <X size={15} strokeWidth={3} />
                       </button>
                     </div>
                   )}
                 </div>
+              ))}
+
+              {images.filter(img => img.textWrap).map((img) => (
+                !hasWrappedImages ? null : (
+                  selectedImage === img.id && isImageMode && (
+                    <div 
+                      key={`toolbar-${img.id}`}
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          updateImage(img.id, { locked: !img.locked });
+                        }}
+                        className={`p-2 rounded-full transition-colors touch-none ${
+                          img.locked 
+                            ? "bg-amber-50 text-amber-600" 
+                            : "bg-white text-gray-500 hover:bg-gray-50"
+                        }`}
+                        title={img.locked ? "Destrancar" : "Trancar"}
+                      >
+                        {img.locked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
+                      </button>
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          updateImage(img.id, { textWrap: false, zIndex: 20 });
+                        }}
+                        className="p-2 bg-teal-50 text-teal-600 rounded-full transition-colors touch-none"
+                        title="Modo livre (desativar contorno)"
+                      >
+                        <WrapText size={15} strokeWidth={2.5} />
+                      </button>
+                      <div className="w-[1px] h-6 bg-border/50 my-auto mx-0.5"></div>
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          deleteImage(img.id);
+                        }}
+                        className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
+                        title="Excluir"
+                      >
+                        <X size={15} strokeWidth={3} />
+                      </button>
+                    </div>
+                  )
+                )
               ))}
             </div>
 
@@ -543,7 +717,6 @@ export default function BlogReflectionEditor({
             />
           </div>
 
-          {/* Suggested Tags */}
           {(suggestedTags.length > 0 || selectedTags.length > 0) && (
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-2">
@@ -568,7 +741,6 @@ export default function BlogReflectionEditor({
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-4 pt-6">
             <Button
               onClick={onClose}
