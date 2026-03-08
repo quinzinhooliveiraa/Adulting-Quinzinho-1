@@ -938,14 +938,16 @@ export default function Home() {
           initialTitle={dailyReflection.text.substring(0, 50) + "..."}
           initialText={dailyReflection.text}
           origin={dailyReflection.fromBook ? "Do Livro 'Casa dos 20'" : `${dailyReflection.type === 'question' ? 'Pergunta' : 'Reflexão'} Diária`}
+          topic={dailyReflection.text}
           showTitleEdit={true}
           onClose={() => setShowReflectionEditor(false)}
-          onSave={(title, content) => {
-            saveEntry(content, selectedTags.length > 0 ? selectedTags : [dailyReflection.type || 'reflexão'], mood || undefined);
+          onSave={(title, content, tags) => {
+            const finalTags = tags.length > 0 ? tags : [dailyReflection.type || 'reflexão'];
+            saveEntry(content, finalTags, mood || undefined);
             addNotification({
               type: "journal",
-              title: "✍️ Reflexão Publicada",
-              message: `"${title}" foi salva com sucesso!`,
+              title: "✍️ Pensamento Guardado",
+              message: `"${title}" foi salvo com sucesso!`,
             });
           }}
         />

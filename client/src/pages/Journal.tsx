@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2 } from "lucide-react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getAllEntries, saveEntry, updateEntry, deleteEntry, getEntriesByTag, shareEntry, JournalEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
+import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 
 const analyzeTextForTags = (text: string) => {
   const lowerText = text.toLowerCase();
@@ -28,6 +29,8 @@ export default function Journal() {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [entryText, setEntryText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showBlogEditor, setShowBlogEditor] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -211,15 +214,37 @@ export default function Journal() {
               </div>
             )}
 
-            <Button 
-              onClick={handleSave}
-              disabled={!entryText.trim() || isSaved}
-              className="w-full bg-primary text-primary-foreground rounded-full h-14 text-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
-            >
-              {isSaved ? "Guardado!" : isEditing ? "Atualizar" : "Guardar no Diário"}
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleSave}
+                disabled={!entryText.trim() || isSaved}
+                className="flex-1 bg-primary text-primary-foreground rounded-full h-14 font-medium shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+              >
+                {isSaved ? "Guardado!" : isEditing ? "Atualizar" : "Guardar"}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (entryText.trim()) {
+                    setEditingEntry({ 
+                      id: isEditing || "", 
+                      text: entryText, 
+                      tags: selectedTags, 
+                      date: "", 
+                      timestamp: Date.now() 
+                    });
+                    setShowBlogEditor(true);
+                  }
+                }}
+                variant="outline"
+                className="rounded-full h-14"
+                title="Expandir em editor de blog"
+              >
+                <PenLine size={18} />
+              </Button>
+            </div>
           </div>
         ) : (
+          <>
           <div className="space-y-4 animate-in fade-in duration-700">
             {filteredEntries.length > 0 ? (
               filteredEntries.map(entry => (
@@ -307,8 +332,42 @@ export default function Journal() {
               </div>
             )}
           </div>
+          </>
         )}
-      </div>
+
+      {showBlogEditor && editingEntry && (
+        <BlogReflectionEditor
+          initialTitle={editingEntry.text.substring(0, 50)}
+          initialText={editingEntry.text}
+          topic={editingEntry.text}
+          showTitleEdit={true}
+          origin="Do Diário"
+          onClose={() => {
+            setShowBlogEditor(false);
+            setEditingEntry(null);
+          }}
+          onSave={(title, content, tags) => {
+            const finalTags = tags.length > 0 ? tags : editingEntry.tags;
+            if (isEditing) {
+              updateEntry(isEditing, content, finalTags);
+            } else {
+              saveEntry(content, finalTags);
+            }
+            setEntries(getAllEntries());
+            addNotification({
+              type: "journal",
+              title: "✍️ Pensamento Guardado",
+              message: `"${title}" foi salvo com sucesso!`,
+            });
+            setIsWriting(false);
+            setEntryText("");
+            setSelectedTags([]);
+            setIsEditing(null);
+            setShowBlogEditor(false);
+            setEditingEntry(null);
+          }}
+        />
+      )}
 
       {!isWriting && (
         <div className="fixed bottom-24 right-6 z-40 animate-in zoom-in slide-in-from-bottom-4 duration-500">
@@ -321,6 +380,7 @@ export default function Journal() {
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 }

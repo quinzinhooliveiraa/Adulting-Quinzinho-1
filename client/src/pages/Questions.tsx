@@ -68,11 +68,12 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
     }
   };
 
-  const handleSaveQuestion = (title: string, content: string) => {
-    saveEntry(content, ["pergunta"], undefined);
+  const handleSaveQuestion = (title: string, content: string, tags: string[]) => {
+    const finalTags = tags.length > 0 ? tags : ["pergunta"];
+    saveEntry(content, finalTags, undefined);
     addNotification({
       type: "journal",
-      title: "💭 Resposta Publicada",
+      title: "💭 Resposta Guardada",
       message: `"${title}" foi salva no diário!`,
     });
     setShowEditor(false);
@@ -221,10 +222,11 @@ function GameInterface({ category, gameMode, otherPlayerName, onBack }: any) {
           initialTitle={`Resposta: ${selectedQuestion.question.substring(0, 40)}...`}
           initialText={currentResponse}
           origin={`De: ${categoryInfo?.title || 'Pergunta'}`}
+          topic={selectedQuestion.question}
           showTitleEdit={true}
           onClose={() => setShowEditor(false)}
-          onSave={(title, content) => {
-            handleSaveQuestion(title, content);
+          onSave={(title, content, tags) => {
+            handleSaveQuestion(title, content, tags);
           }}
         />
       )}
