@@ -387,33 +387,32 @@ export default function BlogReflectionEditor({
                 </div>
               )}
 
-              <canvas
-                ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={(e) => {
-                  if(isDrawingMode) {
+              {isDrawingMode && (
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={(e) => {
                     const touch = e.touches[0];
                     const rect = canvasRef.current?.getBoundingClientRect();
                     if(rect) {
                        startDrawing({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
                     }
-                  }
-                }}
-                onTouchMove={(e) => {
-                  if(isDrawingMode) {
+                  }}
+                  onTouchMove={(e) => {
                     const touch = e.touches[0];
                     const rect = canvasRef.current?.getBoundingClientRect();
                     if(rect) {
                        draw({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
                     }
-                  }
-                }}
-                onTouchEnd={stopDrawing}
-                className={`absolute inset-0 w-full h-full z-10 ${isDrawingMode ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
-              />
+                  }}
+                  onTouchEnd={stopDrawing}
+                  className="absolute inset-0 w-full h-full pointer-events-auto cursor-crosshair"
+                  style={{ zIndex: 50 }}
+                />
+              )}
 
               {freeImages.map((img) => (
                 <div
