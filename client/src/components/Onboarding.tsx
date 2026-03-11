@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { ArrowRight, Sparkles, Bell, Mail, LockKeyhole, Check, Map, Loader2 } from "lucide-react";
+import { ArrowRight, Sparkles, Bell, LockKeyhole, Check, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useAuth } from "@/hooks/useAuth";
 import bookCover from "@/assets/images/book-cover.png";
 
 const ONBOARDING_STEPS = [
@@ -43,48 +41,18 @@ const ONBOARDING_STEPS = [
     icon: LockKeyhole,
     accent: "bg-purple-50",
     type: "premium"
-  },
-  {
-    id: "email",
-    title: "Sua conta",
-    description: "Insira seu e-mail para salvar suas reflexões e sincronizar sua jornada em todos os seus dispositivos.",
-    icon: Mail,
-    accent: "bg-rose-50",
-    type: "email"
   }
 ];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [notifications, setNotifications] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [error, setError] = useState("");
-  const { register } = useAuth();
 
-  const next = async () => {
+  const next = () => {
     if (step < ONBOARDING_STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      setIsRegistering(true);
-      setError("");
-      try {
-        await register(name, email, password);
-        localStorage.setItem("casa-dos-20-user-name", name);
-        localStorage.setItem("casa-dos-20-onboarding-complete", "true");
-        setTimeout(() => onComplete(), 100);
-      } catch (err: any) {
-        const msg = err?.message || "";
-        if (msg.includes("409")) {
-          setError("Este email já está cadastrado. Tente outro.");
-        } else {
-          setError("Erro ao criar conta. Tente novamente.");
-        }
-      } finally {
-        setIsRegistering(false);
-      }
+      onComplete();
     }
   };
 
@@ -135,41 +103,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
         )}
-
-        {current.type === "email" && (
-          <div className="pt-4 space-y-4 animate-in slide-in-from-bottom-2 px-4">
-            <Input 
-              type="text" 
-              placeholder="Como quer ser chamado?" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans mb-2 focus-visible:ring-primary/20"
-              data-testid="input-name"
-            />
-            <Input 
-              type="email" 
-              placeholder="seu@email.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans"
-              data-testid="input-email"
-            />
-            <Input 
-              type="password" 
-              placeholder="Crie uma senha (min. 4 caracteres)" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans"
-              data-testid="input-password"
-            />
-            {error && (
-              <p className="text-xs text-red-500 text-center">{error}</p>
-            )}
-            <p className="text-[10px] text-muted-foreground px-4">
-              Ao continuar, você concorda com nossos Termos de Uso e Política de Privacidade.
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="mt-12 w-full max-w-sm space-y-6">
@@ -184,18 +117,11 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         
         <Button 
           onClick={next}
-          disabled={isRegistering || (current.type === "email" && (!email.includes("@") || !name.trim() || password.length < 4))}
           className="w-full h-14 rounded-full bg-primary text-primary-foreground text-lg font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
           data-testid="button-onboarding-next"
         >
-          {isRegistering ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <>
-              {step === ONBOARDING_STEPS.length - 1 ? "Começar Jornada" : current.type === "premium" ? "Ver planos" : "Próximo"}
-              <ArrowRight className="ml-2" size={20} />
-            </>
-          )}
+          {step === ONBOARDING_STEPS.length - 1 ? "Começar Jornada" : current.type === "premium" ? "Ver planos" : "Próximo"}
+          <ArrowRight className="ml-2" size={20} />
         </Button>
         
         {step > 0 && (

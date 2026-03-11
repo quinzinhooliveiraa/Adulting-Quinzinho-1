@@ -370,7 +370,11 @@ export default function BlogReflectionEditor({
                 <div 
                   className="relative z-15"
                   onPointerDown={(e) => {
-                    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                    const target = e.target as HTMLElement;
+                    if (target.tagName === 'TEXTAREA' || target.closest('textarea')) {
+                      return;
+                    }
+                    if (e.target === e.currentTarget) {
                       if (contentAreaRef.current && !isDrawingMode) {
                         const rect = contentAreaRef.current.getBoundingClientRect();
                         const clickX = e.clientX - rect.left;

@@ -393,7 +393,11 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               <div 
                 className="relative z-15"
                 onPointerDown={(e) => {
-                  if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'TEXTAREA' || target.closest('textarea')) {
+                    return;
+                  }
+                  if (e.target === e.currentTarget) {
                     if (notebookRef.current && !isDrawingMode) {
                       const rect = notebookRef.current.getBoundingClientRect();
                       const clickX = e.clientX - rect.left;

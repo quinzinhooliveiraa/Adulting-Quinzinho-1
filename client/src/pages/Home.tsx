@@ -88,7 +88,7 @@ export default function Home() {
   const { data: latestCheckin } = useLatestCheckin();
 
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem("casa-dos-20-onboarding-complete");
+    return localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   });
   const [mood, setMood] = useState<string | null>(null);
   const [checkInContext, setCheckInContext] = useState("");
@@ -418,7 +418,7 @@ export default function Home() {
 
   if (showOnboarding) {
     return <Onboarding onComplete={() => {
-      localStorage.setItem("casa-dos-20-onboarding-complete", "true");
+      localStorage.removeItem("casa-dos-20-needs-onboarding");
       setShowOnboarding(false);
     }} />;
   }

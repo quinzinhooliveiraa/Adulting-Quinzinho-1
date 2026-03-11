@@ -31,7 +31,8 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `client/src/pages/Home.tsx` — Main dashboard with check-ins, reflections, recommendations
 - `client/src/pages/Journal.tsx` — Journal entry list + editor
 - `client/src/pages/Book.tsx` — Daily reflections content
-- `client/src/components/Onboarding.tsx` — Registration flow
+- `client/src/pages/Auth.tsx` — Login/Register page (first page, with Google login button)
+- `client/src/components/Onboarding.tsx` — Walkthrough flow (shown only after new registration)
 - `client/src/components/BlogReflectionEditor.tsx` — Rich reflection editor with drawing/images
 - `client/src/components/NotebookEditor.tsx` — Notebook-style text editor
 - `client/src/utils/intelligentRecommendation.ts` — Check-in analysis + content recommendations
@@ -55,7 +56,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `SESSION_SECRET` — Express session secret
 
 ## localStorage Keys (offline fallback)
-- `casa-dos-20-onboarding-complete`
+- `casa-dos-20-needs-onboarding`
 - `casa-dos-20-user-name`
 - `casa-dos-20-theme`
 - `casa-dos-20-entries`
