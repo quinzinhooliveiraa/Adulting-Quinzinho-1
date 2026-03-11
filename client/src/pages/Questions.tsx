@@ -1,13 +1,17 @@
-import { useState, useMemo } from "react";
-import { Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import {
+  Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
+  Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Baby, Crown, Sparkles
+} from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
 
-const QUESTIONS_DATA = {
+const SOLO_THEMES = {
   identity: {
     title: "Identidade",
     emoji: "🎭",
     color: "from-amber-500 to-orange-600",
-    bg: "from-amber-50 to-orange-50",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
     questions: [
       "Se você não precisasse provar nada a ninguém, o que estaria fazendo?",
       "Você está vivendo a vida que escolheu ou a que esperavam de você?",
@@ -23,7 +27,8 @@ const QUESTIONS_DATA = {
     title: "Propósito",
     emoji: "🧭",
     color: "from-emerald-500 to-teal-600",
-    bg: "from-emerald-50 to-teal-50",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
     questions: [
       "Como você definiria sucesso sem usar dinheiro na definição?",
       "O que te faria pular da cama todas as manhãs?",
@@ -39,7 +44,8 @@ const QUESTIONS_DATA = {
     title: "Relações",
     emoji: "🤍",
     color: "from-rose-500 to-pink-600",
-    bg: "from-rose-50 to-pink-50",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
     questions: [
       "Em que relacionamentos você é 100% você mesmo?",
       "Qual conversa você está evitando ter?",
@@ -55,7 +61,8 @@ const QUESTIONS_DATA = {
     title: "Incerteza",
     emoji: "🌫️",
     color: "from-violet-500 to-purple-600",
-    bg: "from-violet-50 to-purple-50",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/20",
     questions: [
       "Se soubesse que vai dar certo, o que tentaria?",
       "Qual é o pior cenário que você imagina e ele é realista?",
@@ -71,7 +78,8 @@ const QUESTIONS_DATA = {
     title: "Crescimento",
     emoji: "🌱",
     color: "from-lime-500 to-green-600",
-    bg: "from-lime-50 to-green-50",
+    bg: "bg-lime-500/10",
+    border: "border-lime-500/20",
     questions: [
       "Que dor você precisa aceitar para evoluir?",
       "Qual hábito está te impedindo de ser quem você quer ser?",
@@ -87,7 +95,8 @@ const QUESTIONS_DATA = {
     title: "Solidão",
     emoji: "🌙",
     color: "from-indigo-500 to-blue-600",
-    bg: "from-indigo-50 to-blue-50",
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/20",
     questions: [
       "Você gosta da sua própria companhia ou apenas a tolera?",
       "O que o silêncio te diz quando você finalmente para?",
@@ -101,30 +110,179 @@ const QUESTIONS_DATA = {
   },
 };
 
-type CategoryId = keyof typeof QUESTIONS_DATA;
+const CONVERSATION_QUESTIONS: Record<string, { title: string; emoji: string; color: string; questions: string[] }> = {
+  amigos: {
+    title: "Entre Amigos",
+    emoji: "🤝",
+    color: "from-sky-500 to-blue-600",
+    questions: [
+      "Qual é a coisa mais difícil que você já passou e nunca contou pra gente?",
+      "Se você pudesse mudar uma coisa na nossa amizade, o que seria?",
+      "Quando foi a última vez que eu te decepcionei sem saber?",
+      "O que você admira em mim que nunca disse?",
+      "Qual é o seu maior medo que seus amigos não sabem?",
+      "Se a gente se conhecesse hoje, você acha que seríamos amigos?",
+      "O que você gostaria que eu te perguntasse mais?",
+      "Qual conselho meu você ignorou e se arrependeu?",
+      "O que te incomoda em mim mas você nunca falou?",
+      "Se pudesse voltar no tempo, mudaria algum momento nosso?",
+      "Você sente que pode ser 100% você mesmo com a gente?",
+      "Qual é a mentira mais boba que você já contou pra gente?",
+    ],
+  },
+  casal: {
+    title: "Casal",
+    emoji: "💕",
+    color: "from-rose-500 to-pink-600",
+    questions: [
+      "O que eu faço que te faz sentir mais amado(a)?",
+      "Qual é o seu maior medo sobre nós dois?",
+      "O que você sente falta de quando começamos a namorar?",
+      "Se pudesse mudar uma coisa em mim, o que seria?",
+      "Qual foi o momento que você mais sentiu orgulho de nós?",
+      "O que você precisa de mim que tem medo de pedir?",
+      "Como você se imagina daqui a 10 anos comigo?",
+      "Qual foi a vez que mais te machuquei sem perceber?",
+      "O que te faz duvidar de nós?",
+      "Se pudesse reviver um momento nosso, qual seria?",
+      "O que você acha que falta na nossa relação?",
+      "Qual é a coisa mais difícil de amar em mim?",
+    ],
+  },
+  pais: {
+    title: "Com Pai/Mãe",
+    emoji: "🏠",
+    color: "from-amber-500 to-orange-600",
+    questions: [
+      "Qual foi o momento mais difícil de ser pai/mãe?",
+      "O que você gostaria de ter feito diferente na minha criação?",
+      "Qual foi o dia mais feliz que eu te proporcionei?",
+      "O que você mais admira em mim?",
+      "Qual conselho você gostaria de ter recebido na minha idade?",
+      "O que te preocupa sobre o meu futuro?",
+      "Quando você percebeu que eu tinha crescido?",
+      "O que você gostaria que eu soubesse sobre a sua juventude?",
+      "Qual foi o maior sacrifício que fez por mim?",
+      "O que você espera da nossa relação daqui pra frente?",
+    ],
+  },
+  irmaos: {
+    title: "Com Irmão(ã)",
+    emoji: "👫",
+    color: "from-teal-500 to-cyan-600",
+    questions: [
+      "Qual é a memória de infância mais marcante que temos juntos?",
+      "Você acha que nossos pais trataram a gente de forma igual?",
+      "O que você admira em mim que nunca falou?",
+      "Qual é a coisa mais irritante que eu faço?",
+      "Se pudesse mudar algo na nossa relação, o que seria?",
+      "Você sente que me conhece de verdade?",
+      "Qual foi o momento que mais precisou de mim?",
+      "O que você aprendeu comigo sem perceber?",
+      "Qual segredo de infância você nunca contou?",
+      "Como você quer que nossa relação seja quando formos mais velhos?",
+    ],
+  },
+  avos: {
+    title: "Com Avô/Avó",
+    emoji: "🫶",
+    color: "from-purple-500 to-violet-600",
+    questions: [
+      "Qual foi o melhor conselho que já recebeu na vida?",
+      "Como era o amor na sua época?",
+      "Qual foi o dia mais feliz da sua vida?",
+      "O que você gostaria que a minha geração soubesse?",
+      "Qual foi a decisão mais corajosa que já tomou?",
+      "O que te dá mais orgulho na nossa família?",
+      "Qual foi o maior desafio que enfrentou?",
+      "O que mudou mais no mundo desde a sua juventude?",
+      "Qual lição você aprendeu tarde demais?",
+      "O que você deseja para o meu futuro?",
+    ],
+  },
+};
+
+type SoloThemeId = keyof typeof SOLO_THEMES;
+type RelationType = keyof typeof CONVERSATION_QUESTIONS;
+
+type GameMode = "sozinho" | "conversa";
+type ConversaType = "presencial" | "online";
 
 function CardGame({
-  mode,
-  category,
+  questions,
+  title,
+  emoji,
+  color,
+  subtitle,
   onBack,
+  weightedMode,
 }: {
-  mode: "online" | "presencial";
-  category: CategoryId;
+  questions: string[];
+  title: string;
+  emoji: string;
+  color: string;
+  subtitle: string;
   onBack: () => void;
+  weightedMode?: boolean;
 }) {
-  const catData = QUESTIONS_DATA[category];
-  const questions = catData.questions;
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const sessionKey = `casa-dos-20-seen-${title}`;
+
+  const [seenIndices, setSeenIndices] = useState<number[]>(() => {
+    if (!weightedMode) return [];
+    try {
+      const stored = localStorage.getItem(sessionKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const getNextCard = useCallback(() => {
+    if (!weightedMode) return null;
+    const unseen = questions.map((_, i) => i).filter(i => !seenIndices.includes(i));
+    if (unseen.length > 0) {
+      return unseen[Math.floor(Math.random() * unseen.length)];
+    }
+    return Math.floor(Math.random() * questions.length);
+  }, [weightedMode, seenIndices, questions]);
+
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (weightedMode) {
+      const unseen = questions.map((_, i) => i).filter(i => !seenIndices.includes(i));
+      if (unseen.length > 0) return unseen[Math.floor(Math.random() * unseen.length)];
+      return 0;
+    }
+    return 0;
+  });
   const [isFlipped, setIsFlipped] = useState(false);
   const [savedCards, setSavedCards] = useState<number[]>([]);
+  const [cardsPlayed, setCardsPlayed] = useState(0);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  const markSeen = (idx: number) => {
+    if (weightedMode && !seenIndices.includes(idx)) {
+      const updated = [...seenIndices, idx];
+      setSeenIndices(updated);
+      localStorage.setItem(sessionKey, JSON.stringify(updated));
+    }
+  };
+
   const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
+    markSeen(currentIndex);
+    const played = cardsPlayed + 1;
+    setCardsPlayed(played);
+
+    if (weightedMode) {
       setIsFlipped(false);
-      setTimeout(() => setCurrentIndex(currentIndex + 1), 200);
+      setTimeout(() => {
+        const next = getNextCard();
+        if (next !== null) setCurrentIndex(next);
+      }, 200);
     } else {
-      setShowCompleted(true);
+      if (currentIndex < questions.length - 1) {
+        setIsFlipped(false);
+        setTimeout(() => setCurrentIndex(currentIndex + 1), 200);
+      } else {
+        setShowCompleted(true);
+      }
     }
   };
 
@@ -133,8 +291,8 @@ function CardGame({
       setSavedCards([...savedCards, currentIndex]);
       addNotification({
         type: "journal",
-        title: "💾 Carta Salva",
-        message: `Pergunta salva para reflexão futura.`,
+        title: "Carta Salva",
+        message: "Pergunta salva para reflexão futura.",
       });
     }
   };
@@ -147,19 +305,24 @@ function CardGame({
       navigator.clipboard.writeText(text);
       addNotification({
         type: "journal",
-        title: "📋 Copiado",
+        title: "Copiado",
         message: "Pergunta copiada para a área de transferência.",
       });
     }
   };
 
+  const totalForProgress = weightedMode ? questions.length : questions.length;
+  const progressValue = weightedMode
+    ? Math.min(seenIndices.length + 1, totalForProgress)
+    : currentIndex + 1;
+
   if (showCompleted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
-        <div className="text-6xl mb-6">{catData.emoji}</div>
+        <div className="text-6xl mb-6">{emoji}</div>
         <h2 className="text-2xl font-serif text-foreground mb-2">Rodada Completa!</h2>
         <p className="text-sm text-muted-foreground text-center mb-8">
-          Você explorou {questions.length} perguntas sobre {catData.title}.
+          Você explorou {questions.length} perguntas de {title}.
           {savedCards.length > 0 && ` ${savedCards.length} foram salvas.`}
         </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -167,6 +330,7 @@ function CardGame({
             onClick={() => {
               setCurrentIndex(0);
               setIsFlipped(false);
+              setCardsPlayed(0);
               setShowCompleted(false);
             }}
             className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium flex items-center justify-center gap-2"
@@ -179,7 +343,7 @@ function CardGame({
             className="w-full p-4 bg-muted text-foreground rounded-2xl font-medium"
             data-testid="button-back-categories"
           >
-            Outras Categorias
+            Voltar
           </button>
         </div>
       </div>
@@ -190,14 +354,14 @@ function CardGame({
     <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
       <div className="px-6 pt-8 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
-          <ChevronLeft size={24} />
+          <ChevronLeft size={24} className="text-foreground" />
         </button>
         <div className="text-center">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
-            {mode === "online" ? "Autoconhecimento" : "Presencial"}
+            {subtitle}
           </p>
           <p className="text-xs text-foreground font-medium">
-            {currentIndex + 1} / {questions.length}
+            {weightedMode ? `${seenIndices.length}/${questions.length} vistas` : `${currentIndex + 1} / ${questions.length}`}
           </p>
         </div>
         <div className="w-10" />
@@ -206,20 +370,21 @@ function CardGame({
       <div className="w-full px-6 mb-3">
         <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full bg-gradient-to-r ${catData.color} transition-all duration-500`}
-            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+            className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-500`}
+            style={{ width: `${(progressValue / totalForProgress) * 100}%` }}
           />
         </div>
       </div>
 
-      <div className="px-6 flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+      <div className="px-6 flex flex-col items-center justify-center" style={{ minHeight: "55vh" }}>
         <div
-          className="w-full max-w-sm perspective-1000 cursor-pointer"
+          className="w-full max-w-sm cursor-pointer"
+          style={{ perspective: "1000px" }}
           onClick={() => setIsFlipped(!isFlipped)}
           data-testid="card-question"
         >
           <div
-            className={`relative w-full transition-transform duration-500 preserve-3d ${isFlipped ? "rotate-y-180" : ""}`}
+            className="relative w-full transition-transform duration-500"
             style={{
               aspectRatio: "3/4",
               transformStyle: "preserve-3d",
@@ -227,27 +392,27 @@ function CardGame({
             }}
           >
             <div
-              className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${catData.color} shadow-2xl flex flex-col items-center justify-center p-8 backface-hidden`}
+              className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} shadow-2xl flex flex-col items-center justify-center p-8`}
               style={{ backfaceVisibility: "hidden" }}
             >
-              <div className="text-7xl mb-6 opacity-30">{catData.emoji}</div>
+              <div className="text-7xl mb-6 opacity-30">{emoji}</div>
               <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-2">
                 Casa dos 20
               </p>
-              <h3 className="text-white text-xl font-serif text-center">{catData.title}</h3>
+              <h3 className="text-white text-xl font-serif text-center">{title}</h3>
               <p className="text-white/50 text-xs mt-6">Toque para revelar</p>
             </div>
 
             <div
-              className="absolute inset-0 rounded-3xl bg-background border-2 border-border shadow-2xl flex flex-col items-center justify-center p-8 backface-hidden"
+              className="absolute inset-0 rounded-3xl bg-background border-2 border-border shadow-2xl flex flex-col items-center justify-center p-8"
               style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             >
-              <div className="text-3xl mb-6">{catData.emoji}</div>
+              <div className="text-3xl mb-6">{emoji}</div>
               <p className="text-foreground font-serif text-xl text-center leading-relaxed">
                 "{questions[currentIndex]}"
               </p>
               <p className="text-muted-foreground text-xs mt-6 uppercase tracking-widest">
-                {catData.title}
+                {title}
               </p>
             </div>
           </div>
@@ -275,10 +440,12 @@ function CardGame({
             </button>
             <button
               onClick={handleNext}
-              className={`px-6 py-3 rounded-full bg-gradient-to-r ${catData.color} text-white font-medium flex items-center gap-2 shadow-lg`}
+              className={`px-6 py-3 rounded-full bg-gradient-to-r ${color} text-white font-medium flex items-center gap-2 shadow-lg`}
               data-testid="button-next-card"
             >
-              {currentIndex < questions.length - 1 ? (
+              {weightedMode ? (
+                <>Sortear <Sparkles size={16} /></>
+              ) : currentIndex < questions.length - 1 ? (
                 <>Próxima <ArrowRight size={16} /></>
               ) : (
                 "Finalizar"
@@ -291,100 +458,285 @@ function CardGame({
   );
 }
 
-export default function Questions() {
-  const [mode, setMode] = useState<"online" | "presencial" | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
+function FamilyMemberSelect({ onSelect, onBack }: { onSelect: (member: RelationType) => void; onBack: () => void }) {
+  const members: { id: RelationType; icon: typeof HomeIcon; label: string; desc: string }[] = [
+    { id: "pais", icon: Crown, label: "Pai / Mãe", desc: "Conversas entre gerações" },
+    { id: "irmaos", icon: UserPlus, label: "Irmão(ã)", desc: "Quem cresceu com você" },
+    { id: "avos", icon: Heart, label: "Avô / Avó", desc: "Sabedoria e memórias" },
+  ];
 
-  if (mode && selectedCategory) {
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+      <div>
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-family">
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-2xl font-serif text-foreground">Com quem?</h1>
+        <p className="text-sm text-muted-foreground mt-1">Escolha o membro da família para perguntas que façam sentido.</p>
+      </div>
+      <div className="space-y-3">
+        {members.map((m) => {
+          const Icon = m.icon;
+          const data = CONVERSATION_QUESTIONS[m.id];
+          return (
+            <button
+              key={m.id}
+              onClick={() => onSelect(m.id)}
+              className="w-full p-4 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-colors flex items-center gap-4 text-left active:scale-[0.98]"
+              data-testid={`button-family-${m.id}`}
+            >
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${data.color} flex items-center justify-center shadow-sm`}>
+                <Icon size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">{m.label}</p>
+                <p className="text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <span className="text-xs text-muted-foreground">{data.questions.length} cartas</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RelationSelect({
+  conversaType,
+  onSelect,
+  onBack,
+}: {
+  conversaType: ConversaType;
+  onSelect: (relation: RelationType) => void;
+  onBack: () => void;
+}) {
+  const [showFamily, setShowFamily] = useState(false);
+
+  if (showFamily) {
+    return <FamilyMemberSelect onSelect={onSelect} onBack={() => setShowFamily(false)} />;
+  }
+
+  const relations: { id: RelationType | "familia"; icon: typeof Users; label: string; desc: string; isGroup?: boolean }[] = [
+    { id: "amigos", icon: Users, label: "Amigos", desc: "Fortaleça laços com verdade" },
+    { id: "casal", icon: Heart, label: "Casal", desc: "Aprofunde a conexão a dois" },
+    { id: "familia", icon: HomeIcon, label: "Família", desc: "Escolha o membro da família", isGroup: true },
+  ];
+
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+      <div>
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-relation">
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-2xl font-serif text-foreground">
+          {conversaType === "presencial" ? "Jogo Presencial" : "Jogo Online"}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Com quem você quer conversar?</p>
+      </div>
+      <div className="space-y-3">
+        {relations.map((r) => {
+          const Icon = r.icon;
+          const data = r.id !== "familia" ? CONVERSATION_QUESTIONS[r.id] : null;
+          return (
+            <button
+              key={r.id}
+              onClick={() => {
+                if (r.isGroup) {
+                  setShowFamily(true);
+                } else {
+                  onSelect(r.id as RelationType);
+                }
+              }}
+              className="w-full p-4 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-colors flex items-center gap-4 text-left active:scale-[0.98]"
+              data-testid={`button-relation-${r.id}`}
+            >
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${data ? data.color : "from-amber-500 to-orange-600"} flex items-center justify-center shadow-sm`}>
+                <Icon size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">{r.label}</p>
+                <p className="text-xs text-muted-foreground">{r.desc}</p>
+              </div>
+              {data && <span className="text-xs text-muted-foreground">{data.questions.length} cartas</span>}
+              {r.isGroup && <ChevronLeft size={16} className="text-muted-foreground rotate-180" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ConversaTypeSelect({ onSelect, onBack }: { onSelect: (type: ConversaType) => void; onBack: () => void }) {
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-500">
+      <div>
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-conversa">
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-2xl font-serif text-foreground">Modo Conversa</h1>
+        <p className="text-sm text-muted-foreground mt-1">Como vocês vão jogar?</p>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          onClick={() => onSelect("presencial")}
+          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          data-testid="button-conversa-presencial"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+            <MapPin size={20} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Presencial</p>
+            <p className="text-xs text-muted-foreground">Juntos no mesmo lugar</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect("online")}
+          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          data-testid="button-conversa-online"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+            <Wifi size={20} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Online</p>
+            <p className="text-xs text-muted-foreground">Cada um no seu celular</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SoloThemeSelect({ onSelect, onBack }: { onSelect: (theme: SoloThemeId) => void; onBack: () => void }) {
+  const themes = Object.entries(SOLO_THEMES) as [SoloThemeId, typeof SOLO_THEMES[SoloThemeId]][];
+
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+      <div>
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-solo">
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-2xl font-serif text-foreground">Autoconhecimento</h1>
+        <p className="text-sm text-muted-foreground mt-1">Escolha um tema e mergulhe fundo.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {themes.map(([id, t]) => (
+          <button
+            key={id}
+            onClick={() => onSelect(id)}
+            className={`p-4 rounded-2xl ${t.bg} border ${t.border} flex flex-col gap-3 text-left hover:shadow-md transition-all active:scale-95`}
+            data-testid={`button-theme-${id}`}
+          >
+            <div className="text-2xl">{t.emoji}</div>
+            <div>
+              <h3 className="font-medium text-foreground text-sm">{t.title}</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t.questions.length} cartas</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Questions() {
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  const [soloTheme, setSoloTheme] = useState<SoloThemeId | null>(null);
+  const [conversaType, setConversaType] = useState<ConversaType | null>(null);
+  const [relation, setRelation] = useState<RelationType | null>(null);
+
+  if (gameMode === "sozinho" && soloTheme) {
+    const theme = SOLO_THEMES[soloTheme];
     return (
       <CardGame
-        mode={mode}
-        category={selectedCategory}
-        onBack={() => {
-          setSelectedCategory(null);
-        }}
+        questions={theme.questions}
+        title={theme.title}
+        emoji={theme.emoji}
+        color={theme.color}
+        subtitle="Autoconhecimento"
+        onBack={() => setSoloTheme(null)}
       />
     );
   }
 
-  if (mode) {
-    const categories = Object.entries(QUESTIONS_DATA) as [CategoryId, typeof QUESTIONS_DATA[CategoryId]][];
-    return (
-      <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-700">
-        <header className="space-y-2">
-          <button onClick={() => setMode(null)} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-mode">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-3xl font-serif text-foreground">
-            {mode === "online" ? "Autoconhecimento" : "Jogo Presencial"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {mode === "online"
-              ? "Escolha um tema e explore perguntas profundas sobre você mesmo."
-              : "Escolha uma categoria e jogue com alguém ao seu lado."}
-          </p>
-        </header>
+  if (gameMode === "sozinho") {
+    return <SoloThemeSelect onSelect={setSoloTheme} onBack={() => setGameMode(null)} />;
+  }
 
-        <div className="grid grid-cols-2 gap-3">
-          {categories.map(([id, cat]) => (
-            <button
-              key={id}
-              onClick={() => setSelectedCategory(id)}
-              className={`p-5 rounded-2xl bg-gradient-to-br ${cat.bg} border border-border/50 flex flex-col justify-between space-y-4 text-left hover:shadow-md transition-all active:scale-95`}
-              data-testid={`button-category-${id}`}
-            >
-              <div className="text-3xl">{cat.emoji}</div>
-              <div>
-                <h3 className="font-medium text-foreground text-sm">{cat.title}</h3>
-                <p className="text-[11px] text-muted-foreground mt-1">{cat.questions.length} cartas</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+  if (gameMode === "conversa" && conversaType && relation) {
+    const data = CONVERSATION_QUESTIONS[relation];
+    return (
+      <CardGame
+        questions={data.questions}
+        title={data.title}
+        emoji={data.emoji}
+        color={data.color}
+        subtitle={conversaType === "presencial" ? "Presencial" : "Online"}
+        onBack={() => setRelation(null)}
+        weightedMode={true}
+      />
     );
+  }
+
+  if (gameMode === "conversa" && conversaType) {
+    return (
+      <RelationSelect
+        conversaType={conversaType}
+        onSelect={setRelation}
+        onBack={() => setConversaType(null)}
+      />
+    );
+  }
+
+  if (gameMode === "conversa") {
+    return <ConversaTypeSelect onSelect={setConversaType} onBack={() => setGameMode(null)} />;
   }
 
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col items-center justify-center min-h-[80vh] animate-in fade-in duration-700">
-      <div className="text-center space-y-4 mb-12">
+      <div className="text-center space-y-3 mb-12">
         <h1 className="text-3xl font-serif text-foreground">Perguntas Profundas</h1>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-          Perguntas que aproximam pessoas e revelam verdades. Como você quer jogar?
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
+          Perguntas que aproximam pessoas e revelam verdades.
         </p>
       </div>
 
-      <div className="w-full max-w-sm space-y-4">
+      <div className="w-full max-w-sm space-y-3">
         <button
-          onClick={() => setMode("online")}
-          className="w-full p-6 rounded-3xl bg-gradient-to-br from-violet-50 to-indigo-50 border-2 border-violet-200 flex items-center gap-4 hover:shadow-lg transition-all active:scale-[0.98] text-left"
-          data-testid="button-mode-online"
+          onClick={() => setGameMode("sozinho")}
+          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          data-testid="button-mode-sozinho"
         >
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
             <User size={24} className="text-white" />
           </div>
           <div>
             <h3 className="font-serif text-lg text-foreground">Sozinho</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Autoconhecimento profundo</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Temas de autoconhecimento</p>
           </div>
         </button>
 
         <button
-          onClick={() => setMode("presencial")}
-          className="w-full p-6 rounded-3xl bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200 flex items-center gap-4 hover:shadow-lg transition-all active:scale-[0.98] text-left"
-          data-testid="button-mode-presencial"
+          onClick={() => setGameMode("conversa")}
+          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          data-testid="button-mode-conversa"
         >
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-md">
             <Users size={24} className="text-white" />
           </div>
           <div>
-            <h3 className="font-serif text-lg text-foreground">Presencial</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Com amigos, casal ou família</p>
+            <h3 className="font-serif text-lg text-foreground">Modo Conversa</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Presencial ou online, com quem importa</p>
           </div>
         </button>
       </div>
 
-      <p className="text-[10px] text-muted-foreground mt-8 text-center">
+      <p className="text-[10px] text-muted-foreground mt-10 text-center">
         Inspirado pelo livro Casa dos 20 de Quinzinho Oliveira
       </p>
     </div>

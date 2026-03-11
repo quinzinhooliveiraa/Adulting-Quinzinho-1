@@ -51,48 +51,48 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   };
 
   const themeOptions = [
-    { id: "light", label: "Claro", icon: Sun },
-    { id: "dark", label: "Escuro", icon: Moon },
-    { id: "system", label: "Sistema", icon: Monitor },
-  ];
+    { id: "light", icon: Sun },
+    { id: "dark", icon: Moon },
+    { id: "system", icon: Monitor },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-background text-foreground bg-noise flex justify-center">
       <div className="w-full max-w-md bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
         
-        <div className="absolute top-4 right-4 z-50 flex gap-2 items-center">
+        <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
           <NotificationCenter />
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary/20 transition-colors overflow-hidden border border-border/30"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-primary text-xs font-bold overflow-hidden border border-border/40 bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all"
               data-testid="button-user-menu"
             >
               {profilePhoto ? (
-                <img src={profilePhoto} alt="Perfil" className="w-full h-full object-cover" />
+                <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
               ) : (
-                user?.name?.charAt(0).toUpperCase() || "?"
+                <span className="text-foreground/70">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
               )}
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-11 bg-background border border-border rounded-xl shadow-lg z-50 w-52 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="px-4 py-3 border-b border-border flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold overflow-hidden border border-border/30">
+                <div className="absolute right-0 top-11 bg-background border border-border rounded-xl shadow-lg z-50 w-56 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden border border-border bg-muted">
                         {profilePhoto ? (
-                          <img src={profilePhoto} alt="Perfil" className="w-full h-full object-cover" />
+                          <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          user?.name?.charAt(0).toUpperCase() || "?"
+                          <span className="text-foreground/60">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
                         )}
                       </div>
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-sm"
+                        className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow border-2 border-background"
                         data-testid="button-change-photo"
                       >
-                        <Camera size={10} className="text-primary-foreground" />
+                        <Camera size={9} className="text-primary-foreground" />
                       </button>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -101,40 +101,38 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                     </div>
                   </div>
 
-                  <div className="px-4 py-3 border-b border-border">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Aparência</p>
-                    <div className="flex gap-1">
-                      {themeOptions.map((opt) => {
-                        const Icon = opt.icon;
-                        const isActive = theme === opt.id;
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => setTheme(opt.id)}
-                            className={cn(
-                              "flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] transition-colors",
-                              isActive
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "text-muted-foreground hover:bg-muted"
-                            )}
-                            data-testid={`button-theme-${opt.id}`}
-                          >
-                            <Icon size={14} />
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="mx-3 mb-3 p-1 bg-muted rounded-lg flex gap-0.5">
+                    {themeOptions.map((opt) => {
+                      const Icon = opt.icon;
+                      const isActive = theme === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setTheme(opt.id)}
+                          className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 rounded-md transition-all",
+                            isActive
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                          data-testid={`button-theme-${opt.id}`}
+                        >
+                          <Icon size={14} />
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                    data-testid="button-logout"
-                  >
-                    <LogOut size={16} />
-                    Sair
-                  </button>
+                  <div className="border-t border-border">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-red-500 hover:bg-muted/50 transition-colors"
+                      data-testid="button-logout"
+                    >
+                      <LogOut size={15} />
+                      Sair da conta
+                    </button>
+                  </div>
                 </div>
               </>
             )}

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Bell, X } from "lucide-react";
-import { getUnreadNotifications, dismissNotification, clearNotifications, Notification } from "@/utils/notificationService";
-import { Button } from "@/components/ui/button";
+import { getUnreadNotifications, dismissNotification, Notification } from "@/utils/notificationService";
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -26,51 +25,56 @@ export default function NotificationCenter() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 hover:bg-secondary rounded-full transition-colors border border-border"
-        title="Notificações"
+        className="relative w-9 h-9 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border/40 hover:bg-muted transition-colors shadow-sm"
+        data-testid="button-notifications"
       >
-        <Bell size={20} />
+        <Bell size={16} className="text-foreground" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-16 w-96 max-h-96 bg-background rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <h3 className="font-serif text-lg">Notificações</h3>
-              <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-muted rounded-lg">
-                <X size={20} />
-              </button>
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 top-11 z-50 w-72 max-h-80 bg-background border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="px-4 py-3 border-b border-border flex justify-between items-center">
+              <h3 className="text-sm font-medium text-foreground">Notificações</h3>
+              {unreadCount > 0 && (
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{unreadCount}</span>
+              )}
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 p-4">
+            <div className="overflow-y-auto max-h-60">
               {notifications.length > 0 ? (
-                notifications.map((notif) => (
-                  <div key={notif.id} className="p-4 bg-card border border-border rounded-xl">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="flex-1">
-                        <p className="font-bold">{notif.title}</p>
-                        <p className="text-sm text-muted-foreground">{notif.message}</p>
+                <div className="divide-y divide-border">
+                  {notifications.map((notif) => (
+                    <div key={notif.id} className="px-4 py-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{notif.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDismiss(notif.id)}
+                          className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        >
+                          <X size={12} />
+                        </button>
                       </div>
-                      <button onClick={() => handleDismiss(notif.id)}>
-                        <X size={16} />
-                      </button>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bell size={32} className="mx-auto mb-2 opacity-30" />
-                  <p>Sem notificações</p>
+                <div className="text-center py-8">
+                  <Bell size={24} className="mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">Nenhuma notificação</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );
