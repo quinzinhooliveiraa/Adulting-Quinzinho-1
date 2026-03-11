@@ -372,7 +372,8 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
 
             {hasWrappedImages ? (
               <div 
-                className="relative z-15"
+                className="relative"
+                style={{ zIndex: 15 }}
                 onPointerDown={(e) => {
                   if (e.target === e.currentTarget) setSelectedImage(null);
                 }}
@@ -385,50 +386,26 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   className={`w-full min-h-96 bg-transparent focus:outline-none font-serif text-base leading-7 ${
                     isDrawingMode ? "pointer-events-none opacity-60" : ""
                   }`}
-                  style={{ lineHeight: "28px", whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                  style={{ lineHeight: "28px", whiteSpace: 'pre-wrap', wordWrap: 'break-word', position: 'relative', zIndex: 20 }}
                   data-placeholder="Escreva seus pensamentos aqui..."
                 />
               </div>
             ) : (
               <div 
-                className="relative z-15"
-                onPointerDown={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.tagName === 'TEXTAREA' || target.closest('textarea')) {
-                    return;
-                  }
-                  if (e.target === e.currentTarget) {
-                    if (notebookRef.current && !isDrawingMode) {
-                      const rect = notebookRef.current.getBoundingClientRect();
-                      const clickX = e.clientX - rect.left;
-                      const clickY = e.clientY - rect.top;
-                      
-                      const bgImages = [...images].filter(img => (img.zIndex || 20) < 15).reverse();
-                      for (const img of bgImages) {
-                        if (
-                          clickX >= img.x && clickX <= img.x + img.width &&
-                          clickY >= img.y && clickY <= img.y + img.height
-                        ) {
-                          e.preventDefault();
-                          setSelectedImage(img.id);
-                          return;
-                        }
-                      }
-                    }
-                    setSelectedImage(null);
-                  }
-                }}
+                className="relative"
+                style={{ zIndex: 15 }}
               >
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onFocus={() => setSelectedImage(null)}
+                  onPointerDown={(e) => e.stopPropagation()}
                   placeholder="Escreva seus pensamentos aqui..."
                   disabled={isDrawingMode}
                   className={`w-full min-h-96 bg-transparent border-none focus:outline-none font-serif text-base leading-7 resize-none placeholder:text-muted-foreground/50 ${
                     isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto"
                   }`}
-                  style={{ lineHeight: "28px" }}
+                  style={{ lineHeight: "28px", position: 'relative', zIndex: 20 }}
                 />
               </div>
             )}
