@@ -374,13 +374,6 @@ export default function Home() {
     }
   };
 
-  if (showOnboarding) {
-    return <Onboarding onComplete={() => {
-      localStorage.setItem("casa-dos-20-onboarding-complete", "true");
-      setShowOnboarding(false);
-    }} />;
-  }
-
   const moodTips: Record<string, string[]> = {
     terrible: [
       "Dê a si mesmo permissão para descansar. Às vezes, o ato mais produtivo é pausar e respirar fundo.",
@@ -417,12 +410,18 @@ export default function Home() {
   const currentTip = useMemo(() => {
     if (!mood) return "";
     const options = moodTips[mood];
-    // Use day of year + hour to rotate tips
     const now = new Date();
     const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
     const seed = dayOfYear + now.getHours();
     return options[seed % options.length];
-  }, [mood, moodTips]);
+  }, [mood]);
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => {
+      localStorage.setItem("casa-dos-20-onboarding-complete", "true");
+      setShowOnboarding(false);
+    }} />;
+  }
 
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
