@@ -71,6 +71,21 @@ export const insertFeedbackTicketSchema = createInsertSchema(feedbackTickets).om
   createdAt: true,
 });
 
+export const journeyProgress = pgTable("journey_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  journeyId: text("journey_id").notNull(),
+  completedDays: text("completed_days").array().notNull().default(sql`'{}'::text[]`),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+});
+
+export const insertJourneyProgressSchema = createInsertSchema(journeyProgress).omit({
+  id: true,
+  startedAt: true,
+  lastActivityAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
@@ -79,3 +94,5 @@ export type InsertMoodCheckin = z.infer<typeof insertMoodCheckinSchema>;
 export type MoodCheckin = typeof moodCheckins.$inferSelect;
 export type InsertFeedbackTicket = z.infer<typeof insertFeedbackTicketSchema>;
 export type FeedbackTicket = typeof feedbackTickets.$inferSelect;
+export type InsertJourneyProgress = z.infer<typeof insertJourneyProgressSchema>;
+export type JourneyProgress = typeof journeyProgress.$inferSelect;

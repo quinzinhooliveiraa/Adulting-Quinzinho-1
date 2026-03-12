@@ -5,6 +5,7 @@ import {
   journalEntries,
   moodCheckins,
   feedbackTickets,
+  journeyProgress,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -13,6 +14,8 @@ import {
   type InsertMoodCheckin,
   type FeedbackTicket,
   type InsertFeedbackTicket,
+  type JourneyProgress,
+  type InsertJourneyProgress,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -39,6 +42,12 @@ export interface IStorage {
   getFeedbackByUser(userId: string): Promise<FeedbackTicket[]>;
   getAllFeedback(): Promise<(FeedbackTicket & { userName?: string; userEmail?: string })[]>;
   updateFeedbackStatus(id: number, status: string, adminNote?: string): Promise<FeedbackTicket | undefined>;
+
+  getJourneyProgress(userId: string): Promise<JourneyProgress[]>;
+  getJourneyProgressByJourney(userId: string, journeyId: string): Promise<JourneyProgress | undefined>;
+  startJourney(data: InsertJourneyProgress): Promise<JourneyProgress>;
+  completeJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
+  uncompleteJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -163,6 +172,50 @@ export class DatabaseStorage implements IStorage {
     const updateData: any = { status };
     if (adminNote !== undefined) updateData.adminNote = adminNote;
     const [updated] = await db.update(feedbackTickets).set(updateData).where(eq(feedbackTickets.id, id)).returning();
+    return updated;
+  }
+
+  async getJourneyProgress(userId: string): Promise<JourneyProgress[]> {
+    return db.select().from(journeyProgress)
+      .where(eq(journeyProgress.userId, userId))
+      .orderBy(desc(journeyProgress.startedAt));
+  }
+
+  async getJourneyProgressByJourney(userId: string, journeyId: string): Promise<JourneyProgress | undefined> {
+    const [progress] = await db.select().from(journeyProgress)
+      .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)));
+    return progress;
+  }
+
+  async startJourney(data: InsertJourneyProgress): Promise<JourneyProgress> {
+    const [created] = await db.insert(journeyProgress).values(data).returning();
+    return created;
+  }
+
+  async completeJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined> {
+    const existing = await this.getJourneyProgressByJourney(userId, journeyId);
+    if (!existing) return undefined;
+    if (existing.completedDays.includes(dayId)) return existing;
+    const [updated] = await db.update(journeyProgress)
+      .set({
+        completedDays: [...existing.completedDays, dayId],
+        lastActivityAt: new Date(),
+      })
+      .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
+      .returning();
+    return updated;
+  }
+
+  async uncompleteJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined> {
+    const existing = await this.getJourneyProgressByJourney(userId, journeyId);
+    if (!existing) return undefined;
+    const [updated] = await db.update(journeyProgress)
+      .set({
+        completedDays: existing.completedDays.filter(d => d !== dayId),
+        lastActivityAt: new Date(),
+      })
+      .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
+      .returning();
     return updated;
   }
 }

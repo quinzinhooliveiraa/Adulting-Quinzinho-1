@@ -21,10 +21,21 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt
+- `journey_progress`: id (serial), userId (FK), journeyId (text), completedDays (text[]), startedAt (timestamp), lastActivityAt (timestamp)
+
+## Jornadas (30-Day Challenges)
+- 6 journeys across 2 seasons aligned with book themes: autoconhecimento, propósito, relações, incerteza, crescimento, solidão
+- Each journey has 30 daily challenges with types: reflexão, ação, escrita, meditação, desafio, leitura
+- Progressive unlock system: complete one journey to unlock the next (admin bypasses)
+- Premium-only feature; paywall shown for free users
+- Progress persisted in DB via `/api/journey/progress`, `/api/journey/start`, `/api/journey/complete-day`, `/api/journey/uncomplete-day`
+- Journey content defined in `client/src/pages/Journey.tsx` (exported `JOURNEYS` array)
 
 ## Premium / Freemium Model
 - New users get 14-day free trial (trialEndsAt set on registration)
 - Card game mode requires premium access (trial, paid, or admin-granted)
+- Jornadas require premium access (admin has full access)
+- Solo/Conversa modes free with 5-question limit per theme; paywall after exhaustion
 - Admin users always have full access
 - `getUserPremiumStatus()` in routes.ts determines access: admin > paid > granted > trial > expired > blocked
 - Frontend checks `user.hasPremium` from auth context

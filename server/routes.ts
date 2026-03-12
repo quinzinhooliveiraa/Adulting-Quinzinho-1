@@ -680,6 +680,63 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/journey/progress", requireAuth, async (req, res) => {
+    try {
+      const progress = await storage.getJourneyProgress(req.session.userId!);
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar progresso" });
+    }
+  });
+
+  app.post("/api/journey/start", requireAuth, async (req, res) => {
+    try {
+      const { journeyId } = req.body;
+      if (!journeyId) return res.status(400).json({ message: "journeyId obrigatório" });
+      const existing = await storage.getJourneyProgressByJourney(req.session.userId!, journeyId);
+      if (existing) return res.json(existing);
+      const progress = await storage.startJourney({
+        userId: req.session.userId!,
+        journeyId,
+        completedDays: [],
+      });
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao iniciar jornada" });
+    }
+  });
+
+  app.post("/api/journey/complete-day", requireAuth, async (req, res) => {
+    try {
+      const { journeyId, dayId } = req.body;
+      if (!journeyId || !dayId) return res.status(400).json({ message: "journeyId e dayId obrigatórios" });
+      let progress = await storage.getJourneyProgressByJourney(req.session.userId!, journeyId);
+      if (!progress) {
+        progress = await storage.startJourney({
+          userId: req.session.userId!,
+          journeyId,
+          completedDays: [],
+        });
+      }
+      const updated = await storage.completeJourneyDay(req.session.userId!, journeyId, dayId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao completar dia" });
+    }
+  });
+
+  app.post("/api/journey/uncomplete-day", requireAuth, async (req, res) => {
+    try {
+      const { journeyId, dayId } = req.body;
+      if (!journeyId || !dayId) return res.status(400).json({ message: "journeyId e dayId obrigatórios" });
+      const updated = await storage.uncompleteJourneyDay(req.session.userId!, journeyId, dayId);
+      if (!updated) return res.status(404).json({ message: "Progresso não encontrado" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao desmarcar dia" });
+    }
+  });
+
   interface LobbyPlayer {
     ws: WebSocket;
     name: string;
