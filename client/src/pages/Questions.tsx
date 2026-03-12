@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
   Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Crown, Sparkles,
@@ -6,7 +6,7 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
-import { generateShareImage, type ShareImageTheme } from "@/utils/shareImage";
+import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
@@ -422,6 +422,15 @@ function CardGame({
   const [cardsPlayed, setCardsPlayed] = useState(0);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [imageTheme, setImageTheme] = useState<ShareImageTheme>(() => document.documentElement.classList.contains("dark") ? "dark" : "light");
+  const questionPreviewRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (showImagePreview && questionPreviewRef.current) {
+      renderShareImageToCanvas(questionPreviewRef.current, { text: questions[currentIndex], theme: imageTheme, type: "question" });
+    }
+  }, [showImagePreview, imageTheme, currentIndex, questions]);
 
   const markSeen = (idx: number) => {
     if (weightedMode && !seenIndices.includes(idx)) {
@@ -615,7 +624,7 @@ function CardGame({
               <Share2 size={20} />
             </button>
             <button
-              onClick={() => generateShareImage({ text: questions[currentIndex], theme: document.documentElement.classList.contains("dark") ? "dark" : "light", type: "question" })}
+              onClick={() => setShowImagePreview(true)}
               className="p-3 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
               data-testid="button-image-card"
               title="Gerar imagem"
@@ -638,6 +647,40 @@ function CardGame({
           </div>
         )}
       </div>
+
+      {showImagePreview && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowImagePreview(false)} />
+          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+            <button onClick={() => setShowImagePreview(false)} className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full">
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-serif text-foreground mb-4">Imagem da Pergunta</h3>
+            <canvas ref={questionPreviewRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-4" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-muted-foreground">Tema</span>
+              <div className="flex rounded-full border border-border overflow-hidden">
+                <button onClick={() => setImageTheme("dark")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${imageTheme === "dark" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                  Escuro
+                </button>
+                <button onClick={() => setImageTheme("light")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${imageTheme === "light" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                  Claro
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                generateShareImage({ text: questions[currentIndex], theme: imageTheme, type: "question" });
+                setShowImagePreview(false);
+              }}
+              className={`w-full py-3 rounded-xl font-medium transition-all bg-gradient-to-r ${color} text-white shadow-md`}
+            >
+              <ImageIcon size={18} className="inline mr-2" />
+              Salvar Imagem
+            </button>
+          </div>
+        </div>
+      )}
 
       {showAnswer && (
         <AnswerSheet

@@ -123,51 +123,28 @@ export default function BlogReflectionEditor({
   }, [hasWrappedImages]);
 
   useEffect(() => {
-    if (!editableRef.current || !hasWrappedImages) return;
+    if (!editableRef.current) return;
     const el = editableRef.current;
-    
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
+    if (!hasWrappedImages) return;
     
     const wrapImages = images.filter(img => img.textWrap);
     wrapImages.sort((a, b) => a.y - b.y);
     wrapImages.forEach(img => {
-      const wrapper = document.createElement('div');
-      wrapper.setAttribute('data-float-img', img.id);
-      wrapper.contentEditable = 'false';
+      const spacer = document.createElement('div');
+      spacer.setAttribute('data-float-img', img.id);
+      spacer.contentEditable = 'false';
       const containerWidth = el.offsetWidth || 600;
       const side = img.x < containerWidth / 2 ? 'left' : 'right';
       const marginTop = Math.max(0, img.y);
       const marginLeft = side === 'left' ? Math.max(0, img.x) : 16;
       const marginRight = side === 'right' ? Math.max(0, containerWidth - img.x - img.width) : 16;
-      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; margin: ${marginTop}px ${marginRight}px 12px ${marginLeft}px; border-radius: 12px; overflow: hidden; user-select: none; position: relative; clear: ${side};`;
-      
-      if (selectedImage === img.id) {
-        wrapper.style.outline = '2px solid hsl(var(--primary))';
-        wrapper.style.outlineOffset = '2px';
-      }
-      
-      const imgEl = document.createElement('img');
-      imgEl.src = img.src;
-      imgEl.draggable = false;
-      imgEl.style.cssText = 'width: 100%; display: block; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
-      wrapper.appendChild(imgEl);
-
-      if (img.locked) {
-        const lockBadge = document.createElement('div');
-        lockBadge.style.cssText = 'position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: flex;';
-        lockBadge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-        wrapper.appendChild(lockBadge);
-      }
-
-      wrapper.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        setSelectedImage(img.id);
-      });
+      spacer.style.cssText = `float: ${side}; width: ${img.width}px; height: ${img.height}px; margin: ${marginTop}px ${marginRight}px 12px ${marginLeft}px; pointer-events: none; opacity: 0;`;
       
       if (el.firstChild) {
-        el.insertBefore(wrapper, el.firstChild);
+        el.insertBefore(spacer, el.firstChild);
       } else {
-        el.appendChild(wrapper);
+        el.appendChild(spacer);
       }
     });
   }, [images, selectedImage, hasWrappedImages]);
@@ -736,11 +713,35 @@ export default function BlogReflectionEditor({
                 </div>
               ))}
 
-              {images.filter(img => img.textWrap).map((img) => (
-                !hasWrappedImages ? null : (
-                  selectedImage === img.id && !isDrawingMode && (
+              {hasWrappedImages && images.filter(img => img.textWrap).map((img) => (
+                <div key={`wrap-${img.id}`}>
+                  <div
+                    className={`absolute pointer-events-auto ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                    style={{
+                      left: `${img.x}px`,
+                      top: `${img.y}px`,
+                      width: `${img.width}px`,
+                      height: `${img.height}px`,
+                      transform: `rotate(${img.rotation}deg)`,
+                      zIndex: 15,
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setSelectedImage(img.id);
+                    }}
+                  >
+                    <img src={img.src} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {img.locked && (
+                      <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: 4, display: 'flex' }}>
+                        <Lock size={12} className="text-white" />
+                      </div>
+                    )}
+                  </div>
+                  {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      key={`toolbar-${img.id}`}
                       className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
                     >
@@ -780,8 +781,8 @@ export default function BlogReflectionEditor({
                         <X size={15} strokeWidth={3} />
                       </button>
                     </div>
-                  )
-                )
+                  )}
+                </div>
               ))}
             </div>
 

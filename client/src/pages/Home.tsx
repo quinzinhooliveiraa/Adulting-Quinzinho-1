@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp, Mic, Square } from "lucide-react";
@@ -10,7 +10,7 @@ import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn, analyzeCheckIn } from "@/utils/intelligentRecommendation";
 import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
-import { generateShareImage, type ShareImageTheme } from "@/utils/shareImage";
+import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
@@ -119,6 +119,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [recommendedContent, setRecommendedContent] = useState<RecommendedContent | null>(null);
   const [showReflectionEditor, setShowReflectionEditor] = useState(false);
+  const reminderPreviewRef = useRef<HTMLCanvasElement>(null);
+  const reflectionPreviewRef = useRef<HTMLCanvasElement>(null);
   
   const today = format(new Date(), "d 'de' MMMM", { locale: ptBR });
 
@@ -400,6 +402,18 @@ export default function Home() {
         break;
     }
   };
+
+  useEffect(() => {
+    if (isReminderShareOpen && reminderPreviewRef.current) {
+      renderShareImageToCanvas(reminderPreviewRef.current, { text: dailyReminder, theme: shareImageTheme, type: "reminder" });
+    }
+  }, [isReminderShareOpen, shareImageTheme, dailyReminder]);
+
+  useEffect(() => {
+    if (isShareOpen && reflectionPreviewRef.current) {
+      renderShareImageToCanvas(reflectionPreviewRef.current, { text: dailyReflection.text, theme: shareImageTheme, type: dailyReflection.type === "question" ? "question" : "reflection" });
+    }
+  }, [isShareOpen, shareImageTheme, dailyReflection]);
 
   const moodTips: Record<string, string[]> = {
     terrible: [
@@ -769,21 +783,7 @@ export default function Home() {
             
             <h3 className="text-xl font-serif text-foreground mb-4">Compartilhar Lembrete</h3>
             
-            {/* Visual Preview */}
-            <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-background to-secondary/30 p-8 flex flex-col items-center justify-center text-center border border-border/30 shadow-inner mb-6 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-noise opacity-[0.03]" />
-              <div className="relative z-10 space-y-6">
-                <Sparkles size={32} className="text-primary/40 mx-auto" />
-                <p className="font-serif text-2xl leading-relaxed text-foreground px-4">
-                  "{dailyReminder}"
-                </p>
-                <div className="pt-6">
-                  <div className="h-px w-12 bg-primary/30 mx-auto mb-4" />
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Casa dos 20</p>
-                  <p className="text-[9px] text-muted-foreground italic mt-1">Reflexões para a Vida Adulta</p>
-                </div>
-              </div>
-            </div>
+            <canvas ref={reminderPreviewRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-6" />
             
             <div className="grid grid-cols-4 gap-4 mb-6">
               <button onClick={() => handleSocialShare('instagram')} className="flex flex-col items-center space-y-3 group">
@@ -1004,7 +1004,9 @@ export default function Home() {
               <X size={18} />
             </button>
             
-            <h3 className="text-xl font-serif text-foreground mb-6">Compartilhar reflexão</h3>
+            <h3 className="text-xl font-serif text-foreground mb-4">Compartilhar reflexão</h3>
+            
+            <canvas ref={reflectionPreviewRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-6" />
             
             <div className="grid grid-cols-4 gap-4 mb-6">
               <button className="flex flex-col items-center space-y-3 group">

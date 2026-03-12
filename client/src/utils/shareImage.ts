@@ -7,12 +7,13 @@ interface ShareImageOptions {
   type?: ShareImageType;
 }
 
-export function generateShareImage({ text, theme = "dark", type = "reflection" }: ShareImageOptions) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1080;
+export function renderShareImageToCanvas(canvas: HTMLCanvasElement, { text, theme = "dark", type = "reflection" }: ShareImageOptions) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const scale = w / 1080;
 
   const isDark = theme === "dark";
   const bg = isDark ? "#1a1410" : "#f5f0e8";
@@ -22,29 +23,29 @@ export function generateShareImage({ text, theme = "dark", type = "reflection" }
   const accentSoft = isDark ? "rgba(196, 164, 120, 0.5)" : "rgba(120, 90, 50, 0.5)";
 
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 1080, 1080);
+  ctx.fillRect(0, 0, w, h);
   ctx.textAlign = "center";
 
-  const cx = 540;
+  const cx = w / 2;
   ctx.fillStyle = accent;
-  const starY = 180;
+  const starY = 180 * scale;
   for (let i = 0; i < 4; i++) {
     const angle = (i * Math.PI) / 2;
     ctx.beginPath();
     ctx.moveTo(cx, starY);
-    ctx.lineTo(cx + Math.cos(angle) * 28, starY + Math.sin(angle) * 28);
-    ctx.lineWidth = 2.5;
+    ctx.lineTo(cx + Math.cos(angle) * 28 * scale, starY + Math.sin(angle) * 28 * scale);
+    ctx.lineWidth = 2.5 * scale;
     ctx.strokeStyle = accent;
     ctx.stroke();
   }
   ctx.beginPath();
-  ctx.arc(cx + 20, starY - 20, 4, 0, Math.PI * 2);
+  ctx.arc(cx + 20 * scale, starY - 20 * scale, 4 * scale, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = textColor;
-  ctx.font = "italic 46px Georgia, serif";
-  const maxWidth = 820;
-  const lineHeight = 66;
+  ctx.font = `italic ${46 * scale}px Georgia, serif`;
+  const maxWidth = 820 * scale;
+  const lineHeight = 66 * scale;
   const quoteText = type === "question" ? text : `"${text}"`;
   const words = quoteText.split(" ");
   const lines: string[] = [];
@@ -61,28 +62,35 @@ export function generateShareImage({ text, theme = "dark", type = "reflection" }
   if (line.trim()) lines.push(line.trim());
 
   const totalH = lines.length * lineHeight;
-  let y = (1080 - totalH) / 2 + 40;
+  let y = (h - totalH) / 2 + 40 * scale;
   for (const l of lines) {
     ctx.fillText(l, cx, y);
     y += lineHeight;
   }
 
-  const brandY = 1080 - 150;
+  const brandY = h - 150 * scale;
   ctx.fillStyle = accentSoft;
-  ctx.fillRect(cx - 40, brandY - 30, 80, 1);
+  ctx.fillRect(cx - 40 * scale, brandY - 30 * scale, 80 * scale, 1 * scale);
 
   ctx.fillStyle = accentStrong;
-  ctx.font = "600 18px sans-serif";
-  ctx.letterSpacing = "6px";
+  ctx.font = `600 ${18 * scale}px sans-serif`;
+  ctx.letterSpacing = `${6 * scale}px`;
   ctx.fillText("CASA DOS 20", cx, brandY);
   ctx.letterSpacing = "0px";
 
   ctx.fillStyle = accentSoft;
-  ctx.font = "italic 16px Georgia, serif";
+  ctx.font = `italic ${16 * scale}px Georgia, serif`;
   const subtitle = type === "question"
     ? "Pergunta do App"
     : "Reflexões para a Vida Adulta";
-  ctx.fillText(subtitle, cx, brandY + 30);
+  ctx.fillText(subtitle, cx, brandY + 30 * scale);
+}
+
+export function generateShareImage(options: ShareImageOptions) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1080;
+  renderShareImageToCanvas(canvas, options);
 
   const link = document.createElement("a");
   link.href = canvas.toDataURL("image/png");
