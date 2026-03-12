@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus } from "lucide-react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye } from "lucide-react";
+import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { shareEntry } from "@/utils/journalStorage";
@@ -24,6 +25,51 @@ const analyzeTextForTags = (text: string) => {
 
   return Array.from(foundTags).slice(0, 3);
 };
+
+function getEntryTitle(text: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.text) {
+      const rawText = parsed.text;
+      const firstLine = rawText.split('\n')[0].trim();
+      return firstLine.length > 60 ? firstLine.substring(0, 60) + "..." : firstLine || "Reflexão sem título";
+    }
+  } catch {}
+  const firstLine = text.split('\n')[0].trim();
+  return firstLine.length > 60 ? firstLine.substring(0, 60) + "..." : firstLine || "Reflexão sem título";
+}
+
+function getEntrySummary(text: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.text) {
+      const rawText = parsed.text;
+      const lines = rawText.split('\n').filter((l: string) => l.trim());
+      const summary = lines.slice(0, 3).join(' ').trim();
+      return summary.length > 120 ? summary.substring(0, 120) + "..." : summary;
+    }
+  } catch {}
+  const lines = text.split('\n').filter((l: string) => l.trim());
+  const summary = lines.slice(0, 3).join(' ').trim();
+  return summary.length > 120 ? summary.substring(0, 120) + "..." : summary;
+}
+
+function hasImages(text: string): boolean {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && ((parsed.images && parsed.images.length > 0) || parsed.banner);
+  } catch {}
+  return false;
+}
+
+function getFirstImage(text: string): string | null {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.banner) return parsed.banner;
+    if (parsed?.images && parsed.images.length > 0) return parsed.images[0].src;
+  } catch {}
+  return null;
+}
 
 const TAGS = ["Todas", "ansiedade", "propósito", "identidade", "solidão", "crescimento", "amor", "incerteza", "relações"];
 
@@ -57,6 +103,14 @@ export default function Journal() {
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [showShare, setShowShare] = useState<string | number | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<LocalJournalEntry | null>(null);
+  const [archivedIds, setArchivedIds] = useState<Set<number | string>>(() => {
+    try {
+      const stored = localStorage.getItem("casa-dos-20-archived-entries");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showArchived, setShowArchived] = useState(false);
 
   const entries: LocalJournalEntry[] = apiEntries.map(e => ({
     ...e,
@@ -96,13 +150,11 @@ export default function Journal() {
       } else {
         await createEntryMut.mutateAsync({ text: entryText, tags: finalTags });
       }
-    } catch {
-      // Will show error via UI
-    }
+    } catch {}
 
     addNotification({
       type: "journal",
-      title: "✍️ Diário Atualizado",
+      title: "Diário Atualizado",
       message: isEditing ? "Sua reflexão foi atualizada!" : "Nova reflexão adicionada ao diário!",
     });
     
@@ -116,8 +168,22 @@ export default function Journal() {
   };
 
   const handleEdit = (entry: LocalJournalEntry) => {
+    setViewingEntry(null);
+    let textToEdit = entry.text;
+    try {
+      const parsed = JSON.parse(entry.text);
+      if (parsed && parsed.text !== undefined) {
+        setEditingEntry({
+          ...entry,
+          text: entry.text,
+        });
+        setIsEditing(entry.id as number);
+        setShowBlogEditor(true);
+        return;
+      }
+    } catch {}
     setIsEditing(entry.id as number);
-    setEntryText(entry.text);
+    setEntryText(textToEdit);
     setSelectedTags(entry.tags);
     setIsWriting(true);
   };
@@ -126,17 +192,31 @@ export default function Journal() {
     if (confirm("Tem certeza que deseja deletar esta entrada?")) {
       try {
         await deleteEntryMut.mutateAsync(id as number);
-      } catch {
-        // Error handling
-      }
+        setViewingEntry(null);
+      } catch {}
     }
   };
 
+  const handleArchive = (id: number | string) => {
+    setArchivedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      localStorage.setItem("casa-dos-20-archived-entries", JSON.stringify(Array.from(next)));
+      return next;
+    });
+    setViewingEntry(null);
+  };
+
   const handleShare = (entry: LocalJournalEntry, platform: string) => {
-    const shareData = { id: String(entry.id), date: entry.date, text: entry.text, tags: entry.tags, timestamp: Date.now() };
+    const plainText = getEntrySummary(entry.text);
+    const shareData = { id: String(entry.id), date: entry.date, text: plainText, tags: entry.tags, timestamp: Date.now() };
     const url = shareEntry(shareData, platform);
     if (platform === "instagram") {
-      const text = `"${entry.text}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
+      const text = `"${plainText}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
       navigator.clipboard.writeText(text);
       alert("Texto copiado! Cole no Instagram direto.");
     } else {
@@ -145,19 +225,70 @@ export default function Journal() {
     setShowShare(null);
   };
 
+  const handleOpenEntry = (entry: LocalJournalEntry) => {
+    setViewingEntry(entry);
+  };
+
   const filteredEntries = activeTag === "Todas" ? entries : entries.filter(e => e.tags.includes(activeTag));
+  const visibleEntries = showArchived 
+    ? filteredEntries.filter(e => archivedIds.has(e.id))
+    : filteredEntries.filter(e => !archivedIds.has(e.id));
+
+  const renderEntryContent = (text: string) => {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.text !== undefined) {
+        return (
+          <div className="space-y-4">
+            {parsed.banner && (
+              <img src={parsed.banner} alt="" className="w-full h-48 object-cover rounded-2xl" />
+            )}
+            <p className="text-foreground text-lg leading-relaxed font-serif whitespace-pre-wrap">
+              {parsed.text}
+            </p>
+            {parsed.images && parsed.images.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {parsed.images.map((img: any, i: number) => (
+                  <img key={i} src={img.src} alt="" className="rounded-xl max-h-48 object-cover" style={{ width: img.width || 200 }} />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+    } catch {}
+    return (
+      <p className="text-foreground text-lg leading-relaxed font-serif italic whitespace-pre-wrap">
+        "{text}"
+      </p>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
-      <div className="px-6 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
+      <div className="px-6 md:px-10 lg:px-16 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-serif text-foreground">Diário</h1>
-          <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
-            {entries.length} entradas
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                showArchived 
+                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="button-toggle-archived"
+            >
+              <Archive size={12} className="inline mr-1" />
+              {showArchived ? "Arquivadas" : "Arquivo"}
+            </button>
+            <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
+              {visibleEntries.length} entradas
+            </span>
+          </div>
         </div>
 
-        {!isWriting && (
+        {!isWriting && !viewingEntry && (
           <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
             {TAGS.map(tag => (
               <button
@@ -176,8 +307,77 @@ export default function Journal() {
         )}
       </div>
 
-      <div className="px-6 space-y-4">
-        {isWriting && !showNotebook ? (
+      <div className="px-6 md:px-10 lg:px-16 space-y-4">
+        {viewingEntry ? (
+          <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setViewingEntry(null)}
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <ChevronDown size={16} className="rotate-90" /> Voltar
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(viewingEntry)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  title="Editar"
+                  data-testid="button-edit-entry"
+                >
+                  <Edit2 size={16} className="text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => handleArchive(viewingEntry.id)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  title={archivedIds.has(viewingEntry.id) ? "Desarquivar" : "Arquivar"}
+                  data-testid="button-archive-entry"
+                >
+                  <Archive size={16} className={archivedIds.has(viewingEntry.id) ? "text-amber-500" : "text-muted-foreground"} />
+                </button>
+                <button
+                  onClick={() => setShowShare(viewingEntry.id)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  title="Compartilhar"
+                  data-testid="button-share-entry"
+                >
+                  <Share2 size={16} className="text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => handleDelete(viewingEntry.id)}
+                  className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                  title="Deletar"
+                  data-testid="button-delete-entry"
+                >
+                  <Trash2 size={16} className="text-red-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                {viewingEntry.date}
+              </span>
+              
+              {renderEntryContent(viewingEntry.text)}
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                {viewingEntry.tags.map(tag => (
+                  <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+
+              {showShare === viewingEntry.id && (
+                <div className="flex gap-2 animate-in slide-in-from-bottom">
+                  <Button size="sm" onClick={() => handleShare(viewingEntry, "twitter")} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">Twitter</Button>
+                  <Button size="sm" onClick={() => handleShare(viewingEntry, "substack")} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">Substack</Button>
+                  <Button size="sm" onClick={() => handleShare(viewingEntry, "instagram")} className="flex-1 bg-pink-500 hover:bg-pink-600 text-white">Instagram</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : isWriting && !showNotebook ? (
           <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
@@ -202,9 +402,15 @@ export default function Journal() {
                 value={entryText}
                 onChange={(e) => setEntryText(e.target.value)}
                 placeholder="Como você está se sentindo agora?"
-                className="min-h-[300px] bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 text-lg font-serif leading-relaxed resize-none shadow-inner"
+                className="min-h-[300px] bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 pr-12 text-lg font-serif leading-relaxed resize-none shadow-inner"
                 autoFocus
               />
+              <div className="absolute top-4 right-4">
+                <AudioButton 
+                  onText={(text) => setEntryText(prev => prev ? prev.trimEnd() + " " + text : text)}
+                  size={20}
+                />
+              </div>
               {isSaved && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-3xl z-10 animate-in fade-in">
                   <div className="bg-primary text-primary-foreground p-4 rounded-full shadow-xl scale-110">
@@ -282,88 +488,90 @@ export default function Journal() {
         ) : (
           <>
           <div className="space-y-4 animate-in fade-in duration-700">
-            {filteredEntries.length > 0 ? (
-              filteredEntries.map(entry => (
-                <div 
-                  key={entry.id} 
-                  className="group p-6 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all duration-300"
-                  data-testid={`journal-entry-${entry.id}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                      {entry.date}
-                    </span>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(entry)}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 size={16} className="text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={() => setShowShare(entry.id)}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                        title="Compartilhar"
-                      >
-                        <Share2 size={16} className="text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                        title="Deletar"
-                      >
-                        <Trash2 size={16} className="text-red-500" />
-                      </button>
+            {visibleEntries.length > 0 ? (
+              visibleEntries.map(entry => {
+                const title = getEntryTitle(entry.text);
+                const summary = getEntrySummary(entry.text);
+                const thumbnail = getFirstImage(entry.text);
+                const isArchived = archivedIds.has(entry.id);
+                
+                return (
+                  <div 
+                    key={entry.id} 
+                    className="group p-5 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.99]"
+                    onClick={() => handleOpenEntry(entry)}
+                    data-testid={`journal-entry-${entry.id}`}
+                  >
+                    <div className="flex gap-4">
+                      {thumbnail && (
+                        <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-muted">
+                          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                            {entry.date}
+                          </span>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleEdit(entry)}
+                              className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 size={14} className="text-muted-foreground" />
+                            </button>
+                            <button
+                              onClick={() => handleArchive(entry.id)}
+                              className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                              title={isArchived ? "Desarquivar" : "Arquivar"}
+                            >
+                              <Archive size={14} className={isArchived ? "text-amber-500" : "text-muted-foreground"} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Deletar"
+                            >
+                              <Trash2 size={14} className="text-red-500" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-base font-serif text-foreground font-medium leading-snug mb-1 line-clamp-1">
+                          {title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                          {summary}
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {entry.tags.map(tag => (
+                            <span key={tag} className="text-[9px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
+                              #{tag}
+                            </span>
+                          ))}
+                          {hasImages(entry.text) && (
+                            <span className="text-[9px] px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter">
+                              <ImagePlus size={9} className="inline mr-0.5" /> fotos
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground/50 shrink-0 mt-3" />
                     </div>
                   </div>
-                  
-                  <p className="text-foreground text-lg leading-relaxed mb-6 font-serif italic">
-                    "{entry.text}"
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {entry.tags.map(tag => (
-                      <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {showShare === entry.id && (
-                    <div className="mt-4 flex gap-2 animate-in slide-in-from-bottom">
-                      <Button
-                        size="sm"
-                        onClick={() => handleShare(entry, "twitter")}
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
-                      >
-                        Twitter
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleShare(entry, "substack")}
-                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                      >
-                        Substack
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleShare(entry, "instagram")}
-                        className="flex-1 bg-pink-500 hover:bg-pink-600 text-white"
-                      >
-                        Instagram
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="mt-8 p-10 rounded-3xl border-2 border-dashed border-border flex flex-col items-center justify-center text-center space-y-4 opacity-40">
                 <div className="p-4 rounded-full bg-muted">
                   <PenLine size={32} className="text-muted-foreground" />
                 </div>
                 <p className="font-serif text-lg text-muted-foreground italic">
-                  Sua mente é um espaço sagrado.<br/>O que você precisa libertar hoje?
+                  {showArchived 
+                    ? "Nenhuma reflexão arquivada ainda." 
+                    : "Sua mente é um espaço sagrado.\nO que você precisa libertar hoje?"}
                 </p>
               </div>
             )}
@@ -384,8 +592,28 @@ export default function Journal() {
 
       {showBlogEditor && editingEntry && (
         <BlogReflectionEditor
-          initialTitle={editingEntry.text.substring(0, 50)}
-          initialText={editingEntry.text}
+          initialTitle={getEntryTitle(editingEntry.text)}
+          initialText={(() => {
+            try {
+              const parsed = JSON.parse(editingEntry.text);
+              if (parsed && parsed.text !== undefined) return parsed.text;
+            } catch {}
+            return editingEntry.text;
+          })()}
+          initialImages={(() => {
+            try {
+              const parsed = JSON.parse(editingEntry.text);
+              if (parsed && parsed.images) return parsed.images;
+            } catch {}
+            return undefined;
+          })()}
+          initialBanner={(() => {
+            try {
+              const parsed = JSON.parse(editingEntry.text);
+              if (parsed && parsed.banner) return parsed.banner;
+            } catch {}
+            return undefined;
+          })()}
           topic={editingEntry.text}
           showTitleEdit={true}
           origin="Do Diário"
@@ -401,12 +629,10 @@ export default function Journal() {
               } else {
                 await createEntryMut.mutateAsync({ text: content, tags: finalTags });
               }
-            } catch {
-              // Error handling
-            }
+            } catch {}
             addNotification({
               type: "journal",
-              title: "✍️ Pensamento Guardado",
+              title: "Pensamento Guardado",
               message: `"${title}" foi salvo com sucesso!`,
             });
             setIsWriting(false);
@@ -419,7 +645,7 @@ export default function Journal() {
         />
       )}
 
-      {!isWriting && (
+      {!isWriting && !viewingEntry && (
         <div className="fixed bottom-24 right-6 z-40 animate-in zoom-in slide-in-from-bottom-4 duration-500">
           <Button 
             onClick={() => setIsWriting(true)}

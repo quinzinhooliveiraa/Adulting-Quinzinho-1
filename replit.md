@@ -49,8 +49,27 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Uses Web Speech API (SpeechRecognition / webkitSpeechRecognition)
 - Language: pt-BR, continuous mode, interim results
 - Shared hook: `client/src/hooks/useSpeechToText.ts`
-- Available in: AnswerSheet (Questions), BlogReflectionEditor, NotebookEditor
+- Reusable component: `client/src/components/AudioButton.tsx`
+- Available in: AnswerSheet (Questions), BlogReflectionEditor, NotebookEditor, Home check-in, Home reflection, Journal textarea
 - Browser-native (no external API needed), supported on Chrome/Edge/Safari
+
+## Responsive Layout
+- MobileLayout container: max-w-md (mobile), md:max-w-2xl (tablet), lg:max-w-4xl (desktop), xl:max-w-6xl (large screens)
+- Pages use responsive padding: px-6 md:px-10 lg:px-16
+- Mood grid: 3 cols mobile, 6 cols on md+
+- BlogReflectionEditor: responsive padding and font sizes
+
+## Login Page
+- Logo images: `logo-light.png` (black logo for light mode), `logo-dark.png` (white logo for dark mode)
+- Uses `useTheme().resolvedTheme` to swap logos dynamically
+
+## Journal Features
+- Entries show title (first line) + summary (first 120 chars)
+- Clickable entries open full detail view with edit/archive/delete/share
+- Archive system uses localStorage key `casa-dos-20-archived-entries`
+- Entries with images show thumbnail and "fotos" badge
+- BlogReflectionEditor supports `initialImages` and `initialBanner` props for editing saved rich entries
+- Pinch-to-zoom/rotate on mobile for image manipulation (two-finger gesture)
 
 ## Key Files
 - `shared/schema.ts` — Drizzle schema + Zod insert schemas + types
@@ -108,6 +127,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `casa-dos-20-notifications`
 - `casa-dos-20-profile-photo`
 - `casa-dos-20-seen-{title}` — weighted card seen tracking per category
+- `casa-dos-20-archived-entries` — array of archived journal entry IDs
 
 ## Amazon Link
 https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/

@@ -22,6 +22,8 @@ interface ImageElement {
 interface BlogReflectionEditorProps {
   initialTitle?: string;
   initialText: string;
+  initialImages?: ImageElement[];
+  initialBanner?: string;
   origin?: string;
   topic?: string;
   showTitleEdit?: boolean;
@@ -32,6 +34,8 @@ interface BlogReflectionEditorProps {
 export default function BlogReflectionEditor({
   initialTitle = "",
   initialText,
+  initialImages,
+  initialBanner,
   origin,
   topic = "",
   showTitleEdit = true,
@@ -43,8 +47,8 @@ export default function BlogReflectionEditor({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [images, setImages] = useState<ImageElement[]>([]);
-  const [bannerUrl, setBannerUrl] = useState<string>("");
+  const [images, setImages] = useState<ImageElement[]>(initialImages || []);
+  const [bannerUrl, setBannerUrl] = useState<string>(initialBanner || "");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
@@ -61,6 +65,7 @@ export default function BlogReflectionEditor({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const contentInitialized = useRef(false);
+  const touchRef = useRef<{ initialDistance: number; initialRotation: number; initialWidth: number; initialHeight: number; initialAngle: number } | null>(null);
 
   const hasWrappedImages = images.some(img => img.textWrap);
 
@@ -251,28 +256,77 @@ export default function BlogReflectionEditor({
     }, 800);
   };
 
+  const getTouchDistance = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getTouchAngle = (touches: React.TouchList) => {
+    return Math.atan2(
+      touches[1].clientY - touches[0].clientY,
+      touches[1].clientX - touches[0].clientX
+    ) * (180 / Math.PI);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, img: ImageElement) => {
+    if (isDrawingMode || img.locked) return;
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+      touchRef.current = {
+        initialDistance: getTouchDistance(e.touches),
+        initialRotation: img.rotation,
+        initialWidth: img.width,
+        initialHeight: img.height,
+        initialAngle: getTouchAngle(e.touches),
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, imgId: string) => {
+    if (!touchRef.current || e.touches.length !== 2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const currentDistance = getTouchDistance(e.touches);
+    const currentAngle = getTouchAngle(e.touches);
+    const scale = currentDistance / touchRef.current.initialDistance;
+    const angleDelta = currentAngle - touchRef.current.initialAngle;
+    
+    updateImage(imgId, {
+      width: Math.max(50, touchRef.current.initialWidth * scale),
+      height: Math.max(50, touchRef.current.initialHeight * scale),
+      rotation: touchRef.current.initialRotation + angleDelta,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    touchRef.current = null;
+  };
+
   const freeImages = images.filter(img => !img.textWrap);
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="bg-background rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl">
         
-        <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-8 py-6 border-b border-border/40">
-          <h2 className="font-serif text-[28px] text-foreground">Guardar Pensamento</h2>
+        <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
+          <h2 className="font-serif text-xl sm:text-[28px] text-foreground">Guardar Pensamento</h2>
           <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground">
             <X size={24} strokeWidth={1.5} />
           </button>
         </div>
 
         {origin && (
-          <div className="px-8 pt-6 pb-2">
+          <div className="px-6 sm:px-8 pt-4 sm:pt-6 pb-2">
             <p className="text-[11px] text-muted-foreground uppercase tracking-[0.15em] font-medium">
               ORIGEM: {origin}
             </p>
           </div>
         )}
 
-        <div className="p-8 space-y-8 flex-1">
+        <div className="p-6 sm:p-8 space-y-6 sm:space-y-8 flex-1">
           {showTitleEdit && (
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">Título</label>
@@ -282,7 +336,7 @@ export default function BlogReflectionEditor({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Dê um título para sua reflexão..."
-                  className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl font-serif text-2xl text-foreground focus:outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
+                  className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-muted/30 border border-border rounded-2xl font-serif text-xl sm:text-2xl text-foreground focus:outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -452,6 +506,9 @@ export default function BlogReflectionEditor({
                     touchAction: 'none',
                     zIndex: img.zIndex,
                   }}
+                  onTouchStart={(e) => handleTouchStart(e, img)}
+                  onTouchMove={(e) => handleTouchMove(e, img.id)}
+                  onTouchEnd={handleTouchEnd}
                   onPointerDown={(e) => {
                     if (isDrawingMode) return;
                     e.stopPropagation();
@@ -576,7 +633,7 @@ export default function BlogReflectionEditor({
 
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button
@@ -586,8 +643,8 @@ export default function BlogReflectionEditor({
                         }}
                         className={`p-2 rounded-full transition-colors touch-none ${
                           img.locked 
-                            ? "bg-amber-50 text-amber-600" 
-                            : "bg-white text-gray-500 hover:bg-gray-50"
+                            ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600" 
+                            : "bg-white dark:bg-background text-gray-500 hover:bg-gray-50 dark:hover:bg-muted"
                         }`}
                         title={img.locked ? "Destrancar" : "Trancar"}
                       >
@@ -598,7 +655,7 @@ export default function BlogReflectionEditor({
                           e.stopPropagation();
                           updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
                         }}
-                        className="p-2 bg-white text-teal-500 hover:bg-teal-50 hover:text-teal-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
                       >
                         <WrapText size={15} strokeWidth={2.5} />
@@ -609,7 +666,7 @@ export default function BlogReflectionEditor({
                           const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
                           updateImage(img.id, { zIndex: maxZ + 1 });
                         }}
-                        className="p-2 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-white dark:bg-background text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 rounded-full transition-colors touch-none"
                         title="Trazer para frente"
                       >
                         <ArrowUpToLine size={15} strokeWidth={2.5} />
@@ -619,7 +676,7 @@ export default function BlogReflectionEditor({
                           e.stopPropagation();
                           updateImage(img.id, { zIndex: 10 });
                         }}
-                        className="p-2 bg-white text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-white dark:bg-background text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-600 rounded-full transition-colors touch-none"
                         title="Enviar para trás"
                       >
                         <ArrowDownToLine size={15} strokeWidth={2.5} />
@@ -630,7 +687,7 @@ export default function BlogReflectionEditor({
                           e.stopPropagation();
                           deleteImage(img.id);
                         }}
-                        className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-white dark:bg-background text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 rounded-full transition-colors touch-none"
                         title="Excluir"
                       >
                         <X size={15} strokeWidth={3} />
@@ -645,7 +702,7 @@ export default function BlogReflectionEditor({
                   selectedImage === img.id && !isDrawingMode && (
                     <div 
                       key={`toolbar-${img.id}`}
-                      className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button
@@ -655,8 +712,8 @@ export default function BlogReflectionEditor({
                         }}
                         className={`p-2 rounded-full transition-colors touch-none ${
                           img.locked 
-                            ? "bg-amber-50 text-amber-600" 
-                            : "bg-white text-gray-500 hover:bg-gray-50"
+                            ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600" 
+                            : "bg-white dark:bg-background text-gray-500 hover:bg-gray-50 dark:hover:bg-muted"
                         }`}
                         title={img.locked ? "Destrancar" : "Trancar"}
                       >
@@ -667,7 +724,7 @@ export default function BlogReflectionEditor({
                           e.stopPropagation();
                           updateImage(img.id, { textWrap: false, zIndex: 20 });
                         }}
-                        className="p-2 bg-teal-50 text-teal-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-teal-50 dark:bg-teal-900/30 text-teal-600 rounded-full transition-colors touch-none"
                         title="Modo livre (desativar contorno)"
                       >
                         <WrapText size={15} strokeWidth={2.5} />
@@ -678,7 +735,7 @@ export default function BlogReflectionEditor({
                           e.stopPropagation();
                           deleteImage(img.id);
                         }}
-                        className="p-2 bg-white text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors touch-none"
+                        className="p-2 bg-white dark:bg-background text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 rounded-full transition-colors touch-none"
                         title="Excluir"
                       >
                         <X size={15} strokeWidth={3} />
@@ -733,14 +790,14 @@ export default function BlogReflectionEditor({
             <Button
               onClick={onClose}
               variant="outline"
-              className="flex-1 h-14 rounded-2xl border-border text-muted-foreground hover:bg-muted text-base font-medium"
+              className="flex-1 h-12 sm:h-14 rounded-2xl border-border text-muted-foreground hover:bg-muted text-base font-medium"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
               disabled={isSaving || (!title.trim() && !content.trim() && images.length === 0)}
-              className="flex-1 h-14 bg-foreground hover:bg-foreground/90 text-background rounded-2xl text-base font-medium shadow-md transition-all active:scale-[0.98]"
+              className="flex-1 h-12 sm:h-14 bg-foreground hover:bg-foreground/90 text-background rounded-2xl text-base font-medium shadow-md transition-all active:scale-[0.98]"
             >
               {isSaving ? "Guardando..." : "Guardar Pensamento"}
             </Button>

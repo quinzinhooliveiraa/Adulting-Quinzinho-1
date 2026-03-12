@@ -43,9 +43,9 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-background rounded-t-3xl w-full max-w-md border-t border-border shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[85vh] flex flex-col">
+      <div className="relative bg-background rounded-t-3xl sm:rounded-3xl w-full max-w-md border-t sm:border border-border shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[85vh] flex flex-col">
         <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
           <h3 className="text-sm font-medium text-foreground">Enviar Feedback</h3>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted">
@@ -55,10 +55,10 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
         <div className="p-4 space-y-3 flex-1 overflow-y-auto">
           <div className="flex gap-1.5">
             {[
-              { id: "feedback", label: "💬 Feedback" },
-              { id: "idea", label: "💡 Ideia" },
-              { id: "bug", label: "🐛 Bug" },
-              { id: "support", label: "🆘 Suporte" },
+              { id: "feedback", label: "Feedback" },
+              { id: "idea", label: "Ideia" },
+              { id: "bug", label: "Bug" },
+              { id: "support", label: "Suporte" },
             ].map((t) => (
               <button
                 key={t.id}
@@ -157,7 +157,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground bg-noise flex justify-center">
-      <div className="w-full max-w-md bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-6xl bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col transition-all">
         
         <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
           <NotificationCenter />

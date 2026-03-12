@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp, Mic, Square } from "lucide-react";
+import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
@@ -477,7 +478,7 @@ export default function Home() {
   }
 
   return (
-    <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+    <div className="px-6 md:px-10 lg:px-16 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       
       <header className="space-y-2">
         <div className="flex justify-between items-start">
@@ -505,7 +506,7 @@ export default function Home() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {moodIcons.map((m) => {
             const Icon = m.icon;
             const isActive = mood === m.id;
@@ -536,12 +537,20 @@ export default function Home() {
             <p className="text-sm text-muted-foreground font-medium">
               O que está acontecendo? (opcional)
             </p>
-            <Textarea
-              value={checkInContext}
-              onChange={(e) => setCheckInContext(e.target.value)}
-              placeholder="Compartilhe o contexto... qual é a situação, o que você está sentindo..."
-              className="min-h-24 rounded-xl resize-none"
-            />
+            <div className="relative">
+              <Textarea
+                value={checkInContext}
+                onChange={(e) => setCheckInContext(e.target.value)}
+                placeholder="Compartilhe o contexto... qual é a situação, o que você está sentindo..."
+                className="min-h-24 rounded-xl resize-none pr-12"
+              />
+              <div className="absolute top-3 right-3">
+                <AudioButton 
+                  onText={(text) => setCheckInContext(prev => prev ? prev.trimEnd() + " " + text : text)} 
+                  size={20}
+                />
+              </div>
+            </div>
             <Button
               onClick={handleSubmitCheckIn}
               disabled={isSubmittingCheckIn}
@@ -656,9 +665,15 @@ export default function Home() {
                     value={reflectionText}
                     onChange={(e) => setReflectionText(e.target.value)}
                     placeholder="Sua mente é um espaço seguro. Escreva livremente..."
-                    className="min-h-[160px] bg-background/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-2xl p-4 text-base resize-none font-serif leading-relaxed placeholder:font-sans placeholder:text-sm"
+                    className="min-h-[160px] bg-background/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-2xl p-4 pr-12 text-base resize-none font-serif leading-relaxed placeholder:font-sans placeholder:text-sm"
                     autoFocus={isReflecting}
                   />
+                  <div className="absolute top-3 right-3">
+                    <AudioButton 
+                      onText={(text) => setReflectionText(prev => prev ? prev.trimEnd() + " " + text : text)} 
+                      size={20}
+                    />
+                  </div>
                   {isSaved && (
                     <div className="absolute bottom-4 right-4 bg-primary text-primary-foreground p-2 rounded-full shadow-lg animate-in zoom-in">
                       <Check size={16} />

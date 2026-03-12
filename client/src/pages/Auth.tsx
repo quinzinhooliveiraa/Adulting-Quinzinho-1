@@ -3,7 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound } from "lucide-react";
-import bookCover from "@/assets/images/book-cover.png";
+import logoLight from "@/assets/images/logo-light.png";
+import logoDark from "@/assets/images/logo-dark.png";
+import { useTheme } from "next-themes";
 
 export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => void }) {
   const [mode, setMode] = useState<"login" | "register" | "reset">("login");
@@ -15,6 +17,7 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { login, register } = useAuth();
+  const { resolvedTheme } = useTheme();
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -86,15 +89,16 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
   const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isResetValid;
 
+  const logoSrc = resolvedTheme === "dark" ? logoDark : logoLight;
+
   return (
     <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-8 overflow-y-auto">
       <div className="w-full max-w-sm flex flex-col items-center space-y-8">
-        <div className="w-32 h-44 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden shadow-inner border border-border/20">
-          <img src={bookCover} alt="Casa dos 20" className="w-4/5 shadow-lg rounded-md rotate-2" />
+        <div className="w-48 h-48 flex items-center justify-center overflow-hidden">
+          <img src={logoSrc} alt="Casa dos 20" className="w-full h-full object-contain" />
         </div>
 
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-serif text-foreground">Casa dos 20</h1>
           <p className="text-sm text-muted-foreground">
             {mode === "login" ? "Bem-vindo de volta" : mode === "register" ? "Crie sua conta" : "Redefinir senha"}
           </p>
