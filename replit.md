@@ -32,6 +32,11 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - API routes: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/send` (admin), `/api/push/test`
 - Toggle in user menu (MobileLayout); admin can send to all from Admin > Push tab
 - Service worker registered on app load in `client/src/main.tsx`
+- **Scheduled Notifications**: `scheduled_notifications` table (id, title, body, url, intervalHours, isActive, lastSentAt)
+  - Admin UI in Push tab: create/toggle/delete recurring notifications
+  - Scheduler runs every 5 min on server, sends due notifications to all subscribers
+  - Frequency options: 6h, 12h, daily, 2d, 3d, weekly
+  - API: GET/POST `/api/notifications/scheduled`, PATCH/DELETE `/api/notifications/scheduled/:id`
 
 ## Jornadas (30-Day Challenges)
 - 6 journeys across 2 seasons aligned with book themes: autoconhecimento, propósito, relações, incerteza, crescimento, solidão

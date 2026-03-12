@@ -6,6 +6,7 @@ import {
   Crown,
   Flame,
   CheckCircle2,
+  Check,
   Clock,
   Target,
   Heart,
@@ -421,28 +422,32 @@ export default function Journey() {
 
   const seasons = [...new Set(JOURNEYS.map((j) => j.season))];
 
+  const orderedJourneys = JOURNEYS.map((j, i) => ({ ...j, index: i + 1 }));
+
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-700" data-testid="page-journey">
-      <div className="px-6 pt-14 pb-2">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Flame size={22} className="text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-serif text-foreground" data-testid="text-journey-title">Jornadas</h1>
-            <p className="text-xs text-muted-foreground">Desafios de 30 dias para evoluir</p>
-          </div>
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-amber-100/40 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-orange-950/10 dark:to-transparent" />
+        <div className="absolute top-0 right-0 w-64 h-48 opacity-10">
+          <svg viewBox="0 0 200 100" className="w-full h-full text-amber-700 dark:text-amber-400">
+            <path d="M0,80 Q30,40 60,70 T120,50 T180,65 T200,45" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M0,90 Q40,60 80,80 T160,60 T200,70" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </div>
+        <div className="relative px-6 pt-14 pb-8">
+          <h1 className="text-3xl font-serif text-foreground" data-testid="text-journey-title">A Jornada</h1>
+          <p className="text-sm text-muted-foreground mt-1">Seu caminho através da Casa dos 20</p>
         </div>
       </div>
 
       {!isPremium && (
-        <div className="mx-6 mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+        <div className="mx-6 mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
           <div className="flex items-center gap-2 mb-1">
             <Crown size={16} className="text-amber-600" />
             <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Recurso Premium</span>
           </div>
           <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-            Desbloqueie todas as jornadas com o plano premium por R$9,90/mês.
+            Desbloqueie todas as jornadas com o plano premium.
           </p>
         </div>
       )}
@@ -452,105 +457,69 @@ export default function Journey() {
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="px-6 mt-6 space-y-8">
-          {seasons.map((season) => (
-            <div key={season}>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={14} className="text-primary" />
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-primary font-bold">{season}</h2>
-              </div>
-              <div className="space-y-3">
-                {JOURNEYS.filter((j) => j.season === season).map((journey) => {
-                  const Icon = ICON_MAP[journey.icon] || Target;
-                  const status = getStatus(journey);
-                  const progress = getProgress(journey.id, journey.totalDays);
-                  const completedDays = progressMap[journey.id]?.completedDays.length || 0;
-                  const isLocked = status === "locked";
+        <div className="px-6 mt-2">
+          <div className="relative">
+            <div className="absolute left-[19px] top-6 bottom-6 w-px bg-border" />
 
-                  return (
-                    <Link
-                      key={journey.id}
-                      href={isLocked ? "#" : `/journey/${journey.id}`}
-                      onClick={(e) => isLocked && e.preventDefault()}
-                    >
-                      <div
-                        className={`relative overflow-hidden rounded-2xl border transition-all active:scale-[0.98] ${
-                          isLocked
-                            ? "opacity-50 border-border bg-muted/30 cursor-not-allowed"
-                            : status === "completed"
-                            ? "border-green-500/30 bg-green-500/5"
-                            : status === "in-progress"
-                            ? "border-primary/30 bg-primary/5"
-                            : "border-border bg-card hover:border-primary/20"
-                        }`}
-                        data-testid={`card-journey-${journey.id}`}
-                      >
-                        <div className="p-4 flex items-center gap-4">
-                          <div
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                            style={{
-                              background: isLocked
-                                ? "hsl(var(--muted))"
-                                : `linear-gradient(135deg, ${journey.gradientFrom}, ${journey.gradientTo})`,
-                            }}
-                          >
-                            {isLocked ? (
-                              <LockKeyhole size={20} className="text-muted-foreground" />
-                            ) : status === "completed" ? (
-                              <Trophy size={20} className="text-white" />
-                            ) : (
-                              <Icon size={20} className="text-white" />
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm text-foreground truncate">{journey.title}</h3>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">{journey.subtitle}</p>
-                            {status === "in-progress" && (
-                              <div className="mt-2 flex items-center gap-2">
-                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-primary rounded-full transition-all"
-                                    style={{ width: `${progress}%` }}
-                                  />
-                                </div>
-                                <span className="text-[10px] font-medium text-primary">{completedDays}/{journey.totalDays}</span>
-                              </div>
-                            )}
-                            {status === "completed" && (
-                              <div className="mt-1 flex items-center gap-1">
-                                <CheckCircle2 size={12} className="text-green-500" />
-                                <span className="text-[10px] font-medium text-green-600 dark:text-green-400">Concluída!</span>
-                              </div>
-                            )}
-                            {isLocked && (
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                Complete "{JOURNEYS.find((j) => j.id === journey.unlockAfter)?.title}" para desbloquear
-                              </p>
-                            )}
-                          </div>
-
-                          {!isLocked && (
-                            <ChevronRight size={18} className="text-muted-foreground shrink-0" />
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          <div className="p-6 rounded-2xl bg-secondary/30 border border-dashed border-border flex flex-col items-center text-center space-y-3 mt-6">
-            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center text-primary shadow-inner">
-              <Sparkles size={20} />
-            </div>
             <div className="space-y-1">
-              <h4 className="font-serif text-base">Novas Jornadas em Breve</h4>
-              <p className="text-[11px] text-muted-foreground px-4">
-                Jornadas sobre Amor Próprio, Finanças dos 20 e Saúde Mental chegando em breve.
-              </p>
+              {orderedJourneys.map((journey) => {
+                const status = getStatus(journey);
+                const isLocked = status === "locked";
+                const isInProgress = status === "in-progress";
+                const isCompleted = status === "completed";
+
+                return (
+                  <div key={journey.id} className="relative flex items-start gap-4 py-4">
+                    <div className="relative z-10 mt-1">
+                      {isCompleted ? (
+                        <div className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center">
+                          <Check size={18} className="text-background" />
+                        </div>
+                      ) : isInProgress ? (
+                        <div className="w-10 h-10 rounded-full border-[3px] border-foreground bg-background flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-foreground" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full border-2 border-border bg-background flex items-center justify-center">
+                          {isLocked && <LockKeyhole size={14} className="text-muted-foreground" />}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <Link
+                        href={isLocked ? "#" : `/journey/${journey.id}`}
+                        onClick={(e) => isLocked && e.preventDefault()}
+                        className="block"
+                      >
+                        <h3 className={`text-lg font-serif ${isLocked ? "text-muted-foreground" : "text-foreground"}`}>
+                          {journey.index}. {journey.title}
+                        </h3>
+                        <p className={`text-sm mt-0.5 ${isLocked ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
+                          {journey.subtitle}
+                        </p>
+
+                        {isInProgress && (
+                          <button
+                            className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium active:scale-95 transition-all"
+                            data-testid={`button-continue-${journey.id}`}
+                          >
+                            Continuar a jornada
+                            <ChevronRight size={16} />
+                          </button>
+                        )}
+
+                        {isLocked && (
+                          <p className="text-[11px] text-muted-foreground/60 mt-1.5 flex items-center gap-1">
+                            <LockKeyhole size={10} />
+                            Desbloqueie no nível anterior
+                          </p>
+                        )}
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -4,7 +4,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ChevronLeft, Users, Crown, Shield, UserPlus, Ban, Check,
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
-  MessageSquare, CheckCircle2, AlertCircle, ChevronDown
+  MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
+  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -80,6 +81,8 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
 function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showTrialPicker, setShowTrialPicker] = useState(false);
+  const [trialDays, setTrialDays] = useState(14);
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
@@ -164,6 +167,60 @@ function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id
                   >
                     <Check size={12} /> Desbloquear
                   </button>
+                )}
+
+                {showTrialPicker ? (
+                  <div className="w-full flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                    <span className="text-[11px] text-blue-600 whitespace-nowrap">Estender por</span>
+                    <select
+                      value={trialDays}
+                      onChange={(e) => setTrialDays(Number(e.target.value))}
+                      className="text-[11px] px-2 py-1 rounded bg-background border border-border text-foreground"
+                    >
+                      <option value={7}>7 dias</option>
+                      <option value={14}>14 dias</option>
+                      <option value={30}>30 dias</option>
+                      <option value={60}>60 dias</option>
+                      <option value={90}>90 dias</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const newEnd = new Date();
+                        newEnd.setDate(newEnd.getDate() + trialDays);
+                        onUpdate(user.id, { trialEndsAt: newEnd.toISOString() });
+                        setShowTrialPicker(false);
+                      }}
+                      className="text-[11px] px-2.5 py-1 rounded bg-blue-500 text-white font-medium"
+                      data-testid={`button-confirm-trial-${user.id}`}
+                    >
+                      OK
+                    </button>
+                    <button
+                      onClick={() => setShowTrialPicker(false)}
+                      className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowTrialPicker(true)}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-colors flex items-center gap-1"
+                      data-testid={`button-extend-trial-${user.id}`}
+                    >
+                      <Clock size={12} /> Estender Trial
+                    </button>
+                    {trialEnd && trialEnd > new Date() && (
+                      <button
+                        onClick={() => onUpdate(user.id, { trialEndsAt: new Date(0).toISOString() })}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500 hover:bg-orange-500/20 transition-colors flex items-center gap-1"
+                        data-testid={`button-end-trial-${user.id}`}
+                      >
+                        <XCircle size={12} /> Encerrar Trial
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {user.role !== "admin" ? (
@@ -393,11 +450,6 @@ export default function Admin() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
   const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push">("users");
-  const [pushTitle, setPushTitle] = useState("Casa dos 20");
-  const [pushBody, setPushBody] = useState("");
-  const [pushUrl, setPushUrl] = useState("/");
-  const [pushSending, setPushSending] = useState(false);
-  const [pushResult, setPushResult] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
@@ -628,79 +680,303 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === "push" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Send size={16} className="text-foreground" />
-            <h2 className="text-sm font-medium text-foreground">Enviar Notificação Push</h2>
-          </div>
+      {activeTab === "push" && <PushNotificationPanel />}
+    </div>
+  );
+}
 
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+interface ScheduledNotif {
+  id: number;
+  title: string;
+  body: string;
+  url: string;
+  intervalHours: number;
+  isActive: boolean;
+  lastSentAt: string | null;
+  createdAt: string;
+}
+
+const INTERVAL_OPTIONS = [
+  { value: 6, label: "A cada 6 horas" },
+  { value: 12, label: "A cada 12 horas" },
+  { value: 24, label: "Diária (24h)" },
+  { value: 48, label: "A cada 2 dias" },
+  { value: 72, label: "A cada 3 dias" },
+  { value: 168, label: "Semanal" },
+];
+
+function PushNotificationPanel() {
+  const [pushTitle, setPushTitle] = useState("Casa dos 20");
+  const [pushBody, setPushBody] = useState("");
+  const [pushUrl, setPushUrl] = useState("/");
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
+
+  const [newTitle, setNewTitle] = useState("Casa dos 20");
+  const [newBody, setNewBody] = useState("");
+  const [newUrl, setNewUrl] = useState("/");
+  const [newInterval, setNewInterval] = useState(24);
+  const [showNewForm, setShowNewForm] = useState(false);
+
+  const { data: scheduled = [], refetch: refetchScheduled } = useQuery<ScheduledNotif[]>({
+    queryKey: ["/api/notifications/scheduled"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/scheduled", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const handleSendNow = async () => {
+    if (!pushBody.trim()) return;
+    setPushSending(true);
+    setPushResult(null);
+    try {
+      const res = await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl }),
+      });
+      const data = await res.json();
+      setPushResult(`Enviado para ${data.sent} dispositivo(s). ${data.failed > 0 ? `${data.failed} falhou.` : ""}`);
+      setPushBody("");
+    } catch {
+      setPushResult("Erro ao enviar.");
+    } finally {
+      setPushSending(false);
+    }
+  };
+
+  const handleCreateScheduled = async () => {
+    if (!newBody.trim()) return;
+    try {
+      await fetch("/api/notifications/scheduled", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: newTitle, body: newBody, url: newUrl, intervalHours: newInterval }),
+      });
+      setNewBody("");
+      setNewTitle("Casa dos 20");
+      setNewUrl("/");
+      setNewInterval(24);
+      setShowNewForm(false);
+      refetchScheduled();
+    } catch {}
+  };
+
+  const handleToggleActive = async (notif: ScheduledNotif) => {
+    await fetch(`/api/notifications/scheduled/${notif.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ isActive: !notif.isActive }),
+    });
+    refetchScheduled();
+  };
+
+  const handleDeleteScheduled = async (id: number) => {
+    await fetch(`/api/notifications/scheduled/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    refetchScheduled();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Send size={16} className="text-foreground" />
+          <h2 className="text-sm font-medium text-foreground">Enviar Agora</h2>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Título</label>
+            <input
+              value={pushTitle}
+              onChange={(e) => setPushTitle(e.target.value)}
+              className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+              placeholder="Casa dos 20"
+              data-testid="input-push-title"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mensagem</label>
+            <textarea
+              value={pushBody}
+              onChange={(e) => setPushBody(e.target.value)}
+              className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none min-h-16"
+              placeholder="Hora de fazer seu check-in!"
+              data-testid="input-push-body"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Link</label>
+            <input
+              value={pushUrl}
+              onChange={(e) => setPushUrl(e.target.value)}
+              className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+              placeholder="/"
+              data-testid="input-push-url"
+            />
+          </div>
+          {pushResult && (
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">{pushResult}</p>
+          )}
+          <button
+            onClick={handleSendNow}
+            disabled={pushSending || !pushBody.trim()}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+            data-testid="button-send-push"
+          >
+            {pushSending ? "Enviando..." : "Enviar para Todos"}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={16} className="text-foreground" />
+            <h2 className="text-sm font-medium text-foreground">Notificações Recorrentes</h2>
+          </div>
+          <button
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
+            data-testid="button-new-scheduled"
+          >
+            <Plus size={12} />
+            Nova
+          </button>
+        </div>
+
+        {showNewForm && (
+          <div className="bg-card border border-primary/20 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
             <div>
               <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Título</label>
               <input
-                value={pushTitle}
-                onChange={(e) => setPushTitle(e.target.value)}
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
                 className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
                 placeholder="Casa dos 20"
-                data-testid="input-push-title"
+                data-testid="input-sched-title"
               />
             </div>
             <div>
               <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mensagem</label>
               <textarea
-                value={pushBody}
-                onChange={(e) => setPushBody(e.target.value)}
-                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none min-h-20"
-                placeholder="Hora de fazer seu check-in de hoje!"
-                data-testid="input-push-body"
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none min-h-16"
+                placeholder="Ex: Que tal refletir um pouco hoje?"
+                data-testid="input-sched-body"
               />
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Link (caminho)</label>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Link</label>
               <input
-                value={pushUrl}
-                onChange={(e) => setPushUrl(e.target.value)}
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
                 className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
                 placeholder="/"
-                data-testid="input-push-url"
+                data-testid="input-sched-url"
               />
             </div>
-
-            {pushResult && (
-              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">{pushResult}</p>
-            )}
-
-            <button
-              onClick={async () => {
-                if (!pushBody.trim()) return;
-                setPushSending(true);
-                setPushResult(null);
-                try {
-                  const res = await fetch("/api/push/send", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl }),
-                  });
-                  const data = await res.json();
-                  setPushResult(`Enviado para ${data.sent} dispositivo(s). ${data.failed > 0 ? `${data.failed} falhou.` : ""}`);
-                  setPushBody("");
-                } catch {
-                  setPushResult("Erro ao enviar notificações.");
-                } finally {
-                  setPushSending(false);
-                }
-              }}
-              disabled={pushSending || !pushBody.trim()}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
-              data-testid="button-send-push"
-            >
-              {pushSending ? "Enviando..." : "Enviar para Todos"}
-            </button>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Frequência</label>
+              <select
+                value={newInterval}
+                onChange={(e) => setNewInterval(Number(e.target.value))}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                data-testid="select-sched-interval"
+              >
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreateScheduled}
+                disabled={!newBody.trim()}
+                className="flex-1 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50"
+                data-testid="button-save-scheduled"
+              >
+                Salvar
+              </button>
+              <button
+                onClick={() => setShowNewForm(false)}
+                className="px-4 py-2 bg-muted text-muted-foreground rounded-xl text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {scheduled.length === 0 && !showNewForm ? (
+          <div className="py-8 text-center">
+            <Bell size={28} className="text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma notificação recorrente configurada.</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-1">Crie lembretes automáticos para seus usuários.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {scheduled.map((notif) => {
+              const intervalLabel = INTERVAL_OPTIONS.find((o) => o.value === notif.intervalHours)?.label || `A cada ${notif.intervalHours}h`;
+              const lastSent = notif.lastSentAt ? new Date(notif.lastSentAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Nunca";
+
+              return (
+                <div
+                  key={notif.id}
+                  className={`border rounded-xl p-3 space-y-2 transition-colors ${
+                    notif.isActive ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-60"
+                  }`}
+                  data-testid={`scheduled-notif-${notif.id}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{notif.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{notif.body}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleActive(notif)}
+                      className="shrink-0 mt-0.5"
+                      data-testid={`button-toggle-notif-${notif.id}`}
+                    >
+                      {notif.isActive ? (
+                        <ToggleRight size={24} className="text-primary" />
+                      ) : (
+                        <ToggleLeft size={24} className="text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} /> {intervalLabel}
+                      </span>
+                      <span>Último: {lastSent}</span>
+                      {notif.url !== "/" && (
+                        <span className="text-primary">{notif.url}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteScheduled(notif.id)}
+                      className="text-red-400 hover:text-red-500 transition-colors"
+                      data-testid={`button-delete-notif-${notif.id}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   feedbackTickets,
   journeyProgress,
   pushSubscriptions,
+  scheduledNotifications,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -19,6 +20,8 @@ import {
   type InsertJourneyProgress,
   type PushSubscription,
   type InsertPushSubscription,
+  type ScheduledNotification,
+  type InsertScheduledNotification,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -56,6 +59,13 @@ export interface IStorage {
   deletePushSubscription(userId: string, endpoint: string): Promise<boolean>;
   getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
+
+  getScheduledNotifications(): Promise<ScheduledNotification[]>;
+  createScheduledNotification(data: InsertScheduledNotification): Promise<ScheduledNotification>;
+  updateScheduledNotification(id: number, data: Partial<ScheduledNotification>): Promise<ScheduledNotification | undefined>;
+  deleteScheduledNotification(id: number): Promise<boolean>;
+  getDueNotifications(): Promise<ScheduledNotification[]>;
+  markNotificationSent(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -247,6 +257,40 @@ export class DatabaseStorage implements IStorage {
 
   async getAllPushSubscriptions(): Promise<PushSubscription[]> {
     return db.select().from(pushSubscriptions);
+  }
+
+  async getScheduledNotifications(): Promise<ScheduledNotification[]> {
+    return db.select().from(scheduledNotifications).orderBy(desc(scheduledNotifications.createdAt));
+  }
+
+  async createScheduledNotification(data: InsertScheduledNotification): Promise<ScheduledNotification> {
+    const [created] = await db.insert(scheduledNotifications).values(data).returning();
+    return created;
+  }
+
+  async updateScheduledNotification(id: number, data: Partial<ScheduledNotification>): Promise<ScheduledNotification | undefined> {
+    const [updated] = await db.update(scheduledNotifications).set(data).where(eq(scheduledNotifications.id, id)).returning();
+    return updated;
+  }
+
+  async deleteScheduledNotification(id: number): Promise<boolean> {
+    const result = await db.delete(scheduledNotifications).where(eq(scheduledNotifications.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getDueNotifications(): Promise<ScheduledNotification[]> {
+    const all = await db.select().from(scheduledNotifications).where(eq(scheduledNotifications.isActive, true));
+    const now = new Date();
+    return all.filter((n) => {
+      if (!n.lastSentAt) return true;
+      const diffMs = now.getTime() - new Date(n.lastSentAt).getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      return diffHours >= n.intervalHours;
+    });
+  }
+
+  async markNotificationSent(id: number): Promise<void> {
+    await db.update(scheduledNotifications).set({ lastSentAt: new Date() }).where(eq(scheduledNotifications.id, id));
   }
 }
 

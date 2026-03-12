@@ -1020,6 +1020,60 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/notifications/scheduled", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const list = await storage.getScheduledNotifications();
+      res.json(list);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/notifications/scheduled", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const { title, body, url, intervalHours, isActive } = req.body;
+      const notif = await storage.createScheduledNotification({
+        title: title || "Casa dos 20",
+        body: body || "",
+        url: url || "/",
+        intervalHours: intervalHours || 24,
+        isActive: isActive !== false,
+      });
+      res.json(notif);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/notifications/scheduled/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateScheduledNotification(id, req.body);
+      if (!updated) return res.status(404).json({ error: "Não encontrado" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/notifications/scheduled/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const id = parseInt(req.params.id);
+      await storage.deleteScheduledNotification(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/push/test", requireAuth, async (req, res) => {
     try {
       const webpush = await import("web-push");
