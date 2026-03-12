@@ -131,19 +131,27 @@ export default function BlogReflectionEditor({
     const wrapImages = images.filter(img => img.textWrap);
     wrapImages.sort((a, b) => a.y - b.y);
     wrapImages.forEach(img => {
+      const containerWidth = el.offsetWidth || 600;
+      const side = img.x < containerWidth / 2 ? 'left' : 'right';
+      const gap = 16;
+
+      const pusher = document.createElement('div');
+      pusher.setAttribute('data-float-img', img.id + '-pusher');
+      pusher.contentEditable = 'false';
+      pusher.style.cssText = `float: ${side}; width: 0; height: ${Math.max(0, img.y)}px; clear: ${side}; pointer-events: none;`;
+
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
       spacer.contentEditable = 'false';
-      const containerWidth = el.offsetWidth || 600;
-      const side = img.x < containerWidth / 2 ? 'left' : 'right';
-      const marginTop = Math.max(0, img.y);
-      const marginLeft = side === 'left' ? Math.max(0, img.x) : 16;
-      const marginRight = side === 'right' ? Math.max(0, containerWidth - img.x - img.width) : 16;
-      spacer.style.cssText = `float: ${side}; width: ${img.width}px; height: ${img.height}px; margin: ${marginTop}px ${marginRight}px 12px ${marginLeft}px; pointer-events: none; opacity: 0;`;
+      const marginLeft = side === 'left' ? Math.max(0, img.x) : gap;
+      const marginRight = side === 'right' ? Math.max(0, containerWidth - img.x - img.width) : gap;
+      spacer.style.cssText = `float: ${side}; width: ${img.width}px; height: ${img.height}px; margin: 0 ${marginRight}px 12px ${marginLeft}px; pointer-events: none; opacity: 0;`;
       
       if (el.firstChild) {
         el.insertBefore(spacer, el.firstChild);
+        el.insertBefore(pusher, spacer);
       } else {
+        el.appendChild(pusher);
         el.appendChild(spacer);
       }
     });
