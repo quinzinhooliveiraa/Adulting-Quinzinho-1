@@ -165,13 +165,14 @@ export default function Home() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
-  // Daily reflection/question rotating - uses intelligent recommendation if available
   const dailyReflection = useMemo(() => {
     if (recommendedContent?.reflection) {
       return recommendedContent.reflection;
     }
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-    const index = dayOfYear % DAILY_REFLECTIONS.length;
+    const today = new Date().toISOString().split('T')[0];
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
+    const index = Math.abs(seed) % DAILY_REFLECTIONS.length;
     return DAILY_REFLECTIONS[index];
   }, [recommendedContent]);
 
@@ -393,38 +394,75 @@ export default function Home() {
         window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
         break;
       case 'save':
-        // Create a simple canvas and save as image
         try {
           const canvas = document.createElement('canvas');
           canvas.width = 1080;
-          canvas.height = 1920;
+          canvas.height = 1080;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.fillStyle = '#f0ebe3';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#1a1410';
-            ctx.font = 'bold 60px serif';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = 'center';
-            ctx.fillText('Casa dos 20', canvas.width / 2, 200);
-            ctx.font = '40px serif';
-            ctx.fillStyle = '#6b6048';
-            const maxWidth = 900;
-            const lineHeight = 60;
-            let y = 400;
-            const words = dailyReminder.split(' ');
+
+            const starX = canvas.width / 2;
+            const starY = 180;
+            ctx.fillStyle = 'rgba(196, 164, 120, 0.5)';
+            const drawStar = (cx: number, cy: number, r: number) => {
+              for (let i = 0; i < 4; i++) {
+                const angle = (i * Math.PI) / 2;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = 'rgba(196, 164, 120, 0.5)';
+                ctx.stroke();
+              }
+              ctx.beginPath();
+              ctx.arc(cx + r * 0.7, cy - r * 0.7, 4, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            drawStar(starX, starY, 28);
+
+            ctx.fillStyle = '#f0ebe3';
+            ctx.font = 'italic 48px Georgia, serif';
+            const maxWidth = 820;
+            const lineHeight = 68;
+            const quoteText = `"${dailyReminder}"`;
+            const words = quoteText.split(' ');
+            let lines: string[] = [];
             let line = '';
-            for (let word of words) {
+            for (const word of words) {
               const testLine = line + word + ' ';
-              const metrics = ctx.measureText(testLine);
-              if (metrics.width > maxWidth) {
-                ctx.fillText(line, canvas.width / 2, y);
+              if (ctx.measureText(testLine).width > maxWidth && line) {
+                lines.push(line.trim());
                 line = word + ' ';
-                y += lineHeight;
               } else {
                 line = testLine;
               }
             }
-            ctx.fillText(line, canvas.width / 2, y);
+            if (line.trim()) lines.push(line.trim());
+
+            const totalTextH = lines.length * lineHeight;
+            let textY = (canvas.height - totalTextH) / 2 + 40;
+            for (const l of lines) {
+              ctx.fillText(l, canvas.width / 2, textY);
+              textY += lineHeight;
+            }
+
+            const brandY = canvas.height - 160;
+            ctx.fillStyle = 'rgba(196, 164, 120, 0.3)';
+            ctx.fillRect(canvas.width / 2 - 40, brandY - 30, 80, 1);
+
+            ctx.fillStyle = 'rgba(196, 164, 120, 0.9)';
+            ctx.font = '600 18px sans-serif';
+            ctx.letterSpacing = '6px';
+            ctx.fillText('CASA DOS 20', canvas.width / 2, brandY);
+            ctx.letterSpacing = '0px';
+
+            ctx.fillStyle = 'rgba(196, 164, 120, 0.5)';
+            ctx.font = 'italic 16px Georgia, serif';
+            ctx.fillText('Reflexões para a Vida Adulta', canvas.width / 2, brandY + 30);
+
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
             link.download = `casa-dos-20-${new Date().toISOString().split('T')[0]}.png`;

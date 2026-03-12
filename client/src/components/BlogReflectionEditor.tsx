@@ -129,13 +129,18 @@ export default function BlogReflectionEditor({
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     
     const wrapImages = images.filter(img => img.textWrap);
+    wrapImages.sort((a, b) => b.y - a.y);
     wrapImages.forEach(img => {
       const wrapper = document.createElement('div');
       wrapper.setAttribute('data-float-img', img.id);
       wrapper.contentEditable = 'false';
-      const side = img.x < 150 ? 'left' : 'right';
-      const marginSide = side === 'left' ? 'margin: 0 16px 12px 0' : 'margin: 0 0 12px 16px';
-      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; ${marginSide}; border-radius: 12px; overflow: hidden; user-select: none; position: relative;`;
+      const containerWidth = el.offsetWidth || 600;
+      const side = img.x < containerWidth / 2 ? 'left' : 'right';
+      const marginTop = Math.max(0, img.y - 10);
+      const marginSide = side === 'left'
+        ? `margin: ${marginTop}px 16px 12px 0`
+        : `margin: ${marginTop}px 0 12px 16px`;
+      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; ${marginSide}; border-radius: 12px; overflow: hidden; user-select: none; position: relative; clear: ${side};`;
       
       if (selectedImage === img.id) {
         wrapper.style.outline = '2px solid hsl(var(--primary))';
@@ -160,7 +165,11 @@ export default function BlogReflectionEditor({
         setSelectedImage(img.id);
       });
       
-      el.insertBefore(wrapper, el.firstChild);
+      if (el.firstChild) {
+        el.insertBefore(wrapper, el.firstChild);
+      } else {
+        el.appendChild(wrapper);
+      }
     });
   }, [images, selectedImage, hasWrappedImages]);
 

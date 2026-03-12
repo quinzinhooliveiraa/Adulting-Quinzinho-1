@@ -239,7 +239,28 @@ export default function Journal() {
     setViewingEntry(entry);
   };
 
-  const filteredEntries = activeTag === "Todas" ? entries : entries.filter(e => e.tags.includes(activeTag));
+  const TAG_KEYWORDS: Record<string, string[]> = {
+    ansiedade: ["ansiedade", "ansioso", "ansiosa", "medo", "preocup", "nervos", "pânico", "aflição", "apreensivo"],
+    propósito: ["propósito", "objetivo", "sentido", "carreira", "trabalho", "vocação", "missão", "meta", "sonho"],
+    identidade: ["identidade", "autêntico", "autêntica", "essência", "quem sou", "personalidade", "eu mesmo"],
+    solidão: ["solidão", "sozinho", "sozinha", "solitário", "solitária", "isolado", "isolada", "solitude"],
+    crescimento: ["crescimento", "evoluir", "aprender", "crescer", "melhorar", "amadurecer", "desenvolver", "progresso"],
+    amor: ["amor", "amoroso", "amorosa", "apaixonado", "apaixonada", "paixão", "coração", "enamorado", "romântico"],
+    incerteza: ["incerteza", "dúvida", "confuso", "confusa", "perdido", "perdida", "não sei", "indeciso", "indecisa"],
+    relações: ["relações", "namorado", "namorada", "relacionamento", "amigo", "amiga", "amigos", "amigas", "casamento", "família"],
+  };
+
+  const tagMatchesTheme = (tag: string, theme: string): boolean => {
+    if (tag === theme) return true;
+    const keywords = TAG_KEYWORDS[theme];
+    if (!keywords) return false;
+    const lower = tag.toLowerCase();
+    return keywords.some(kw => lower.includes(kw) || kw.includes(lower));
+  };
+
+  const filteredEntries = activeTag === "Todas"
+    ? entries
+    : entries.filter(e => e.tags.some(t => tagMatchesTheme(t, activeTag)));
   const visibleEntries = showArchived 
     ? filteredEntries.filter(e => archivedIds.has(e.id))
     : filteredEntries.filter(e => !archivedIds.has(e.id));
