@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw, Mic, Square } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw, Mic, Square, Eraser, Undo2, Minus, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 
@@ -54,6 +54,10 @@ export default function BlogReflectionEditor({
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
   const [isDrawing, setIsDrawing] = useState(false);
+  const [penSize, setPenSize] = useState(3);
+  const [penTexture, setPenTexture] = useState<'smooth' | 'pencil' | 'marker'>('smooth');
+  const [isEraser, setIsEraser] = useState(false);
+  const drawingHistory = useRef<ImageData[]>([]);
   const handleSpeechText = useCallback((text: string) => {
     setContent(prev => prev ? prev.trimEnd() + " " + text : text);
   }, []);
@@ -87,16 +91,16 @@ export default function BlogReflectionEditor({
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {
       const canvas = canvasRef.current;
+      const prevData = ctxRef.current ? ctxRef.current.getImageData(0, 0, canvas.width, canvas.height) : null;
       canvas.width = contentAreaRef.current.offsetWidth * 2;
       canvas.height = Math.max(contentAreaRef.current.offsetHeight * 2, 800);
       
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.scale(2, 2);
+        if (prevData) ctx.putImageData(prevData, 0, 0);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.strokeStyle = drawingColor;
-        ctx.lineWidth = 3;
         ctxRef.current = ctx;
       }
     }
@@ -166,9 +170,47 @@ export default function BlogReflectionEditor({
     }
   }, []);
 
+  const saveDrawingState = () => {
+    if (!ctxRef.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const data = ctxRef.current.getImageData(0, 0, canvas.width, canvas.height);
+    drawingHistory.current.push(data);
+    if (drawingHistory.current.length > 30) drawingHistory.current.shift();
+  };
+
+  const undoDrawing = () => {
+    if (!ctxRef.current || !canvasRef.current || drawingHistory.current.length === 0) return;
+    const canvas = canvasRef.current;
+    const prev = drawingHistory.current.pop()!;
+    ctxRef.current.putImageData(prev, 0, 0);
+  };
+
+  const applyPenStyle = (ctx: CanvasRenderingContext2D) => {
+    if (isEraser) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = penSize * 3;
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = drawingColor;
+      ctx.lineWidth = penSize;
+      if (penTexture === 'pencil') {
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = penSize * 0.8;
+      } else if (penTexture === 'marker') {
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = penSize * 2.5;
+      } else {
+        ctx.globalAlpha = 1;
+      }
+    }
+  };
+
   const startDrawing = ({ nativeEvent }: any) => {
     if (!isDrawingMode || !ctxRef.current) return;
+    saveDrawingState();
     const { offsetX, offsetY } = nativeEvent;
+    applyPenStyle(ctxRef.current);
     ctxRef.current.beginPath();
     ctxRef.current.moveTo(offsetX, offsetY);
     setIsDrawing(true);
@@ -177,13 +219,19 @@ export default function BlogReflectionEditor({
   const draw = ({ nativeEvent }: any) => {
     if (!isDrawingMode || !isDrawing || !ctxRef.current) return;
     const { offsetX, offsetY } = nativeEvent;
-    ctxRef.current.lineTo(offsetX, offsetY);
+    if (penTexture === 'pencil' && !isEraser) {
+      ctxRef.current.lineTo(offsetX + (Math.random() - 0.5) * 1.5, offsetY + (Math.random() - 0.5) * 1.5);
+    } else {
+      ctxRef.current.lineTo(offsetX, offsetY);
+    }
     ctxRef.current.stroke();
   };
 
   const stopDrawing = () => {
     if (!isDrawingMode || !ctxRef.current) return;
     ctxRef.current.closePath();
+    ctxRef.current.globalAlpha = 1;
+    ctxRef.current.globalCompositeOperation = 'source-over';
     setIsDrawing(false);
   };
 
@@ -372,17 +420,8 @@ export default function BlogReflectionEditor({
               <label className="text-sm font-medium text-muted-foreground">Seu Texto</label>
               
               <div className="flex items-center gap-2">
-                {isDrawingMode && (
-                  <input
-                    type="color"
-                    value={drawingColor}
-                    onChange={(e) => setDrawingColor(e.target.value)}
-                    className="w-6 h-6 rounded cursor-pointer border-none p-0"
-                    title="Cor da caneta"
-                  />
-                )}
                 <button
-                  onClick={() => { setIsDrawingMode(!isDrawingMode); }}
+                  onClick={() => { setIsDrawingMode(!isDrawingMode); setIsEraser(false); }}
                   className={`flex items-center gap-1.5 text-sm transition-colors ${
                     isDrawingMode ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -412,6 +451,80 @@ export default function BlogReflectionEditor({
               </div>
             </div>
             
+            {isDrawingMode && (
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/50 rounded-xl border border-border">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsEraser(false)}
+                    className={`p-1.5 rounded-lg transition-colors ${!isEraser ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                    title="Caneta"
+                  >
+                    <PenTool size={16} />
+                  </button>
+                  <button
+                    onClick={() => setIsEraser(true)}
+                    className={`p-1.5 rounded-lg transition-colors ${isEraser ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                    title="Borracha"
+                  >
+                    <Eraser size={16} />
+                  </button>
+                  <button
+                    onClick={undoDrawing}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Desfazer"
+                  >
+                    <Undo2 size={16} />
+                  </button>
+                </div>
+
+                <div className="h-5 w-px bg-border" />
+
+                {!isEraser && (
+                  <>
+                    <input
+                      type="color"
+                      value={drawingColor}
+                      onChange={(e) => setDrawingColor(e.target.value)}
+                      className="w-7 h-7 rounded-lg cursor-pointer border border-border p-0.5"
+                      title="Cor"
+                    />
+
+                    <div className="h-5 w-px bg-border" />
+
+                    <div className="flex items-center gap-1.5">
+                      {(['smooth', 'pencil', 'marker'] as const).map(tex => (
+                        <button
+                          key={tex}
+                          onClick={() => setPenTexture(tex)}
+                          className={`px-2 py-1 text-xs rounded-md transition-colors ${penTexture === tex ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                          title={tex === 'smooth' ? 'Suave' : tex === 'pencil' ? 'Lápis' : 'Marcador'}
+                        >
+                          {tex === 'smooth' ? 'Suave' : tex === 'pencil' ? 'Lápis' : 'Marcador'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div className="h-5 w-px bg-border" />
+
+                <div className="flex items-center gap-2">
+                  <Minus size={12} className="text-muted-foreground" />
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={penSize}
+                    onChange={(e) => setPenSize(Number(e.target.value))}
+                    className="w-20 h-1.5 accent-primary"
+                    title={`Largura: ${penSize}px`}
+                  />
+                  <Circle size={Math.min(16, penSize + 4)} className="text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground w-6">{penSize}px</span>
+                </div>
+              </div>
+            )}
+
             <div 
               className="relative w-full min-h-[400px] bg-card border border-border rounded-2xl shadow-sm" 
               ref={contentAreaRef}
@@ -509,7 +622,7 @@ export default function BlogReflectionEditor({
                     }
                   }}
                   onTouchEnd={stopDrawing}
-                  className="absolute inset-0 w-full h-full pointer-events-auto cursor-crosshair"
+                  className={`absolute inset-0 w-full h-full pointer-events-auto ${isEraser ? 'cursor-cell' : 'cursor-crosshair'}`}
                   style={{ zIndex: 50 }}
                 />
               )}
