@@ -176,6 +176,26 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 4) {
+        return res.status(400).json({ message: "A nova senha deve ter pelo menos 4 caracteres" });
+      }
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      if (currentPassword && !verifyPassword(currentPassword, user.password)) {
+        return res.status(401).json({ message: "Senha atual incorreta" });
+      }
+
+      await storage.updateUser(user.id, { password: hashPassword(newPassword) });
+      res.json({ message: "Senha alterada com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao alterar senha" });
+    }
+  });
+
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Não autenticado" });

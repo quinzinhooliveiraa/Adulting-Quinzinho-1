@@ -49,7 +49,10 @@ export default function BlogReflectionEditor({
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
   const [isDrawing, setIsDrawing] = useState(false);
-  const { isRecording, transcript, startRecording, stopRecording, supported: speechSupported } = useSpeechToText();
+  const handleSpeechText = useCallback((text: string) => {
+    setContent(prev => prev ? prev.trimEnd() + " " + text : text);
+  }, []);
+  const { isRecording, startRecording, stopRecording, supported: speechSupported } = useSpeechToText(handleSpeechText);
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLDivElement>(null);
@@ -64,17 +67,6 @@ export default function BlogReflectionEditor({
   const suggestedTags = topic
     ? topic.split(" ").map(word => word.toLowerCase()).filter(w => w.length > 3).slice(0, 3)
     : [];
-
-  const prevTranscriptRef = useRef("");
-  useEffect(() => {
-    if (transcript && transcript !== prevTranscriptRef.current) {
-      const baseContent = prevTranscriptRef.current
-        ? content.replace(prevTranscriptRef.current, "").trimEnd()
-        : content;
-      prevTranscriptRef.current = transcript;
-      setContent(baseContent ? baseContent + " " + transcript : transcript);
-    }
-  }, [transcript]);
 
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {

@@ -42,20 +42,12 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   const [isDrawing, setIsDrawing] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const contentInitialized = useRef(false);
-  const { isRecording, transcript, startRecording, stopRecording, supported: speechSupported } = useSpeechToText();
+  const handleSpeechText = useCallback((text: string) => {
+    setContent(prev => prev ? prev.trimEnd() + " " + text : text);
+  }, []);
+  const { isRecording, startRecording, stopRecording, supported: speechSupported } = useSpeechToText(handleSpeechText);
 
   const hasWrappedImages = images.some(img => img.textWrap);
-
-  const prevTranscriptRef = useRef("");
-  useEffect(() => {
-    if (transcript && transcript !== prevTranscriptRef.current) {
-      const baseContent = prevTranscriptRef.current
-        ? content.replace(prevTranscriptRef.current, "").trimEnd()
-        : content;
-      prevTranscriptRef.current = transcript;
-      setContent(baseContent ? baseContent + " " + transcript : transcript);
-    }
-  }, [transcript]);
 
   useEffect(() => {
     if (canvasRef.current) {

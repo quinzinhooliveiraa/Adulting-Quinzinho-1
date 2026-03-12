@@ -275,15 +275,10 @@ function AnswerSheet({
 }) {
   const [answer, setAnswer] = useState("");
   const createEntry = useCreateEntry();
-  const { isRecording, transcript, startRecording, stopRecording, supported } = useSpeechToText();
-
-  const lastTranscriptRef = useRef("");
-  useEffect(() => {
-    if (transcript && transcript !== lastTranscriptRef.current) {
-      lastTranscriptRef.current = transcript;
-      setAnswer(transcript);
-    }
-  }, [transcript]);
+  const handleSpeechText = useCallback((text: string) => {
+    setAnswer(prev => prev ? prev.trimEnd() + " " + text : text);
+  }, []);
+  const { isRecording, startRecording, stopRecording, supported } = useSpeechToText(handleSpeechText);
 
   const handleSave = async () => {
     if (!answer.trim()) return;
@@ -856,6 +851,9 @@ function LobbyScreen({
   const [isFlipped, setIsFlipped] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [joinAlert, setJoinAlert] = useState<string | null>(null);
+  const joinAlertTimer = useRef<any>(null);
+  const prevPlayerCount = useRef(0);
 
   const { connect, send, onMessage, disconnect } = useWebSocket();
 
@@ -866,15 +864,31 @@ function LobbyScreen({
         setLobbyCode(msg.code);
         setMyId(msg.playerId);
         setPlayers(msg.players);
+        prevPlayerCount.current = msg.players.length;
         setScreen("waiting");
       }
       if (msg.type === "joined") {
         setLobbyCode(msg.code);
         setMyId(msg.playerId);
         setPlayers(msg.players);
+        prevPlayerCount.current = msg.players.length;
         setScreen("waiting");
       }
       if (msg.type === "player_joined" || msg.type === "player_left") {
+        if (msg.type === "player_joined" && msg.players.length > prevPlayerCount.current) {
+          const newPlayer = msg.players[msg.players.length - 1];
+          if (newPlayer) {
+            setJoinAlert(`${newPlayer.name} entrou na sala!`);
+            if (joinAlertTimer.current) clearTimeout(joinAlertTimer.current);
+            joinAlertTimer.current = setTimeout(() => setJoinAlert(null), 3000);
+          }
+        }
+        if (msg.type === "player_left" && msg.players.length < prevPlayerCount.current) {
+          setJoinAlert("Um jogador saiu da sala");
+          if (joinAlertTimer.current) clearTimeout(joinAlertTimer.current);
+          joinAlertTimer.current = setTimeout(() => setJoinAlert(null), 3000);
+        }
+        prevPlayerCount.current = msg.players.length;
         setPlayers(msg.players);
       }
       if (msg.type === "game_started") {
@@ -936,17 +950,23 @@ function LobbyScreen({
 
     return (
       <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
+        {joinAlert && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
+            {joinAlert}
+          </div>
+        )}
         <div className="px-6 pt-8 pb-4 flex items-center justify-between">
           <button onClick={handleLeave} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-leave-game">
             <ChevronLeft size={24} className="text-foreground" />
           </button>
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
-              {mode === "online" ? "Online" : "Presencial"} — {lobbyCode}
+              {mode === "online" ? "Online" : "Presencial"}
             </p>
-            <p className="text-xs text-foreground font-medium">
-              {players.length} jogadores
-            </p>
+            <div className="flex items-center gap-2 justify-center mt-0.5">
+              <span className="px-2 py-0.5 rounded bg-muted font-mono text-xs font-bold text-foreground tracking-widest">{lobbyCode}</span>
+              <span className="text-xs text-muted-foreground">· {players.length} jogadores</span>
+            </div>
           </div>
           <div className="w-10" />
         </div>
@@ -1068,6 +1088,11 @@ function LobbyScreen({
   if (screen === "waiting") {
     return (
       <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+        {joinAlert && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
+            {joinAlert}
+          </div>
+        )}
         <div>
           <button onClick={handleLeave} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-leave-lobby">
             <ChevronLeft size={24} className="text-foreground" />

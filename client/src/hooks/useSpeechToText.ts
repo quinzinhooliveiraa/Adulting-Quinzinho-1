@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from "react";
 
-export function useSpeechToText() {
+export function useSpeechToText(onNewText?: (text: string) => void) {
   const [isRecording, setIsRecording] = useState(false);
-  const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef<any>(null);
+  const onNewTextRef = useRef(onNewText);
+  onNewTextRef.current = onNewText;
 
   const startRecording = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -13,42 +14,44 @@ export function useSpeechToText() {
     const recognition = new SpeechRecognition();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
-    recognition.interimResults = true;
-    let finalText = "";
+    recognition.interimResults = false;
+
     recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = 0; i < event.results.length; i++) {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          finalText += event.results[i][0].transcript + " ";
-        } else {
-          interim += event.results[i][0].transcript;
+          const text = event.results[i][0].transcript.trim();
+          if (text && onNewTextRef.current) {
+            onNewTextRef.current(text);
+          }
         }
       }
-      setTranscript(finalText + interim);
     };
     recognition.onerror = () => {
       setIsRecording(false);
     };
     recognition.onend = () => {
-      setIsRecording(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch {
+          setIsRecording(false);
+        }
+      }
     };
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
-    setTranscript("");
     return true;
   }, []);
 
   const stopRecording = useCallback(() => {
-    recognitionRef.current?.stop();
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    recognition?.stop();
     setIsRecording(false);
-  }, []);
-
-  const resetTranscript = useCallback(() => {
-    setTranscript("");
   }, []);
 
   const supported = typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
-  return { isRecording, transcript, startRecording, stopRecording, resetTranscript, supported };
+  return { isRecording, startRecording, stopRecording, supported };
 }
