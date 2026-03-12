@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
 import { useCreateEntry } from "@/hooks/useJournal";
+import { useAuth } from "@/hooks/useAuth";
 
 const SOLO_THEMES = {
   identity: {
@@ -828,18 +829,15 @@ function SoloThemeSelect({ onSelect, onBack }: { onSelect: (theme: SoloThemeId) 
   );
 }
 
-function isPremiumUser(): boolean {
-  return localStorage.getItem("casa-dos-20-premium") === "true";
-}
-
 export default function Questions() {
+  const { user } = useAuth();
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [soloTheme, setSoloTheme] = useState<SoloThemeId | null>(null);
   const [conversaType, setConversaType] = useState<ConversaType | null>(null);
   const [relation, setRelation] = useState<RelationType | null>(null);
   const [showPremiumGate, setShowPremiumGate] = useState(false);
 
-  const premium = isPremiumUser();
+  const premium = user?.hasPremium ?? false;
 
   if (showPremiumGate) {
     return <PremiumGate onBack={() => setShowPremiumGate(false)} />;

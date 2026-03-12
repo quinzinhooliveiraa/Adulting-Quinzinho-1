@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,6 +9,13 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  role: text("role").notNull().default("user"),
+  isPremium: boolean("is_premium").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  trialEndsAt: timestamp("trial_ends_at"),
+  premiumUntil: timestamp("premium_until"),
+  invitedBy: varchar("invited_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const journalEntries = pgTable("journal_entries", {
@@ -34,6 +41,7 @@ export const moodCheckins = pgTable("mood_checkins", {
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
+  createdAt: true,
 });
 
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({

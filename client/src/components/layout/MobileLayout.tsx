@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -124,6 +124,17 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                   </div>
 
                   <div className="border-t border-border">
+                    {user?.role === "admin" && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setShowMenu(false)}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-purple-500 hover:bg-muted/50 transition-colors"
+                        data-testid="link-admin"
+                      >
+                        <Shield size={15} />
+                        Painel Admin
+                      </Link>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-red-500 hover:bg-muted/50 transition-colors"

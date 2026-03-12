@@ -16,6 +16,7 @@ import Questions from "@/pages/Questions";
 import Journey from "@/pages/Journey";
 import JourneyDetail from "@/pages/JourneyDetail";
 import Book from "@/pages/Book";
+import Admin from "@/pages/Admin";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -49,6 +50,7 @@ function AuthGate() {
         <Route path="/journey" component={Journey} />
         <Route path="/journey/:id" component={JourneyDetail} />
         <Route path="/book" component={Book} />
+        {user?.role === "admin" && <Route path="/admin" component={Admin} />}
         <Route component={NotFound} />
       </Switch>
     </MobileLayout>

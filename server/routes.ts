@@ -36,6 +36,34 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Não autenticado" });
+  }
+  const user = await storage.getUser(req.session.userId);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ message: "Acesso negado" });
+  }
+  next();
+}
+
+function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEndsAt: Date | null; premiumUntil: Date | null; isActive: boolean }) {
+  if (user.role === "admin") return { hasPremium: true, reason: "admin" as const };
+  if (!user.isActive) return { hasPremium: false, reason: "blocked" as const };
+  if (user.isPremium) {
+    if (user.premiumUntil && user.premiumUntil > new Date()) {
+      return { hasPremium: true, reason: "paid" as const };
+    }
+    if (!user.premiumUntil) {
+      return { hasPremium: true, reason: "granted" as const };
+    }
+  }
+  if (user.trialEndsAt && user.trialEndsAt > new Date()) {
+    return { hasPremium: true, reason: "trial" as const };
+  }
+  return { hasPremium: false, reason: "expired" as const };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -59,6 +87,7 @@ export async function registerRoutes(
     name: z.string().min(1),
     email: z.string().email(),
     password: z.string().min(4),
+    inviteCode: z.string().optional(),
   });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -70,15 +99,33 @@ export async function registerRoutes(
         return res.status(409).json({ message: "Email já cadastrado" });
       }
 
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
       const user = await storage.createUser({
         username: data.email,
         password: hashPassword(data.password),
         name: data.name,
         email: data.email,
+        role: "user",
+        isPremium: false,
+        isActive: true,
+        trialEndsAt,
+        premiumUntil: null,
+        invitedBy: data.inviteCode || null,
       });
 
       req.session.userId = user.id;
-      res.status(201).json({ id: user.id, name: user.name, email: user.email });
+      const premiumStatus = getUserPremiumStatus(user);
+      res.status(201).json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: user.trialEndsAt,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
@@ -102,8 +149,22 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Email ou senha incorretos" });
       }
 
+      if (!user.isActive) {
+        return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
+
       req.session.userId = user.id;
-      res.json({ id: user.id, name: user.name, email: user.email });
+      const premiumStatus = getUserPremiumStatus(user);
+      res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: user.trialEndsAt,
+        premiumUntil: user.premiumUntil,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Dados inválidos" });
@@ -122,13 +183,178 @@ export async function registerRoutes(
       return res.status(401).json({ message: "Usuário não encontrado" });
     }
 
-    res.json({ id: user.id, name: user.name, email: user.email });
+    const premiumStatus = getUserPremiumStatus(user);
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      hasPremium: premiumStatus.hasPremium,
+      premiumReason: premiumStatus.reason,
+      trialEndsAt: user.trialEndsAt,
+      premiumUntil: user.premiumUntil,
+      isActive: user.isActive,
+    });
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     req.session.destroy(() => {
       res.json({ message: "Logout realizado" });
     });
+  });
+
+  app.get("/api/admin/users", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const usersWithStatus = allUsers.map(u => {
+        const premiumStatus = getUserPremiumStatus(u);
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          isPremium: u.isPremium,
+          isActive: u.isActive,
+          hasPremium: premiumStatus.hasPremium,
+          premiumReason: premiumStatus.reason,
+          trialEndsAt: u.trialEndsAt,
+          premiumUntil: u.premiumUntil,
+          invitedBy: u.invitedBy,
+          createdAt: u.createdAt,
+        };
+      });
+      res.json(usersWithStatus);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar usuários" });
+    }
+  });
+
+  const updateUserSchema = z.object({
+    isPremium: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+    role: z.enum(["user", "admin"]).optional(),
+    premiumUntil: z.string().nullable().optional(),
+  });
+
+  app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const data = updateUserSchema.parse(req.body);
+
+      const updateData: any = {};
+      if (data.isPremium !== undefined) updateData.isPremium = data.isPremium;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      if (data.role !== undefined) updateData.role = data.role;
+      if (data.premiumUntil !== undefined) {
+        updateData.premiumUntil = data.premiumUntil ? new Date(data.premiumUntil) : null;
+      }
+
+      const updated = await storage.updateUser(userId, updateData);
+      if (!updated) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      const premiumStatus = getUserPremiumStatus(updated);
+      res.json({
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        isPremium: updated.isPremium,
+        isActive: updated.isActive,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: updated.trialEndsAt,
+        premiumUntil: updated.premiumUntil,
+        invitedBy: updated.invitedBy,
+        createdAt: updated.createdAt,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos" });
+      }
+      res.status(500).json({ message: "Erro ao atualizar usuário" });
+    }
+  });
+
+  app.post("/api/admin/invite", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { email, name, grantPremium } = req.body;
+      if (!email || !name) {
+        return res.status(400).json({ message: "Nome e email são obrigatórios" });
+      }
+
+      const existing = await storage.getUserByEmail(email);
+      if (existing) {
+        return res.status(409).json({ message: "Email já cadastrado" });
+      }
+
+      const tempPassword = randomBytes(4).toString("hex");
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
+      const user = await storage.createUser({
+        username: email,
+        password: hashPassword(tempPassword),
+        name,
+        email,
+        role: "user",
+        isPremium: grantPremium || false,
+        isActive: true,
+        trialEndsAt,
+        premiumUntil: null,
+        invitedBy: "admin",
+      });
+
+      res.status(201).json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        tempPassword,
+        message: `Conta criada. Senha temporária: ${tempPassword}`,
+      });
+    } catch (error) {
+      console.error("Invite error:", error);
+      res.status(500).json({ message: "Erro ao convidar usuário" });
+    }
+  });
+
+  app.get("/api/admin/stats", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const now = new Date();
+      const totalUsers = allUsers.length;
+      const activeUsers = allUsers.filter(u => u.isActive).length;
+      const premiumUsers = allUsers.filter(u => {
+        const s = getUserPremiumStatus(u);
+        return s.hasPremium && s.reason === "paid";
+      }).length;
+      const trialUsers = allUsers.filter(u => {
+        const s = getUserPremiumStatus(u);
+        return s.hasPremium && s.reason === "trial";
+      }).length;
+      const grantedUsers = allUsers.filter(u => {
+        const s = getUserPremiumStatus(u);
+        return s.hasPremium && s.reason === "granted";
+      }).length;
+      const expiredUsers = allUsers.filter(u => {
+        const s = getUserPremiumStatus(u);
+        return !s.hasPremium && s.reason === "expired";
+      }).length;
+      const blockedUsers = allUsers.filter(u => !u.isActive).length;
+
+      res.json({
+        totalUsers,
+        activeUsers,
+        premiumUsers,
+        trialUsers,
+        grantedUsers,
+        expiredUsers,
+        blockedUsers,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar estatísticas" });
+    }
   });
 
   app.get("/api/journal", requireAuth, async (req: Request, res: Response) => {

@@ -6,6 +6,12 @@ interface AuthUser {
   id: string;
   name: string;
   email: string;
+  role: string;
+  hasPremium: boolean;
+  premiumReason: "admin" | "paid" | "granted" | "trial" | "expired" | "blocked";
+  trialEndsAt: string | null;
+  premiumUntil: string | null;
+  isActive: boolean;
 }
 
 interface AuthContextType {
