@@ -458,7 +458,7 @@ export default function BlogReflectionEditor({
                 style={{ isolation: 'isolate' }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
-                  if (!target.closest('[data-img-overlay]') && !target.closest('[data-float-img]')) {
+                  if (!target.closest('[data-img-overlay]') && !target.closest('[data-float-img]') && !target.closest('[data-free-img]')) {
                     setSelectedImage(null);
                     if (hasWrappedImages) editableRef.current?.focus();
                   }
@@ -521,6 +521,7 @@ export default function BlogReflectionEditor({
               {freeImages.map((img) => (
                 <div
                   key={img.id}
+                  data-free-img="true"
                   className={`absolute group ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary" : ""} ${
                     isDrawingMode ? "pointer-events-none opacity-80" : "pointer-events-auto"
                   }`}
