@@ -155,6 +155,11 @@ export default function BlogReflectionEditor({
         el.appendChild(spacer);
       }
     });
+
+    const clearEl = document.createElement('div');
+    clearEl.setAttribute('data-float-img', 'clear');
+    clearEl.style.cssText = 'clear: both; height: 0; pointer-events: none;';
+    el.appendChild(clearEl);
   }, [images, selectedImage, hasWrappedImages]);
 
   const handleContentInput = useCallback(() => {
@@ -412,11 +417,11 @@ export default function BlogReflectionEditor({
             </div>
             
             <div 
-              className="relative w-full min-h-[400px] bg-card border border-border rounded-2xl shadow-sm overflow-hidden" 
+              className="relative w-full min-h-[400px] bg-card border border-border rounded-2xl shadow-sm" 
               ref={contentAreaRef}
             >
               {bannerUrl ? (
-                <div className="relative w-full z-0">
+                <div className="relative w-full z-0 overflow-hidden rounded-t-2xl">
                   <img src={bannerUrl} alt="Capa" className="w-full h-48 sm:h-64 object-cover" />
                   <div className="absolute bottom-3 right-3 flex gap-2 z-10">
                     <button 
@@ -448,17 +453,18 @@ export default function BlogReflectionEditor({
                 </button>
               )}
               
+              <div 
+                className="relative"
+                style={{ isolation: 'isolate' }}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('[data-img-overlay]') && !target.closest('[data-float-img]')) {
+                    setSelectedImage(null);
+                    if (hasWrappedImages) editableRef.current?.focus();
+                  }
+                }}
+              >
               {hasWrappedImages ? (
-                <div 
-                  className="relative"
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (!target.closest('[data-float-img]')) {
-                      setSelectedImage(null);
-                      editableRef.current?.focus();
-                    }
-                  }}
-                >
                   <div
                     ref={editableRef}
                     contentEditable={!isDrawingMode}
@@ -467,12 +473,10 @@ export default function BlogReflectionEditor({
                     className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-foreground ${
                       isDrawingMode ? "pointer-events-none opacity-60" : ""
                     }`}
-                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px', position: 'relative', zIndex: 20, cursor: 'text' }}
+                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px', position: 'relative', zIndex: 1, cursor: 'text' }}
                     data-placeholder="Escreva seus pensamentos aqui..."
                   />
-                </div>
               ) : (
-                <div className="relative">
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -483,9 +487,8 @@ export default function BlogReflectionEditor({
                     className={`w-full min-h-[350px] p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-foreground resize-none ${
                       isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto relative"
                     }`}
-                    style={{ zIndex: 20, position: 'relative' }}
+                    style={{ zIndex: 1, position: 'relative' }}
                   />
-                </div>
               )}
 
               {isDrawingMode && (
@@ -724,6 +727,7 @@ export default function BlogReflectionEditor({
               {hasWrappedImages && images.filter(img => img.textWrap).map((img) => (
                 <div key={`wrap-${img.id}`}>
                   <div
+                    data-img-overlay="true"
                     className={`absolute pointer-events-auto ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
                     style={{
                       left: `${img.x}px`,
@@ -731,7 +735,7 @@ export default function BlogReflectionEditor({
                       width: `${img.width}px`,
                       height: `${img.height}px`,
                       transform: `rotate(${img.rotation}deg)`,
-                      zIndex: 15,
+                      zIndex: 25,
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -750,7 +754,8 @@ export default function BlogReflectionEditor({
                   </div>
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      className="absolute left-1/2 -translate-x-1/2 flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      style={{ zIndex: 35, top: `${img.y + img.height + 8}px` }}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button
@@ -792,6 +797,7 @@ export default function BlogReflectionEditor({
                   )}
                 </div>
               ))}
+              </div>
             </div>
 
             <input
