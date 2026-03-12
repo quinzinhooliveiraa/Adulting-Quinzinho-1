@@ -2,9 +2,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
   Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Crown, Sparkles,
-  PenLine, X, Lock, Send, Copy, Check, Loader2, Mic, MicOff, Square
+  PenLine, X, Lock, Send, Copy, Check, Loader2, Mic, MicOff, Square,
+  Image as ImageIcon
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
+import { generateShareImage, type ShareImageTheme } from "@/utils/shareImage";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
@@ -611,6 +613,14 @@ function CardGame({
               data-testid="button-share-card"
             >
               <Share2 size={20} />
+            </button>
+            <button
+              onClick={() => generateShareImage({ text: questions[currentIndex], theme: document.documentElement.classList.contains("dark") ? "dark" : "light", type: "question" })}
+              className="p-3 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+              data-testid="button-image-card"
+              title="Gerar imagem"
+            >
+              <ImageIcon size={20} />
             </button>
             <button
               onClick={handleNext}

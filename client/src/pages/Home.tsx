@@ -10,6 +10,7 @@ import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn, analyzeCheckIn } from "@/utils/intelligentRecommendation";
 import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
+import { generateShareImage, type ShareImageTheme } from "@/utils/shareImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
@@ -112,6 +113,7 @@ export default function Home() {
   const [checkIns, setCheckIns] = useState<{id: string, time: string}[]>([]);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isReminderShareOpen, setIsReminderShareOpen] = useState(false);
+  const [shareImageTheme, setShareImageTheme] = useState<ShareImageTheme>("dark");
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -394,83 +396,7 @@ export default function Home() {
         window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
         break;
       case 'save':
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = 1080;
-          canvas.height = 1080;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#1a1410';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.textAlign = 'center';
-
-            const starX = canvas.width / 2;
-            const starY = 180;
-            ctx.fillStyle = 'rgba(196, 164, 120, 0.5)';
-            const drawStar = (cx: number, cy: number, r: number) => {
-              for (let i = 0; i < 4; i++) {
-                const angle = (i * Math.PI) / 2;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
-                ctx.lineWidth = 2.5;
-                ctx.strokeStyle = 'rgba(196, 164, 120, 0.5)';
-                ctx.stroke();
-              }
-              ctx.beginPath();
-              ctx.arc(cx + r * 0.7, cy - r * 0.7, 4, 0, Math.PI * 2);
-              ctx.fill();
-            };
-            drawStar(starX, starY, 28);
-
-            ctx.fillStyle = '#f0ebe3';
-            ctx.font = 'italic 48px Georgia, serif';
-            const maxWidth = 820;
-            const lineHeight = 68;
-            const quoteText = `"${dailyReminder}"`;
-            const words = quoteText.split(' ');
-            let lines: string[] = [];
-            let line = '';
-            for (const word of words) {
-              const testLine = line + word + ' ';
-              if (ctx.measureText(testLine).width > maxWidth && line) {
-                lines.push(line.trim());
-                line = word + ' ';
-              } else {
-                line = testLine;
-              }
-            }
-            if (line.trim()) lines.push(line.trim());
-
-            const totalTextH = lines.length * lineHeight;
-            let textY = (canvas.height - totalTextH) / 2 + 40;
-            for (const l of lines) {
-              ctx.fillText(l, canvas.width / 2, textY);
-              textY += lineHeight;
-            }
-
-            const brandY = canvas.height - 160;
-            ctx.fillStyle = 'rgba(196, 164, 120, 0.3)';
-            ctx.fillRect(canvas.width / 2 - 40, brandY - 30, 80, 1);
-
-            ctx.fillStyle = 'rgba(196, 164, 120, 0.9)';
-            ctx.font = '600 18px sans-serif';
-            ctx.letterSpacing = '6px';
-            ctx.fillText('CASA DOS 20', canvas.width / 2, brandY);
-            ctx.letterSpacing = '0px';
-
-            ctx.fillStyle = 'rgba(196, 164, 120, 0.5)';
-            ctx.font = 'italic 16px Georgia, serif';
-            ctx.fillText('Reflexões para a Vida Adulta', canvas.width / 2, brandY + 30);
-
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/png');
-            link.download = `casa-dos-20-${new Date().toISOString().split('T')[0]}.png`;
-            link.click();
-          }
-        } catch (error) {
-          console.error('Error saving image:', error);
-        }
+        generateShareImage({ text: dailyReminder, theme: shareImageTheme, type: "reminder" });
         break;
     }
   };
@@ -896,6 +822,17 @@ export default function Home() {
               </button>
             </div>
 
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-muted-foreground">Tema da imagem</span>
+              <div className="flex rounded-full border border-border overflow-hidden">
+                <button onClick={() => setShareImageTheme("dark")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${shareImageTheme === "dark" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                  Escuro
+                </button>
+                <button onClick={() => setShareImageTheme("light")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${shareImageTheme === "light" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                  Claro
+                </button>
+              </div>
+            </div>
             <Button onClick={() => handleSocialShare('save')} className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all">
               <ImageIcon className="mr-2" size={20} />
               Salvar Imagem
@@ -1106,8 +1043,26 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="pt-6 border-t border-border">
-              <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-xl h-14 font-medium transition-all">
+            <div className="pt-6 border-t border-border space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Tema da imagem</span>
+                <div className="flex rounded-full border border-border overflow-hidden">
+                  <button onClick={() => setShareImageTheme("dark")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${shareImageTheme === "dark" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                    Escuro
+                  </button>
+                  <button onClick={() => setShareImageTheme("light")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${shareImageTheme === "light" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+                    Claro
+                  </button>
+                </div>
+              </div>
+              <Button
+                onClick={() => generateShareImage({
+                  text: dailyReflection.text,
+                  theme: shareImageTheme,
+                  type: dailyReflection.type === "question" ? "question" : "reflection"
+                })}
+                className="w-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-xl h-14 font-medium transition-all"
+              >
                 <ImageIcon className="mr-2" size={20} />
                 Gerar Imagem de Citação
               </Button>

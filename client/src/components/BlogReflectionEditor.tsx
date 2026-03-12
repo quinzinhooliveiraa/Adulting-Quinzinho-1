@@ -129,18 +129,17 @@ export default function BlogReflectionEditor({
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     
     const wrapImages = images.filter(img => img.textWrap);
-    wrapImages.sort((a, b) => b.y - a.y);
+    wrapImages.sort((a, b) => a.y - b.y);
     wrapImages.forEach(img => {
       const wrapper = document.createElement('div');
       wrapper.setAttribute('data-float-img', img.id);
       wrapper.contentEditable = 'false';
       const containerWidth = el.offsetWidth || 600;
       const side = img.x < containerWidth / 2 ? 'left' : 'right';
-      const marginTop = Math.max(0, img.y - 10);
-      const marginSide = side === 'left'
-        ? `margin: ${marginTop}px 16px 12px 0`
-        : `margin: ${marginTop}px 0 12px 16px`;
-      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; ${marginSide}; border-radius: 12px; overflow: hidden; user-select: none; position: relative; clear: ${side};`;
+      const marginTop = Math.max(0, img.y);
+      const marginLeft = side === 'left' ? Math.max(0, img.x) : 16;
+      const marginRight = side === 'right' ? Math.max(0, containerWidth - img.x - img.width) : 16;
+      wrapper.style.cssText = `float: ${side}; width: ${img.width}px; margin: ${marginTop}px ${marginRight}px 12px ${marginLeft}px; border-radius: 12px; overflow: hidden; user-select: none; position: relative; clear: ${side};`;
       
       if (selectedImage === img.id) {
         wrapper.style.outline = '2px solid hsl(var(--primary))';
