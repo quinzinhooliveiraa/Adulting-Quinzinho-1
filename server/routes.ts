@@ -105,13 +105,14 @@ export async function registerRoutes(
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
+      const isAdminEmail = data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       const user = await storage.createUser({
         username: data.email,
         password: hashPassword(data.password),
         name: data.name,
         email: data.email,
-        role: "user",
-        isPremium: false,
+        role: isAdminEmail ? "admin" : "user",
+        isPremium: isAdminEmail,
         isActive: true,
         trialEndsAt,
         premiumUntil: null,
@@ -147,13 +148,17 @@ export async function registerRoutes(
     try {
       const data = loginSchema.parse(req.body);
 
-      const user = await storage.getUserByEmail(data.email);
+      let user = await storage.getUserByEmail(data.email);
       if (!user || !verifyPassword(data.password, user.password)) {
         return res.status(401).json({ message: "Email ou senha incorretos" });
       }
 
       if (!user.isActive) {
         return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
+
+      if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role !== "admin") {
+        user = (await storage.updateUser(user.id, { role: "admin", isPremium: true })) || user;
       }
 
       req.session.userId = user.id;
