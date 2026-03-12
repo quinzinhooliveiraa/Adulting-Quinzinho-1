@@ -74,12 +74,16 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   }, [drawingColor]);
 
   useEffect(() => {
-    if (editableRef.current && !contentInitialized.current && hasWrappedImages) {
-      editableRef.current.innerText = content;
-      contentInitialized.current = true;
-      requestAnimationFrame(() => {
-        editableRef.current?.focus();
-      });
+    if (hasWrappedImages) {
+      if (editableRef.current) {
+        editableRef.current.innerText = content;
+        contentInitialized.current = true;
+        requestAnimationFrame(() => {
+          editableRef.current?.focus();
+        });
+      }
+    } else {
+      contentInitialized.current = false;
     }
   }, [hasWrappedImages]);
 
