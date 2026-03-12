@@ -86,6 +86,20 @@ export async function registerRoutes(
     })
   );
 
+  (async () => {
+    try {
+      const adminUser = await storage.getUserByEmail(ADMIN_EMAIL);
+      if (adminUser) {
+        if (adminUser.role !== "admin" || !adminUser.isPremium) {
+          await storage.updateUser(adminUser.id, { role: "admin", isPremium: true, password: hashPassword("Joaquim0123") });
+          console.log("[admin] Admin account restored");
+        }
+      }
+    } catch (e) {
+      console.error("[admin] Error checking admin:", e);
+    }
+  })();
+
   const registerSchema = z.object({
     name: z.string().min(1),
     email: z.string().email(),
