@@ -1,13 +1,111 @@
 import { ReactNode, useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MobileLayoutProps {
   children: ReactNode;
+}
+
+function FeedbackDialog({ onClose }: { onClose: () => void }) {
+  const [type, setType] = useState("feedback");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const sendMutation = useMutation({
+    mutationFn: async (data: { type: string; subject: string; message: string }) => {
+      const res = await apiRequest("POST", "/api/feedback", data);
+      return res.json();
+    },
+    onSuccess: () => setSent(true),
+  });
+
+  if (sent) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm border border-border shadow-2xl text-center animate-in zoom-in-95 duration-300">
+          <div className="text-4xl mb-3">✅</div>
+          <h3 className="text-lg font-serif text-foreground mb-1">Enviado!</h3>
+          <p className="text-sm text-muted-foreground mb-4">Seu chamado foi recebido. Vamos analisar e responder o mais rápido possível.</p>
+          <button onClick={onClose} className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm" data-testid="button-close-feedback-sent">
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-background rounded-t-3xl w-full max-w-md border-t border-border shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[85vh] flex flex-col">
+        <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+          <h3 className="text-sm font-medium text-foreground">Enviar Feedback</h3>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted">
+            <X size={16} className="text-muted-foreground" />
+          </button>
+        </div>
+        <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+          <div className="flex gap-1.5">
+            {[
+              { id: "feedback", label: "💬 Feedback" },
+              { id: "idea", label: "💡 Ideia" },
+              { id: "bug", label: "🐛 Bug" },
+              { id: "support", label: "🆘 Suporte" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setType(t.id)}
+                className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors ${
+                  type === t.id
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-muted/50 text-muted-foreground border-border"
+                }`}
+                data-testid={`button-feedback-type-${t.id}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Assunto"
+            className="w-full p-3 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            data-testid="input-feedback-subject"
+          />
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Descreva sua ideia, problema ou feedback..."
+            className="w-full min-h-[120px] p-3 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+            data-testid="textarea-feedback-message"
+          />
+          {sendMutation.isError && (
+            <p className="text-xs text-red-500">Erro ao enviar. Tente novamente.</p>
+          )}
+        </div>
+        <div className="p-4 border-t border-border shrink-0">
+          <button
+            onClick={() => sendMutation.mutate({ type, subject, message })}
+            disabled={!subject.trim() || !message.trim() || sendMutation.isPending}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            data-testid="button-send-feedback"
+          >
+            <Send size={16} />
+            {sendMutation.isPending ? "Enviando..." : "Enviar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function MobileLayout({ children }: MobileLayoutProps) {
@@ -15,6 +113,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const { logout, user } = useAuth();
   const { theme, setTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
@@ -124,7 +223,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                   </div>
 
                   <div className="border-t border-border">
-                    {user?.role === "admin" && (
+                    <button
+                      onClick={() => { setShowMenu(false); setShowFeedback(true); }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      data-testid="button-feedback"
+                    >
+                      <MessageSquare size={15} />
+                      Feedback / Suporte
+                    </button>
+                    {user?.role === "admin" && user?.email === "quinzinhooliveiraa@gmail.com" && (
                       <Link
                         href="/admin"
                         onClick={() => setShowMenu(false)}
@@ -156,6 +263,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             onChange={handlePhotoUpload}
           />
         </div>
+
+        {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
 
         <main className="flex-1 overflow-y-auto pb-24">
           {children}

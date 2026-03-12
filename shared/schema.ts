@@ -55,9 +55,27 @@ export const insertMoodCheckinSchema = createInsertSchema(moodCheckins).omit({
   createdAt: true,
 });
 
+export const feedbackTickets = pgTable("feedback_tickets", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull().default("feedback"),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("open"),
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertFeedbackTicketSchema = createInsertSchema(feedbackTickets).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type InsertMoodCheckin = z.infer<typeof insertMoodCheckinSchema>;
 export type MoodCheckin = typeof moodCheckins.$inferSelect;
+export type InsertFeedbackTicket = z.infer<typeof insertFeedbackTicketSchema>;
+export type FeedbackTicket = typeof feedbackTickets.$inferSelect;

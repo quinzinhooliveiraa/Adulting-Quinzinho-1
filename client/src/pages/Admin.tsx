@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ChevronLeft, Users, Crown, Shield, UserPlus, Ban, Check,
-  BarChart3, Clock, Star, XCircle, Search, Send
+  BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
+  MessageSquare, CheckCircle2, AlertCircle, ChevronDown
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -30,6 +31,19 @@ interface Stats {
   grantedUsers: number;
   expiredUsers: number;
   blockedUsers: number;
+}
+
+interface FeedbackTicket {
+  id: number;
+  userId: string;
+  type: string;
+  subject: string;
+  message: string;
+  status: string;
+  adminNote: string | null;
+  createdAt: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 function StatusBadge({ user }: { user: AdminUser }) {
@@ -63,12 +77,14 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
   );
 }
 
-function UserCard({ user, onUpdate }: { user: AdminUser; onUpdate: (id: string, data: any) => void }) {
+function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
   const createdAt = new Date(user.createdAt);
+  const isMainAdmin = user.email === "quinzinhooliveiraa@gmail.com";
 
   return (
     <div className="border border-border rounded-xl overflow-hidden bg-background">
@@ -112,7 +128,7 @@ function UserCard({ user, onUpdate }: { user: AdminUser; onUpdate: (id: string, 
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {user.role !== "admin" && (
+            {!isMainAdmin && (
               <>
                 {user.isPremium ? (
                   <button
@@ -147,6 +163,50 @@ function UserCard({ user, onUpdate }: { user: AdminUser; onUpdate: (id: string, 
                     data-testid={`button-unblock-${user.id}`}
                   >
                     <Check size={12} /> Desbloquear
+                  </button>
+                )}
+
+                {user.role !== "admin" ? (
+                  <button
+                    onClick={() => onUpdate(user.id, { role: "admin" })}
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 hover:bg-purple-500/20 transition-colors flex items-center gap-1"
+                    data-testid={`button-promote-admin-${user.id}`}
+                  >
+                    <Shield size={12} /> Tornar Admin
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onUpdate(user.id, { role: "user" })}
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    data-testid={`button-demote-admin-${user.id}`}
+                  >
+                    <Shield size={12} /> Remover Admin
+                  </button>
+                )}
+
+                {confirmDelete ? (
+                  <div className="flex gap-1 items-center">
+                    <button
+                      onClick={() => { onDelete(user.id); setConfirmDelete(false); }}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1"
+                      data-testid={`button-confirm-delete-${user.id}`}
+                    >
+                      <Trash2 size={12} /> Confirmar
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors flex items-center gap-1"
+                    data-testid={`button-delete-${user.id}`}
+                  >
+                    <Trash2 size={12} /> Apagar Conta
                   </button>
                 )}
               </>
@@ -230,11 +290,109 @@ function InviteForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function FeedbackStatusBadge({ status }: { status: string }) {
+  if (status === "open") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-medium">Aberto</span>;
+  }
+  if (status === "in_progress") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium">Em Andamento</span>;
+  }
+  if (status === "resolved") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 font-medium">Resolvido</span>;
+  }
+  if (status === "closed") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Fechado</span>;
+  }
+  return null;
+}
+
+function FeedbackTypeBadge({ type }: { type: string }) {
+  if (type === "bug") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Bug</span>;
+  }
+  if (type === "idea") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 font-medium">Ideia</span>;
+  }
+  if (type === "support") {
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium">Suporte</span>;
+  }
+  return <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Feedback</span>;
+}
+
+function FeedbackCard({ ticket, onUpdate }: { ticket: FeedbackTicket; onUpdate: (id: number, data: any) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [note, setNote] = useState(ticket.adminNote || "");
+  const createdAt = new Date(ticket.createdAt);
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden bg-background">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+        data-testid={`feedback-card-${ticket.id}`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-sm font-medium text-foreground truncate">{ticket.subject}</p>
+            <FeedbackTypeBadge type={ticket.type} />
+            <FeedbackStatusBadge status={ticket.status} />
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {ticket.userName} ({ticket.userEmail}) — {createdAt.toLocaleDateString("pt-BR")}
+          </p>
+        </div>
+        <ChevronDown size={14} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3 border-t border-border pt-3 animate-in fade-in duration-200">
+          <div className="p-3 rounded-lg bg-muted/50 text-sm text-foreground whitespace-pre-wrap">
+            {ticket.message}
+          </div>
+
+          <div className="space-y-2">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Nota do admin (opcional)..."
+              className="w-full p-2.5 rounded-lg bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+              rows={2}
+              data-testid={`textarea-admin-note-${ticket.id}`}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {["open", "in_progress", "resolved", "closed"].map((s) => (
+              <button
+                key={s}
+                onClick={() => onUpdate(ticket.id, { status: s, adminNote: note || undefined })}
+                className={`text-[11px] px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1 ${
+                  ticket.status === s
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-muted/50 text-muted-foreground border-border hover:text-foreground"
+                }`}
+                data-testid={`button-status-${s}-${ticket.id}`}
+              >
+                {s === "open" && <AlertCircle size={11} />}
+                {s === "in_progress" && <Clock size={11} />}
+                {s === "resolved" && <CheckCircle2 size={11} />}
+                {s === "closed" && <XCircle size={11} />}
+                {s === "open" ? "Aberto" : s === "in_progress" ? "Em Andamento" : s === "resolved" ? "Resolvido" : "Fechado"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "feedback">("users");
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
@@ -242,6 +400,10 @@ export default function Admin() {
 
   const { data: allUsers = [] } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
+  });
+
+  const { data: allFeedback = [] } = useQuery<FeedbackTicket[]>({
+    queryKey: ["/api/admin/feedback"],
   });
 
   const updateMutation = useMutation({
@@ -256,8 +418,37 @@ export default function Admin() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/users/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+    },
+  });
+
+  const updateFeedbackMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/admin/feedback/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/feedback"] });
+    },
+  });
+
   const handleUpdate = (id: string, data: any) => {
     updateMutation.mutate({ id, data });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
+  const handleFeedbackUpdate = (id: number, data: any) => {
+    updateFeedbackMutation.mutate({ id, data });
   };
 
   const filteredUsers = allUsers.filter(u => {
@@ -275,6 +466,8 @@ export default function Admin() {
     return true;
   });
 
+  const openFeedbackCount = allFeedback.filter(f => f.status === "open").length;
+
   return (
     <div className="px-6 pt-12 pb-24 space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-3">
@@ -283,82 +476,140 @@ export default function Admin() {
         </button>
         <div>
           <h1 className="text-2xl font-serif text-foreground">Painel Admin</h1>
-          <p className="text-xs text-muted-foreground">Gerencie usuários e acessos</p>
+          <p className="text-xs text-muted-foreground">Gerencie usuários, feedbacks e acessos</p>
         </div>
       </div>
-
-      {stats && (
-        <div className="grid grid-cols-3 gap-2">
-          <StatCard icon={Users} label="Total" value={stats.totalUsers} color="text-foreground" />
-          <StatCard icon={Star} label="Premium" value={stats.premiumUsers} color="text-yellow-500" />
-          <StatCard icon={Clock} label="Trial" value={stats.trialUsers} color="text-blue-500" />
-          <StatCard icon={Check} label="Liberados" value={stats.grantedUsers} color="text-green-500" />
-          <StatCard icon={XCircle} label="Expirados" value={stats.expiredUsers} color="text-muted-foreground" />
-          <StatCard icon={Ban} label="Bloqueados" value={stats.blockedUsers} color="text-red-500" />
-        </div>
-      )}
 
       <div className="flex gap-2">
         <button
-          onClick={() => setShowInvite(!showInvite)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
-          data-testid="button-toggle-invite"
+          onClick={() => setActiveTab("users")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            activeTab === "users"
+              ? "bg-foreground text-background"
+              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
+          }`}
+          data-testid="tab-users"
         >
-          <UserPlus size={16} />
-          Convidar
+          <Users size={16} />
+          Usuários
+        </button>
+        <button
+          onClick={() => setActiveTab("feedback")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors relative ${
+            activeTab === "feedback"
+              ? "bg-foreground text-background"
+              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
+          }`}
+          data-testid="tab-feedback"
+        >
+          <MessageSquare size={16} />
+          Chamados
+          {openFeedbackCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+              {openFeedbackCount}
+            </span>
+          )}
         </button>
       </div>
 
-      {showInvite && (
-        <div className="p-4 rounded-2xl border border-border bg-muted/30 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <h3 className="text-sm font-medium text-foreground">Convidar Pessoa</h3>
-          <InviteForm onSuccess={() => {}} />
-        </div>
+      {activeTab === "users" && (
+        <>
+          {stats && (
+            <div className="grid grid-cols-3 gap-2">
+              <StatCard icon={Users} label="Total" value={stats.totalUsers} color="text-foreground" />
+              <StatCard icon={Star} label="Premium" value={stats.premiumUsers} color="text-yellow-500" />
+              <StatCard icon={Clock} label="Trial" value={stats.trialUsers} color="text-blue-500" />
+              <StatCard icon={Check} label="Liberados" value={stats.grantedUsers} color="text-green-500" />
+              <StatCard icon={XCircle} label="Expirados" value={stats.expiredUsers} color="text-muted-foreground" />
+              <StatCard icon={Ban} label="Bloqueados" value={stats.blockedUsers} color="text-red-500" />
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowInvite(!showInvite)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+              data-testid="button-toggle-invite"
+            >
+              <UserPlus size={16} />
+              Convidar
+            </button>
+          </div>
+
+          {showInvite && (
+            <div className="p-4 rounded-2xl border border-border bg-muted/30 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="text-sm font-medium text-foreground">Convidar Pessoa</h3>
+              <InviteForm onSuccess={() => {}} />
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por nome ou email..."
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="input-search-users"
+              />
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+              {[
+                { id: "all", label: "Todos" },
+                { id: "trial", label: "Trial" },
+                { id: "premium", label: "Premium" },
+                { id: "expired", label: "Expirados" },
+                { id: "blocked", label: "Bloqueados" },
+                { id: "admin", label: "Admins" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilterStatus(f.id)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
+                    filterStatus === f.id
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-muted/50 text-muted-foreground border-border hover:text-foreground"
+                  }`}
+                  data-testid={`filter-${f.id}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{filteredUsers.length} usuário(s)</p>
+            {filteredUsers.map((user) => (
+              <UserCard key={user.id} user={user} onUpdate={handleUpdate} onDelete={handleDelete} />
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="space-y-3">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome ou email..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            data-testid="input-search-users"
-          />
-        </div>
+      {activeTab === "feedback" && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare size={16} className="text-foreground" />
+            <h2 className="text-sm font-medium text-foreground">
+              {allFeedback.length} chamado(s) — {openFeedbackCount} aberto(s)
+            </h2>
+          </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-          {[
-            { id: "all", label: "Todos" },
-            { id: "trial", label: "Trial" },
-            { id: "premium", label: "Premium" },
-            { id: "expired", label: "Expirados" },
-            { id: "blocked", label: "Bloqueados" },
-            { id: "admin", label: "Admins" },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilterStatus(f.id)}
-              className={`text-[11px] px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
-                filterStatus === f.id
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-muted/50 text-muted-foreground border-border hover:text-foreground"
-              }`}
-              data-testid={`filter-${f.id}`}
-            >
-              {f.label}
-            </button>
-          ))}
+          {allFeedback.length === 0 ? (
+            <div className="py-12 text-center">
+              <MessageSquare size={32} className="text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Nenhum chamado recebido ainda.</p>
+            </div>
+          ) : (
+            allFeedback.map((ticket) => (
+              <FeedbackCard key={ticket.id} ticket={ticket} onUpdate={handleFeedbackUpdate} />
+            ))
+          )}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">{filteredUsers.length} usuário(s)</p>
-        {filteredUsers.map((user) => (
-          <UserCard key={user.id} user={user} onUpdate={handleUpdate} />
-        ))}
-      </div>
+      )}
     </div>
   );
 }

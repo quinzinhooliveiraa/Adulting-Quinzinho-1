@@ -4,12 +4,15 @@ import {
   users,
   journalEntries,
   moodCheckins,
+  feedbackTickets,
   type User,
   type InsertUser,
   type JournalEntry,
   type InsertJournalEntry,
   type MoodCheckin,
   type InsertMoodCheckin,
+  type FeedbackTicket,
+  type InsertFeedbackTicket,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -18,6 +21,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy">>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
 
   getEntries(userId: string): Promise<JournalEntry[]>;
@@ -30,6 +34,11 @@ export interface IStorage {
   getCheckins(userId: string): Promise<MoodCheckin[]>;
   getLatestCheckin(userId: string): Promise<MoodCheckin | undefined>;
   createCheckin(checkin: InsertMoodCheckin): Promise<MoodCheckin>;
+
+  createFeedback(ticket: InsertFeedbackTicket): Promise<FeedbackTicket>;
+  getFeedbackByUser(userId: string): Promise<FeedbackTicket[]>;
+  getAllFeedback(): Promise<(FeedbackTicket & { userName?: string; userEmail?: string })[]>;
+  updateFeedbackStatus(id: number, status: string, adminNote?: string): Promise<FeedbackTicket | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -115,6 +124,46 @@ export class DatabaseStorage implements IStorage {
   async createCheckin(checkin: InsertMoodCheckin): Promise<MoodCheckin> {
     const [created] = await db.insert(moodCheckins).values(checkin).returning();
     return created;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    await db.delete(feedbackTickets).where(eq(feedbackTickets.userId, id));
+    await db.delete(moodCheckins).where(eq(moodCheckins.userId, id));
+    await db.delete(journalEntries).where(eq(journalEntries.userId, id));
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async createFeedback(ticket: InsertFeedbackTicket): Promise<FeedbackTicket> {
+    const [created] = await db.insert(feedbackTickets).values(ticket).returning();
+    return created;
+  }
+
+  async getFeedbackByUser(userId: string): Promise<FeedbackTicket[]> {
+    return db.select().from(feedbackTickets)
+      .where(eq(feedbackTickets.userId, userId))
+      .orderBy(desc(feedbackTickets.createdAt));
+  }
+
+  async getAllFeedback(): Promise<(FeedbackTicket & { userName?: string; userEmail?: string })[]> {
+    const allTickets = await db.select().from(feedbackTickets).orderBy(desc(feedbackTickets.createdAt));
+    const result = [];
+    for (const ticket of allTickets) {
+      const user = await this.getUser(ticket.userId);
+      result.push({
+        ...ticket,
+        userName: user?.name,
+        userEmail: user?.email,
+      });
+    }
+    return result;
+  }
+
+  async updateFeedbackStatus(id: number, status: string, adminNote?: string): Promise<FeedbackTicket | undefined> {
+    const updateData: any = { status };
+    if (adminNote !== undefined) updateData.adminNote = adminNote;
+    const [updated] = await db.update(feedbackTickets).set(updateData).where(eq(feedbackTickets.id, id)).returning();
+    return updated;
   }
 }
 

@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
@@ -36,12 +37,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+const ADMIN_EMAIL = "quinzinhooliveiraa@gmail.com";
+
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Não autenticado" });
   }
   const user = await storage.getUser(req.session.userId);
-  if (!user || user.role !== "admin") {
+  if (!user || user.role !== "admin" || user.email !== ADMIN_EMAIL) {
     return res.status(403).json({ message: "Acesso negado" });
   }
   next();
@@ -319,6 +322,51 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+      if (user.email === ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Não é possível apagar a conta admin" });
+      }
+      const deleted = await storage.deleteUser(userId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Erro ao apagar usuário" });
+      }
+      res.json({ message: "Usuário apagado com sucesso" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Erro ao apagar usuário" });
+    }
+  });
+
+  app.get("/api/admin/feedback", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const tickets = await storage.getAllFeedback();
+      res.json(tickets);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar chamados" });
+    }
+  });
+
+  app.patch("/api/admin/feedback/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
+      const { status, adminNote } = req.body;
+      const updated = await storage.updateFeedbackStatus(id, status, adminNote);
+      if (!updated) {
+        return res.status(404).json({ message: "Chamado não encontrado" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao atualizar chamado" });
+    }
+  });
+
   app.get("/api/admin/stats", requireAdmin, async (_req: Request, res: Response) => {
     try {
       const allUsers = await storage.getAllUsers();
@@ -354,6 +402,35 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar estatísticas" });
+    }
+  });
+
+  app.post("/api/feedback", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { type, subject, message } = req.body;
+      if (!subject?.trim() || !message?.trim()) {
+        return res.status(400).json({ message: "Assunto e mensagem são obrigatórios" });
+      }
+      const ticket = await storage.createFeedback({
+        userId: req.session.userId!,
+        type: type || "feedback",
+        subject: subject.trim(),
+        message: message.trim(),
+        status: "open",
+        adminNote: null,
+      });
+      res.status(201).json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao enviar feedback" });
+    }
+  });
+
+  app.get("/api/feedback", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const tickets = await storage.getFeedbackByUser(req.session.userId!);
+      res.json(tickets);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar feedbacks" });
     }
   });
 
@@ -481,6 +558,196 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Erro ao criar check-in" });
     }
+  });
+
+  interface LobbyPlayer {
+    ws: WebSocket;
+    name: string;
+    id: string;
+  }
+
+  interface Lobby {
+    code: string;
+    players: LobbyPlayer[];
+    hostId: string;
+    mode: "online" | "presencial";
+    relation: string;
+    currentTurn: number;
+    currentCard: number;
+    seenCards: number[];
+    started: boolean;
+  }
+
+  const lobbies = new Map<string, Lobby>();
+
+  function generateLobbyCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  function broadcastToLobby(lobby: Lobby, message: any, excludeId?: string) {
+    const msg = JSON.stringify(message);
+    lobby.players.forEach(p => {
+      if (p.id !== excludeId && p.ws.readyState === WebSocket.OPEN) {
+        p.ws.send(msg);
+      }
+    });
+  }
+
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws/lobby" });
+
+  wss.on("connection", (ws: WebSocket) => {
+    let currentLobby: Lobby | null = null;
+    let playerId = randomBytes(8).toString("hex");
+
+    ws.on("message", (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+
+        if (msg.type === "create") {
+          const code = generateLobbyCode();
+          const lobby: Lobby = {
+            code,
+            players: [{ ws, name: msg.name, id: playerId }],
+            hostId: playerId,
+            mode: msg.mode || "online",
+            relation: msg.relation || "",
+            currentTurn: 0,
+            currentCard: -1,
+            seenCards: [],
+            started: false,
+          };
+          lobbies.set(code, lobby);
+          currentLobby = lobby;
+          ws.send(JSON.stringify({
+            type: "created",
+            code,
+            playerId,
+            players: lobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === lobby.hostId })),
+          }));
+        }
+
+        if (msg.type === "join") {
+          const lobby = lobbies.get(msg.code?.toUpperCase());
+          if (!lobby) {
+            ws.send(JSON.stringify({ type: "error", message: "Sala não encontrada" }));
+            return;
+          }
+          if (lobby.started) {
+            ws.send(JSON.stringify({ type: "error", message: "Jogo já começou" }));
+            return;
+          }
+          if (lobby.players.length >= 8) {
+            ws.send(JSON.stringify({ type: "error", message: "Sala cheia (máx 8)" }));
+            return;
+          }
+          lobby.players.push({ ws, name: msg.name, id: playerId });
+          currentLobby = lobby;
+          const playerList = lobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === lobby.hostId }));
+          ws.send(JSON.stringify({
+            type: "joined",
+            code: lobby.code,
+            playerId,
+            players: playerList,
+            mode: lobby.mode,
+            relation: lobby.relation,
+          }));
+          broadcastToLobby(lobby, { type: "player_joined", players: playerList }, playerId);
+        }
+
+        if (msg.type === "start" && currentLobby && playerId === currentLobby.hostId) {
+          currentLobby.started = true;
+          currentLobby.currentTurn = 0;
+          const firstCard = Math.floor(Math.random() * (msg.totalCards || 10));
+          currentLobby.currentCard = firstCard;
+          currentLobby.seenCards = [firstCard];
+          const turnPlayer = currentLobby.players[0];
+          broadcastToLobby(currentLobby, {
+            type: "game_started",
+            currentTurn: turnPlayer.id,
+            currentTurnName: turnPlayer.name,
+            currentCard: firstCard,
+            players: currentLobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === currentLobby!.hostId })),
+          });
+          ws.send(JSON.stringify({
+            type: "game_started",
+            currentTurn: turnPlayer.id,
+            currentTurnName: turnPlayer.name,
+            currentCard: firstCard,
+            players: currentLobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === currentLobby!.hostId })),
+          }));
+        }
+
+        if (msg.type === "next_card" && currentLobby && currentLobby.started) {
+          const lobby = currentLobby;
+          const nextTurnIndex = (lobby.currentTurn + 1) % lobby.players.length;
+          lobby.currentTurn = nextTurnIndex;
+
+          const totalCards = msg.totalCards || 10;
+          const unseen = Array.from({ length: totalCards }, (_, i) => i).filter(i => !lobby.seenCards.includes(i));
+          let nextCard: number;
+          if (unseen.length > 0) {
+            nextCard = unseen[Math.floor(Math.random() * unseen.length)];
+          } else {
+            nextCard = Math.floor(Math.random() * totalCards);
+            lobby.seenCards = [];
+          }
+          lobby.currentCard = nextCard;
+          lobby.seenCards.push(nextCard);
+
+          const turnPlayer = lobby.players[nextTurnIndex];
+          const payload = {
+            type: "new_card",
+            currentTurn: turnPlayer?.id,
+            currentTurnName: turnPlayer?.name,
+            currentCard: nextCard,
+          };
+          broadcastToLobby(lobby, payload);
+          ws.send(JSON.stringify(payload));
+        }
+
+        if (msg.type === "leave") {
+          if (currentLobby) {
+            currentLobby.players = currentLobby.players.filter(p => p.id !== playerId);
+            if (currentLobby.players.length === 0) {
+              lobbies.delete(currentLobby.code);
+            } else {
+              if (currentLobby.hostId === playerId) {
+                currentLobby.hostId = currentLobby.players[0].id;
+              }
+              broadcastToLobby(currentLobby, {
+                type: "player_left",
+                players: currentLobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === currentLobby!.hostId })),
+              });
+            }
+            currentLobby = null;
+          }
+        }
+      } catch (e) {
+        console.error("WS message error:", e);
+      }
+    });
+
+    ws.on("close", () => {
+      if (currentLobby) {
+        currentLobby.players = currentLobby.players.filter(p => p.id !== playerId);
+        if (currentLobby.players.length === 0) {
+          lobbies.delete(currentLobby.code);
+        } else {
+          if (currentLobby.hostId === playerId) {
+            currentLobby.hostId = currentLobby.players[0].id;
+          }
+          broadcastToLobby(currentLobby, {
+            type: "player_left",
+            players: currentLobby.players.map(p => ({ name: p.name, id: p.id, isHost: p.id === currentLobby!.hostId })),
+          });
+        }
+      }
+    });
   });
 
   return httpServer;

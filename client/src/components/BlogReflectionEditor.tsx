@@ -92,6 +92,9 @@ export default function BlogReflectionEditor({
     if (editableRef.current && !contentInitialized.current && hasWrappedImages) {
       editableRef.current.innerText = content;
       contentInitialized.current = true;
+      requestAnimationFrame(() => {
+        editableRef.current?.focus();
+      });
     }
   }, [hasWrappedImages]);
 
@@ -350,9 +353,12 @@ export default function BlogReflectionEditor({
               {hasWrappedImages ? (
                 <div 
                   className="relative"
-                  style={{ zIndex: 15 }}
-                  onPointerDown={(e) => {
-                    if (e.target === e.currentTarget) setSelectedImage(null);
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (!target.closest('[data-float-img]')) {
+                      setSelectedImage(null);
+                      editableRef.current?.focus();
+                    }
                   }}
                 >
                   <div
@@ -360,18 +366,15 @@ export default function BlogReflectionEditor({
                     contentEditable={!isDrawingMode}
                     suppressContentEditableWarning
                     onInput={handleContentInput}
-                    className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] ${
+                    className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] dark:text-foreground ${
                       isDrawingMode ? "pointer-events-none opacity-60" : ""
                     }`}
-                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px', position: 'relative', zIndex: 20 }}
+                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px', position: 'relative', zIndex: 20, cursor: 'text' }}
                     data-placeholder="Escreva seus pensamentos aqui..."
                   />
                 </div>
               ) : (
-                <div 
-                  className="relative"
-                  style={{ zIndex: 15 }}
-                >
+                <div className="relative">
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -379,10 +382,10 @@ export default function BlogReflectionEditor({
                     onPointerDown={(e) => e.stopPropagation()}
                     placeholder="Escreva seus pensamentos aqui..."
                     disabled={isDrawingMode}
-                    className={`w-full min-h-[350px] p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] resize-none ${
+                    className={`w-full min-h-[350px] p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] dark:text-foreground resize-none ${
                       isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto relative"
                     }`}
-                    style={{ zIndex: 20 , position: 'relative' }}
+                    style={{ zIndex: 20, position: 'relative' }}
                   />
                 </div>
               )}

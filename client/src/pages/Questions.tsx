@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
   Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Crown, Sparkles,
-  PenLine, X, Lock, Send
+  PenLine, X, Lock, Send, Copy, Check, Loader2
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
 import { useCreateEntry } from "@/hooks/useJournal";
@@ -752,6 +752,439 @@ function PremiumGate({ onBack }: { onBack: () => void }) {
   );
 }
 
+function useWebSocket() {
+  const wsRef = useRef<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const handlersRef = useRef<((msg: any) => void)[]>([]);
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/lobby`);
+    ws.onopen = () => setConnected(true);
+    ws.onclose = () => setConnected(false);
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        handlersRef.current.forEach(h => h(msg));
+      } catch {}
+    };
+    wsRef.current = ws;
+  }, []);
+
+  const send = useCallback((data: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(data));
+    }
+  }, []);
+
+  const onMessage = useCallback((handler: (msg: any) => void) => {
+    handlersRef.current.push(handler);
+    return () => {
+      handlersRef.current = handlersRef.current.filter(h => h !== handler);
+    };
+  }, []);
+
+  const disconnect = useCallback(() => {
+    wsRef.current?.close();
+    wsRef.current = null;
+  }, []);
+
+  return { connect, send, onMessage, disconnect, connected };
+}
+
+interface LobbyPlayer {
+  name: string;
+  id: string;
+  isHost: boolean;
+}
+
+function LobbyScreen({
+  mode,
+  relation,
+  questions,
+  questionData,
+  onBack,
+  userName,
+}: {
+  mode: ConversaType;
+  relation: RelationType;
+  questions: string[];
+  questionData: { title: string; emoji: string; color: string };
+  onBack: () => void;
+  userName: string;
+}) {
+  const [screen, setScreen] = useState<"choice" | "create" | "join" | "waiting" | "game">("choice");
+  const [lobbyCode, setLobbyCode] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [players, setPlayers] = useState<LobbyPlayer[]>([]);
+  const [myId, setMyId] = useState("");
+  const [error, setError] = useState("");
+  const [currentTurn, setCurrentTurn] = useState("");
+  const [currentTurnName, setCurrentTurnName] = useState("");
+  const [currentCard, setCurrentCard] = useState(-1);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  const { connect, send, onMessage, disconnect } = useWebSocket();
+
+  useEffect(() => {
+    connect();
+    const unsub = onMessage((msg) => {
+      if (msg.type === "created") {
+        setLobbyCode(msg.code);
+        setMyId(msg.playerId);
+        setPlayers(msg.players);
+        setScreen("waiting");
+      }
+      if (msg.type === "joined") {
+        setLobbyCode(msg.code);
+        setMyId(msg.playerId);
+        setPlayers(msg.players);
+        setScreen("waiting");
+      }
+      if (msg.type === "player_joined" || msg.type === "player_left") {
+        setPlayers(msg.players);
+      }
+      if (msg.type === "game_started") {
+        setPlayers(msg.players);
+        setCurrentTurn(msg.currentTurn);
+        setCurrentTurnName(msg.currentTurnName);
+        setCurrentCard(msg.currentCard);
+        setIsFlipped(false);
+        setScreen("game");
+      }
+      if (msg.type === "new_card") {
+        setCurrentTurn(msg.currentTurn);
+        setCurrentTurnName(msg.currentTurnName);
+        setCurrentCard(msg.currentCard);
+        setIsFlipped(false);
+      }
+      if (msg.type === "error") {
+        setError(msg.message);
+      }
+    });
+    return () => { unsub(); disconnect(); };
+  }, []);
+
+  const handleCreate = () => {
+    send({ type: "create", name: userName, mode, relation });
+  };
+
+  const handleJoin = () => {
+    if (!joinCode.trim()) return;
+    setError("");
+    send({ type: "join", name: userName, code: joinCode.toUpperCase() });
+  };
+
+  const handleStart = () => {
+    send({ type: "start", totalCards: questions.length });
+  };
+
+  const handleNextCard = () => {
+    send({ type: "next_card", totalCards: questions.length });
+  };
+
+  const handleLeave = () => {
+    send({ type: "leave" });
+    disconnect();
+    onBack();
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(lobbyCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const isHost = players.find(p => p.id === myId)?.isHost || false;
+  const isMyTurn = currentTurn === myId;
+
+  if (screen === "game") {
+    const cardIndex = Math.max(0, Math.min(currentCard, questions.length - 1));
+
+    return (
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
+        <div className="px-6 pt-8 pb-4 flex items-center justify-between">
+          <button onClick={handleLeave} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-leave-game">
+            <ChevronLeft size={24} className="text-foreground" />
+          </button>
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+              {mode === "online" ? "Online" : "Presencial"} — {lobbyCode}
+            </p>
+            <p className="text-xs text-foreground font-medium">
+              {players.length} jogadores
+            </p>
+          </div>
+          <div className="w-10" />
+        </div>
+
+        <div className="px-6 mb-4">
+          <div className={`p-3 rounded-xl text-center ${isMyTurn ? "bg-primary/10 border border-primary/20" : "bg-muted/50 border border-border"}`}>
+            <p className="text-xs text-muted-foreground mb-0.5">Vez de</p>
+            <p className={`text-sm font-medium ${isMyTurn ? "text-primary" : "text-foreground"}`}>
+              {isMyTurn ? "Você!" : currentTurnName}
+            </p>
+          </div>
+        </div>
+
+        <div className="px-6 flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
+          <div
+            className="w-full max-w-sm cursor-pointer"
+            style={{ perspective: "1000px" }}
+            onClick={() => setIsFlipped(!isFlipped)}
+            data-testid="card-lobby-question"
+          >
+            <div
+              className="relative w-full transition-transform duration-500"
+              style={{
+                aspectRatio: "3/4",
+                transformStyle: "preserve-3d",
+                transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+              }}
+            >
+              <div
+                className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${questionData.color} shadow-2xl flex flex-col items-center justify-center p-8`}
+                style={{ backfaceVisibility: "hidden" }}
+              >
+                <div className="text-7xl mb-6 opacity-30">{questionData.emoji}</div>
+                <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-2">Casa dos 20</p>
+                <h3 className="text-white text-xl font-serif text-center">{questionData.title}</h3>
+                <p className="text-white/50 text-xs mt-6">Toque para revelar</p>
+              </div>
+              <div
+                className="absolute inset-0 rounded-3xl bg-background border-2 border-border shadow-2xl flex flex-col items-center justify-center p-8"
+                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+              >
+                <div className="text-3xl mb-6">{questionData.emoji}</div>
+                <p className="text-foreground font-serif text-xl text-center leading-relaxed">
+                  "{questions[cardIndex]}"
+                </p>
+                <p className="text-muted-foreground text-xs mt-6 uppercase tracking-widest">
+                  {questionData.title}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isFlipped && (
+            <div className="flex gap-3 mt-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {mode === "online" && (
+                <button
+                  onClick={() => setShowAnswer(true)}
+                  className="p-3 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  data-testid="button-answer-lobby"
+                >
+                  <PenLine size={20} />
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const text = `"${questions[cardIndex]}" — Casa dos 20`;
+                  if (navigator.share) {
+                    navigator.share({ title: "Casa dos 20", text }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(text);
+                  }
+                }}
+                className="p-3 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                data-testid="button-share-lobby"
+              >
+                <Share2 size={20} />
+              </button>
+              {(isMyTurn || isHost) && (
+                <button
+                  onClick={handleNextCard}
+                  className={`px-6 py-3 rounded-full bg-gradient-to-r ${questionData.color} text-white font-medium flex items-center gap-2 shadow-lg`}
+                  data-testid="button-next-lobby"
+                >
+                  Sortear <Sparkles size={16} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 mt-4">
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {players.map((p) => (
+              <div
+                key={p.id}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-medium shrink-0 ${
+                  p.id === currentTurn
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {p.name} {p.isHost ? "👑" : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {showAnswer && (
+          <AnswerSheet
+            question={questions[cardIndex]}
+            onClose={() => setShowAnswer(false)}
+            onSaved={() => setShowAnswer(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (screen === "waiting") {
+    return (
+      <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+        <div>
+          <button onClick={handleLeave} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-leave-lobby">
+            <ChevronLeft size={24} className="text-foreground" />
+          </button>
+          <h1 className="text-2xl font-serif text-foreground">Sala de Espera</h1>
+          <p className="text-sm text-muted-foreground mt-1">Compartilhe o código para outros entrarem.</p>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-muted/50 border border-border text-center space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Código da Sala</p>
+          <div className="flex items-center justify-center gap-3">
+            <p className="text-4xl font-mono font-bold text-foreground tracking-[0.3em]">{lobbyCode}</p>
+            <button
+              onClick={copyCode}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              data-testid="button-copy-code"
+            >
+              {copiedCode ? <Check size={18} className="text-green-500" /> : <Copy size={18} className="text-muted-foreground" />}
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              const text = `Entre na sala ${lobbyCode} no Casa dos 20 para jogar comigo!`;
+              if (navigator.share) {
+                navigator.share({ title: "Casa dos 20 — Sala", text }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(text);
+              }
+            }}
+            className="text-xs text-primary font-medium flex items-center gap-1 mx-auto"
+            data-testid="button-share-code"
+          >
+            <Share2 size={12} /> Compartilhar
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{players.length} jogador(es) na sala</p>
+          {players.map((p) => (
+            <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border">
+              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground/60">
+                {p.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  {p.name} {p.id === myId ? "(você)" : ""}
+                </p>
+              </div>
+              {p.isHost && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-medium">Host</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {isHost && players.length >= 2 && (
+          <button
+            onClick={handleStart}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-medium text-sm shadow-lg flex items-center justify-center gap-2"
+            data-testid="button-start-game"
+          >
+            <Sparkles size={16} /> Iniciar Jogo ({players.length} jogadores)
+          </button>
+        )}
+
+        {isHost && players.length < 2 && (
+          <p className="text-xs text-muted-foreground text-center">Aguardando mais jogadores para iniciar...</p>
+        )}
+
+        {!isHost && (
+          <div className="text-center py-4">
+            <Loader2 size={24} className="text-muted-foreground animate-spin mx-auto mb-2" />
+            <p className="text-xs text-muted-foreground">Aguardando o host iniciar o jogo...</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+      <div>
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-lobby-choice">
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-2xl font-serif text-foreground">
+          {mode === "online" ? "Jogo Online" : "Jogo Presencial"} — Lobby
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Crie uma sala ou entre com um código.</p>
+      </div>
+
+      {error && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm animate-in fade-in duration-200">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <button
+          onClick={handleCreate}
+          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          data-testid="button-create-lobby"
+        >
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${questionData.color} flex items-center justify-center shadow-sm`}>
+            <Crown size={20} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Criar Sala</p>
+            <p className="text-xs text-muted-foreground">Você será o host e compartilha o código</p>
+          </div>
+        </button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="px-3 bg-background text-xs text-muted-foreground">ou</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-muted/50 border border-border space-y-3">
+          <p className="text-sm font-medium text-foreground">Entrar numa Sala</p>
+          <div className="flex gap-2">
+            <input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Código da sala"
+              maxLength={5}
+              className="flex-1 p-3 rounded-xl bg-background border border-border text-foreground text-center text-lg font-mono tracking-[0.2em] uppercase placeholder:text-muted-foreground placeholder:text-sm placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+              data-testid="input-join-code"
+            />
+            <button
+              onClick={handleJoin}
+              disabled={joinCode.length < 5}
+              className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50"
+              data-testid="button-join-lobby"
+            >
+              Entrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ConversaTypeSelect({ onSelect, onBack }: { onSelect: (type: ConversaType) => void; onBack: () => void }) {
   return (
     <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-500">
@@ -836,6 +1269,8 @@ export default function Questions() {
   const [conversaType, setConversaType] = useState<ConversaType | null>(null);
   const [relation, setRelation] = useState<RelationType | null>(null);
   const [showPremiumGate, setShowPremiumGate] = useState(false);
+  const [showLobby, setShowLobby] = useState(false);
+  const [singleDevice, setSingleDevice] = useState(false);
 
   const premium = user?.hasPremium ?? false;
 
@@ -862,7 +1297,7 @@ export default function Questions() {
     return <SoloThemeSelect onSelect={setSoloTheme} onBack={() => setGameMode(null)} />;
   }
 
-  if (gameMode === "conversa" && conversaType && relation) {
+  if (gameMode === "conversa" && conversaType && relation && singleDevice) {
     const data = CONVERSATION_QUESTIONS[relation];
     return (
       <CardGame
@@ -871,11 +1306,77 @@ export default function Questions() {
         emoji={data.emoji}
         color={data.color}
         subtitle={conversaType === "presencial" ? "Presencial" : "Online"}
-        onBack={() => setRelation(null)}
+        onBack={() => { setSingleDevice(false); setRelation(null); }}
         weightedMode={true}
         allowAnswer={true}
       />
     );
+  }
+
+  if (gameMode === "conversa" && conversaType && relation && showLobby) {
+    const data = CONVERSATION_QUESTIONS[relation];
+    return (
+      <LobbyScreen
+        mode={conversaType}
+        relation={relation}
+        questions={data.questions}
+        questionData={{ title: data.title, emoji: data.emoji, color: data.color }}
+        onBack={() => { setShowLobby(false); setRelation(null); }}
+        userName={user?.name || "Jogador"}
+      />
+    );
+  }
+
+  if (gameMode === "conversa" && conversaType && relation) {
+    const data = CONVERSATION_QUESTIONS[relation];
+
+    if (!showLobby) {
+      return (
+        <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+          <div>
+            <button onClick={() => setRelation(null)} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-play-choice">
+              <ChevronLeft size={24} className="text-foreground" />
+            </button>
+            <h1 className="text-2xl font-serif text-foreground">{data.title}</h1>
+            <p className="text-sm text-muted-foreground mt-1">Como quer jogar?</p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowLobby(true)}
+              className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+              data-testid="button-play-lobby"
+            >
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${data.color} flex items-center justify-center shadow-sm`}>
+                <Users size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Com Lobby</p>
+                <p className="text-xs text-muted-foreground">
+                  {conversaType === "online"
+                    ? "Crie uma sala, cada um responde no app"
+                    : "Crie uma sala, cada um tira carta do celular"}
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSingleDevice(true)}
+              className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+              data-testid="button-play-single-device"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center shadow-sm">
+                <MapPin size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Um Dispositivo</p>
+                <p className="text-xs text-muted-foreground">Jogar no mesmo celular, sem sala</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   if (gameMode === "conversa" && conversaType) {

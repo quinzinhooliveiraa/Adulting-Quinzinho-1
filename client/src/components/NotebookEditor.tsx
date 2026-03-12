@@ -73,6 +73,9 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
     if (editableRef.current && !contentInitialized.current && hasWrappedImages) {
       editableRef.current.innerText = content;
       contentInitialized.current = true;
+      requestAnimationFrame(() => {
+        editableRef.current?.focus();
+      });
     }
   }, [hasWrappedImages]);
 
@@ -372,9 +375,12 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
             {hasWrappedImages ? (
               <div 
                 className="relative"
-                style={{ zIndex: 15 }}
-                onPointerDown={(e) => {
-                  if (e.target === e.currentTarget) setSelectedImage(null);
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('[data-float-img]')) {
+                    setSelectedImage(null);
+                    editableRef.current?.focus();
+                  }
                 }}
               >
                 <div
@@ -385,15 +391,12 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
                   className={`w-full min-h-96 bg-transparent focus:outline-none font-serif text-base leading-7 ${
                     isDrawingMode ? "pointer-events-none opacity-60" : ""
                   }`}
-                  style={{ lineHeight: "28px", whiteSpace: 'pre-wrap', wordWrap: 'break-word', position: 'relative', zIndex: 20 }}
+                  style={{ lineHeight: "28px", whiteSpace: 'pre-wrap', wordWrap: 'break-word', position: 'relative', zIndex: 20, cursor: 'text' }}
                   data-placeholder="Escreva seus pensamentos aqui..."
                 />
               </div>
             ) : (
-              <div 
-                className="relative"
-                style={{ zIndex: 15 }}
-              >
+              <div className="relative">
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
