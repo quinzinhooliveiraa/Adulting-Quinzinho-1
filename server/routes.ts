@@ -760,6 +760,18 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/journey/restart", requireAuth, async (req, res) => {
+    try {
+      const { journeyId } = req.body;
+      if (!journeyId) return res.status(400).json({ message: "journeyId obrigatório" });
+      const updated = await storage.restartJourney(req.session.userId!, journeyId);
+      if (!updated) return res.status(404).json({ message: "Progresso não encontrado" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao recomeçar jornada" });
+    }
+  });
+
   interface LobbyPlayer {
     ws: WebSocket;
     name: string;

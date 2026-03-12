@@ -382,39 +382,83 @@ interface ProgressData {
 
 const QUIZ_QUESTIONS = [
   {
-    question: "O que mais te incomoda na sua vida agora?",
+    question: "Quando você deita à noite e fica pensando, o que mais aparece?",
+    subtitle: "Escolha o que mais combina com você",
     options: [
-      { label: "Não sei quem eu sou de verdade", journeys: ["autoconhecimento", "solidao"] },
-      { label: "Sinto que estou sem direção", journeys: ["proposito-profissional", "crescimento"] },
-      { label: "Meus relacionamentos estão confusos", journeys: ["relacoes", "autoconhecimento"] },
-      { label: "Tenho medo do futuro", journeys: ["incerteza", "crescimento"] },
+      { label: "Fico repassando coisas que fiz ou disse, tentando entender quem eu sou", journeys: ["autoconhecimento", "solidao"] },
+      { label: "Penso se estou no caminho certo ou perdendo tempo", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "Lembro de conversas difíceis ou relações que me machucam", journeys: ["relacoes", "autoconhecimento"] },
+      { label: "Sinto uma ansiedade sobre o que vai acontecer amanhã, semana que vem, no futuro", journeys: ["incerteza", "crescimento"] },
     ],
   },
   {
-    question: "Em qual área você quer crescer mais?",
+    question: "Se um amigo próximo descrevesse você em uma palavra, qual seria?",
+    subtitle: "Seja honesto(a), não ideal",
     options: [
-      { label: "Me conhecer melhor", journeys: ["autoconhecimento", "solidao"] },
-      { label: "Encontrar meu propósito", journeys: ["proposito-profissional", "crescimento"] },
-      { label: "Melhorar minhas relações", journeys: ["relacoes", "autoconhecimento"] },
-      { label: "Lidar com incertezas", journeys: ["incerteza", "proposito-profissional"] },
+      { label: "Intenso(a) — sinto tudo muito forte", journeys: ["autoconhecimento", "solidao"] },
+      { label: "Perdido(a) — ainda buscando meu lugar", journeys: ["proposito-profissional", "incerteza"] },
+      { label: "Disponível — sempre coloco os outros primeiro", journeys: ["relacoes", "solidao"] },
+      { label: "Inquieto(a) — nunca estou satisfeito com onde estou", journeys: ["crescimento", "proposito-profissional"] },
     ],
   },
   {
-    question: "Como você se sente quando está sozinho(a)?",
+    question: "Qual dessas frases te causa mais desconforto?",
+    subtitle: "A que mais dói provavelmente é a mais importante",
     options: [
-      { label: "Ansioso(a), preciso de distração", journeys: ["solidao", "autoconhecimento"] },
-      { label: "Entediado(a), não sei o que fazer", journeys: ["proposito-profissional", "crescimento"] },
-      { label: "Tranquilo(a), até gosto", journeys: ["relacoes", "incerteza"] },
-      { label: "Reflexivo(a), penso demais", journeys: ["autoconhecimento", "solidao"] },
+      { label: "\"Você se conhece ou apenas se acostumou consigo mesmo?\"", journeys: ["autoconhecimento", "crescimento"] },
+      { label: "\"Você está construindo algo ou apenas sobrevivendo?\"", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "\"As pessoas ao seu redor te conhecem de verdade?\"", journeys: ["relacoes", "solidao"] },
+      { label: "\"E se tudo der errado? Você aguenta?\"", journeys: ["incerteza", "autoconhecimento"] },
     ],
   },
   {
-    question: "O que te impede de avançar?",
+    question: "Quando foi a última vez que você ficou um dia inteiro sem celular?",
+    subtitle: "Sua relação com telas diz muito sobre você",
     options: [
-      { label: "Medo de errar", journeys: ["incerteza", "crescimento"] },
-      { label: "Opinião dos outros", journeys: ["autoconhecimento", "relacoes"] },
-      { label: "Falta de clareza", journeys: ["proposito-profissional", "autoconhecimento"] },
-      { label: "Me saboto sem perceber", journeys: ["crescimento", "solidao"] },
+      { label: "Nem lembro. Preciso dele pra não ficar sozinho(a) com meus pensamentos", journeys: ["solidao", "autoconhecimento"] },
+      { label: "Tento, mas fico ansioso(a) pensando que estou perdendo algo", journeys: ["incerteza", "solidao"] },
+      { label: "Já fiz, mas senti falta das conversas e interações", journeys: ["relacoes", "solidao"] },
+      { label: "Consigo tranquilo. Meu problema não é com telas", journeys: ["crescimento", "proposito-profissional"] },
+    ],
+  },
+  {
+    question: "O que você faria se tivesse 100% de certeza de que não ia falhar?",
+    subtitle: "Sua resposta revela o que o medo esconde",
+    options: [
+      { label: "Mostraria quem realmente sou, sem máscaras", journeys: ["autoconhecimento", "relacoes"] },
+      { label: "Largaria tudo e começaria o projeto dos meus sonhos", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "Teria conversas que evito há muito tempo com pessoas importantes", journeys: ["relacoes", "autoconhecimento"] },
+      { label: "Tomaria uma decisão grande que fico adiando por medo", journeys: ["incerteza", "crescimento"] },
+    ],
+  },
+  {
+    question: "Nos seus relacionamentos (amizade, namoro, família), qual é o padrão que mais se repete?",
+    subtitle: "Padrões revelam o que precisamos trabalhar",
+    options: [
+      { label: "Dou muito de mim e recebo pouco — me anulo pelos outros", journeys: ["relacoes", "autoconhecimento"] },
+      { label: "Me afasto quando as coisas ficam profundas demais", journeys: ["solidao", "relacoes"] },
+      { label: "Comparo minha vida com a dos outros e me sinto pra baixo", journeys: ["crescimento", "autoconhecimento"] },
+      { label: "Tenho medo de ser abandonado(a) ou rejeitado(a)", journeys: ["incerteza", "relacoes"] },
+    ],
+  },
+  {
+    question: "Quando alguém te pergunta \"o que você quer da vida?\", o que sente?",
+    subtitle: "A emoção que surge é a pista",
+    options: [
+      { label: "Um vazio — porque genuinamente não sei a resposta", journeys: ["proposito-profissional", "autoconhecimento"] },
+      { label: "Irritação — porque todo mundo parece ter a resposta menos eu", journeys: ["crescimento", "incerteza"] },
+      { label: "Angústia — sei o que quero mas não tenho coragem de ir atrás", journeys: ["incerteza", "crescimento"] },
+      { label: "Tranquilidade — sei quem sou, mas preciso organizar meu caminho", journeys: ["proposito-profissional", "autoconhecimento"] },
+    ],
+  },
+  {
+    question: "Se você pudesse mudar UMA coisa em você agora, o que seria?",
+    subtitle: "A mudança mais difícil é geralmente a mais necessária",
+    options: [
+      { label: "Parar de me sabotar e realmente me comprometer com algo", journeys: ["crescimento", "proposito-profissional"] },
+      { label: "Aprender a ficar bem sozinho(a) sem precisar de validação", journeys: ["solidao", "autoconhecimento"] },
+      { label: "Ter coragem de ser vulnerável com as pessoas que amo", journeys: ["relacoes", "solidao"] },
+      { label: "Controlar minha ansiedade e viver mais o presente", journeys: ["incerteza", "autoconhecimento"] },
     ],
   },
 ];
@@ -428,7 +472,7 @@ function calculateJourneyOrder(answers: number[]): string[] {
     if (q && q.options[answerIdx]) {
       const selected = q.options[answerIdx];
       selected.journeys.forEach((jId, priority) => {
-        scores[jId] = (scores[jId] || 0) + (2 - priority);
+        scores[jId] = (scores[jId] || 0) + (3 - priority);
       });
     }
   });
@@ -509,7 +553,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
           <div className="flex gap-3">
             {introStep > 0 && (
               <button
@@ -577,11 +621,11 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
       </div>
 
       <div className="px-6 mt-2">
-        <div className="flex gap-1.5 mb-6">
+        <div className="flex gap-1 mb-6">
           {QUIZ_QUESTIONS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                 i < quizStep ? "bg-foreground" : i === quizStep ? "bg-foreground/60" : "bg-border"
               }`}
             />
@@ -592,23 +636,26 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
           <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground mb-2">
             Pergunta {quizStep + 1} de {QUIZ_QUESTIONS.length}
           </p>
-          <h2 className="text-lg font-serif text-foreground mb-5" data-testid="text-quiz-question">
+          <h2 className="text-lg font-serif text-foreground mb-1" data-testid="text-quiz-question">
             {currentQ.question}
           </h2>
+          {currentQ.subtitle && (
+            <p className="text-xs text-muted-foreground/70 italic mb-4">{currentQ.subtitle}</p>
+          )}
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {currentQ.options.map((opt, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSelectAnswer(idx)}
-                className={`w-full text-left px-4 py-3.5 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition-all active:scale-[0.98] ${
                   currentAnswer === idx
                     ? "border-foreground bg-foreground/5"
                     : "border-border hover:border-foreground/30"
                 }`}
                 data-testid={`quiz-option-${quizStep}-${idx}`}
               >
-                <span className={`text-sm font-medium ${currentAnswer === idx ? "text-foreground" : "text-muted-foreground"}`}>
+                <span className={`text-[13px] leading-snug font-medium ${currentAnswer === idx ? "text-foreground" : "text-muted-foreground"}`}>
                   {opt.label}
                 </span>
               </button>
@@ -617,7 +664,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
         <div className="flex gap-3">
           <button
             onClick={() => {

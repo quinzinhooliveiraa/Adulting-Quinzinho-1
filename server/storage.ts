@@ -54,6 +54,7 @@ export interface IStorage {
   startJourney(data: InsertJourneyProgress): Promise<JourneyProgress>;
   completeJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
   uncompleteJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
+  restartJourney(userId: string, journeyId: string): Promise<JourneyProgress | undefined>;
 
   savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
   deletePushSubscription(userId: string, endpoint: string): Promise<boolean>;
@@ -230,6 +231,18 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(journeyProgress)
       .set({
         completedDays: existing.completedDays.filter(d => d !== dayId),
+        lastActivityAt: new Date(),
+      })
+      .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
+      .returning();
+    return updated;
+  }
+
+  async restartJourney(userId: string, journeyId: string): Promise<JourneyProgress | undefined> {
+    const [updated] = await db.update(journeyProgress)
+      .set({
+        completedDays: [],
+        startedAt: new Date(),
         lastActivityAt: new Date(),
       })
       .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))

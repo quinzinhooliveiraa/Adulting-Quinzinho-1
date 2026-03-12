@@ -17,6 +17,7 @@ import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
 import { useQuery } from "@tanstack/react-query";
 import { JOURNEYS } from "./Journey";
 import { Flame, Target, ArrowUpRight } from "lucide-react";
+import { useLocation } from "wouter";
 
 
 function extractCleanText(raw: string): string {
@@ -97,6 +98,7 @@ const DEFAULT_REMINDERS = [
 
 export default function Home() {
   const { user, isLoading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
   const createEntry = useCreateEntry();
   const createCheckin = useCreateCheckin();
   const { data: latestCheckin } = useLatestCheckin();
@@ -626,7 +628,7 @@ export default function Home() {
 
       {todayActivity && (
         <section className="animate-in fade-in slide-in-from-top-2 duration-500" data-testid="home-today-activity">
-          <a href={`/journey/${todayActivity.journey.id}`} className="block">
+          <div onClick={() => navigate(`/journey/${todayActivity.journey.id}`)} className="block cursor-pointer">
             <div
               className="rounded-2xl border border-primary/20 overflow-hidden"
               style={{ background: `linear-gradient(135deg, ${todayActivity.journey.gradientFrom}08, ${todayActivity.journey.gradientTo}05)` }}
@@ -665,15 +667,17 @@ export default function Home() {
                         Feito
                       </button>
                       {todayActivity.day.appLink && (
-                        <a
-                          href={todayActivity.day.appLink}
-                          onClick={(e) => e.stopPropagation()}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(todayActivity.day.appLink!);
+                          }}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-primary/30 text-primary text-[10px] font-semibold hover:bg-primary/10 transition-colors"
                           data-testid="button-home-applink"
                         >
                           <ArrowUpRight size={10} />
                           Ir para o app
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -689,7 +693,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </a>
+          </div>
         </section>
       )}
 

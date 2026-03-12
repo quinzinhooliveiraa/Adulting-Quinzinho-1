@@ -19,6 +19,8 @@ import {
   Smartphone,
   Calendar,
   Play,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,7 +86,7 @@ function JourneyStartConfirm({ journey, onStart }: { journey: JourneyData; onSta
         </p>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
         <button
           onClick={onStart}
           className="w-full py-3 rounded-2xl text-sm font-semibold text-white active:scale-[0.97] transition-all flex items-center justify-center gap-2"
@@ -112,6 +114,9 @@ export default function JourneyDetail() {
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [animatingDay, setAnimatingDay] = useState<string | null>(null);
   const [showStartConfirm, setShowStartConfirm] = useState(false);
+  const [showRestartDialog, setShowRestartDialog] = useState(false);
+  const [restartInput, setRestartInput] = useState("");
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     if (!journeyId) return;
@@ -165,6 +170,26 @@ export default function JourneyDetail() {
     } catch {}
   };
 
+  const handleRestartJourney = async () => {
+    if (restartInput.toLowerCase().trim() !== "recomeçar") return;
+    setRestarting(true);
+    try {
+      const res = await fetch("/api/journey/restart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ journeyId }),
+      });
+      if (res.ok) {
+        setCompletedDays([]);
+        setShowRestartDialog(false);
+        setRestartInput("");
+        setExpandedWeek(0);
+      }
+    } catch {}
+    setRestarting(false);
+  };
+
   if (showStartConfirm && !loading) {
     return <JourneyStartConfirm journey={journey} onStart={handleStartJourney} />;
   }
@@ -209,15 +234,77 @@ export default function JourneyDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-24 animate-in slide-in-from-right duration-500" data-testid="page-journey-detail">
+      {showRestartDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowRestartDialog(false); setRestartInput(""); }} />
+          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={24} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-serif text-foreground text-center mb-2">Recomeçar Jornada?</h3>
+            <p className="text-sm text-muted-foreground text-center mb-1">
+              Todo o seu progresso nesta jornada será apagado. Você terá que completar todos os {journey?.totalDays} dias novamente.
+            </p>
+            <p className="text-xs text-muted-foreground text-center mb-4">
+              Esta ação <span className="font-bold text-red-500">não pode ser desfeita</span>.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Digite <span className="font-bold text-foreground">recomeçar</span> para confirmar:
+                </label>
+                <input
+                  value={restartInput}
+                  onChange={(e) => setRestartInput(e.target.value)}
+                  placeholder="recomeçar"
+                  className="w-full p-3 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  data-testid="input-restart-confirm"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowRestartDialog(false); setRestartInput(""); }}
+                  className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-foreground active:scale-95 transition-all"
+                  data-testid="button-cancel-restart"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleRestartJourney}
+                  disabled={restartInput.toLowerCase().trim() !== "recomeçar" || restarting}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  data-testid="button-confirm-restart"
+                >
+                  <RotateCcw size={14} />
+                  {restarting ? "Recomeçando..." : "Recomeçar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         className="relative pt-14 pb-6 px-6"
         style={{
           background: `linear-gradient(135deg, ${journey.gradientFrom}15, ${journey.gradientTo}08)`,
         }}
       >
-        <Link href="/journey" className="inline-block p-2 -ml-2 rounded-full hover:bg-muted/50 transition-colors" data-testid="button-back-journey">
-          <ChevronLeft size={24} className="text-foreground" />
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href="/journey" className="inline-block p-2 -ml-2 rounded-full hover:bg-muted/50 transition-colors" data-testid="button-back-journey">
+            <ChevronLeft size={24} className="text-foreground" />
+          </Link>
+          {completedDays.length > 0 && (
+            <button
+              onClick={() => setShowRestartDialog(true)}
+              className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+              data-testid="button-open-restart"
+            >
+              <RotateCcw size={18} className="text-muted-foreground" />
+            </button>
+          )}
+        </div>
 
         <div className="mt-3">
           <div className="flex items-start justify-between">

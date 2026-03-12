@@ -42,12 +42,14 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - 6 journeys across 2 seasons aligned with book themes: autoconhecimento, propósito, relações, incerteza, crescimento, solidão
 - Each journey has 30 daily challenges with types: reflexão, ação, escrita, meditação, desafio, leitura
 - Progressive unlock system: complete one journey to unlock the next (admin bypasses)
-- **Quiz-based onboarding**: First time opening Jornadas, user sees intro + 4-question quiz that personalizes journey order
+- **Quiz-based onboarding**: First time opening Jornadas, user sees intro + 8-question deep quiz that personalizes journey order
   - Quiz results saved to `users.journey_order` (text array) and `users.journey_onboarding_done` (boolean)
+  - Each question has subtitle providing context; questions probe nighttime thoughts, identity, fears, relationships, purpose, screen habits
   - Each user gets a unique order based on their quiz answers; first journey always unlocked
   - Onboarding only shows once per user
+- **Restart journey**: Users can restart any journey from JourneyDetail (RotateCcw icon in header); requires typing "recomeçar" to confirm
 - **Access model**: Available during trial (14 days); after trial ends, Jornadas menu shows paywall; progress is NEVER lost
-- Progress persisted in DB via `/api/journey/progress`, `/api/journey/start`, `/api/journey/complete-day`, `/api/journey/uncomplete-day`, `/api/journey/onboarding`
+- Progress persisted in DB via `/api/journey/progress`, `/api/journey/start`, `/api/journey/complete-day`, `/api/journey/uncomplete-day`, `/api/journey/onboarding`, `/api/journey/restart`
 - Journey content defined in `client/src/pages/Journey.tsx` (exported `JOURNEYS` array)
 
 ## Premium / Freemium Model
