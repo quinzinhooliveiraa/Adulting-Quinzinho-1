@@ -8,6 +8,7 @@ import {
   Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AdminUser {
   id: string;
@@ -22,7 +23,10 @@ interface AdminUser {
   premiumUntil: string | null;
   invitedBy: string | null;
   createdAt: string;
+  isMasterAdmin?: boolean;
 }
+
+const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
 
 interface Stats {
   totalUsers: number;
@@ -78,16 +82,21 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
   );
 }
 
-function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void }) {
+function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void; currentUserEmail: string; allUsers: AdminUser[] }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showTrialPicker, setShowTrialPicker] = useState(false);
   const [trialDays, setTrialDays] = useState(14);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [selectedNewMaster, setSelectedNewMaster] = useState("");
+  const [transferConfirmText, setTransferConfirmText] = useState("");
+  const [transferError, setTransferError] = useState("");
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
   const createdAt = new Date(user.createdAt);
-  const isMainAdmin = user.email === "quinzinhooliveiraa@gmail.com";
+  const isMainAdmin = user.email === MASTER_EMAIL;
+  const iAmMaster = currentUserEmail === MASTER_EMAIL;
 
   return (
     <div className="border border-border rounded-xl overflow-hidden bg-background">
@@ -223,7 +232,11 @@ function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id
                   </>
                 )}
 
-                {user.role !== "admin" ? (
+                {isMainAdmin ? (
+                  <span className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 font-semibold flex items-center gap-1">
+                    <Crown size={12} /> Admin Master
+                  </span>
+                ) : user.role !== "admin" ? (
                   <button
                     onClick={() => onUpdate(user.id, { role: "admin" })}
                     className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 hover:bg-purple-500/20 transition-colors flex items-center gap-1"
@@ -241,30 +254,125 @@ function UserCard({ user, onUpdate, onDelete }: { user: AdminUser; onUpdate: (id
                   </button>
                 )}
 
-                {confirmDelete ? (
-                  <div className="flex gap-1 items-center">
+                {isMainAdmin && iAmMaster ? (
+                  <>
                     <button
-                      onClick={() => { onDelete(user.id); setConfirmDelete(false); }}
-                      className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1"
-                      data-testid={`button-confirm-delete-${user.id}`}
+                      onClick={() => setShowTransferDialog(true)}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors flex items-center gap-1"
+                      data-testid={`button-delete-master-${user.id}`}
                     >
-                      <Trash2 size={12} /> Confirmar
+                      <Trash2 size={12} /> Apagar Minha Conta
                     </button>
-                    <button
-                      onClick={() => setConfirmDelete(false)}
-                      className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors flex items-center gap-1"
-                    data-testid={`button-delete-${user.id}`}
-                  >
-                    <Trash2 size={12} /> Apagar Conta
-                  </button>
+                    {showTransferDialog && (
+                      <div className="w-full p-4 rounded-xl bg-red-500/5 border border-red-500/20 space-y-3 animate-in fade-in duration-200">
+                        <div className="flex items-center gap-2 text-red-500">
+                          <AlertCircle size={16} />
+                          <p className="text-xs font-semibold">Transferir Admin Master</p>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Antes de apagar sua conta, escolha quem será o novo Admin Master. Esta ação é irreversível.
+                        </p>
+                        <select
+                          value={selectedNewMaster}
+                          onChange={(e) => { setSelectedNewMaster(e.target.value); setTransferError(""); }}
+                          className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-foreground"
+                          data-testid="select-new-master"
+                        >
+                          <option value="">Selecione o novo Admin Master...</option>
+                          {allUsers.filter(u => u.id !== user.id && u.isActive).map(u => (
+                            <option key={u.id} value={u.email}>{u.name} ({u.email})</option>
+                          ))}
+                        </select>
+                        {selectedNewMaster && (
+                          <div>
+                            <p className="text-[11px] text-muted-foreground mb-1">
+                              Digite <strong>"apagar"</strong> para confirmar:
+                            </p>
+                            <input
+                              type="text"
+                              value={transferConfirmText}
+                              onChange={(e) => setTransferConfirmText(e.target.value)}
+                              placeholder="apagar"
+                              className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-foreground"
+                              data-testid="input-transfer-confirm"
+                            />
+                          </div>
+                        )}
+                        {transferError && (
+                          <p className="text-[11px] text-red-500">{transferError}</p>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!selectedNewMaster) {
+                                setTransferError("Selecione o novo Admin Master");
+                                return;
+                              }
+                              if (transferConfirmText !== "apagar") {
+                                setTransferError('Digite "apagar" para confirmar');
+                                return;
+                              }
+                              try {
+                                const res = await fetch(`/api/admin/users/${user.id}`, {
+                                  method: "DELETE",
+                                  headers: { "Content-Type": "application/json" },
+                                  credentials: "include",
+                                  body: JSON.stringify({ newMasterEmail: selectedNewMaster }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  window.location.href = "/";
+                                } else {
+                                  setTransferError(data.message || "Erro ao transferir");
+                                }
+                              } catch {
+                                setTransferError("Erro de conexão");
+                              }
+                            }}
+                            disabled={!selectedNewMaster || transferConfirmText !== "apagar"}
+                            className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            data-testid="button-confirm-transfer-delete"
+                          >
+                            <Trash2 size={12} /> Confirmar e Apagar
+                          </button>
+                          <button
+                            onClick={() => { setShowTransferDialog(false); setSelectedNewMaster(""); setTransferConfirmText(""); setTransferError(""); }}
+                            className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : !isMainAdmin && (
+                  <>
+                    {confirmDelete ? (
+                      <div className="flex gap-1 items-center">
+                        <button
+                          onClick={() => { onDelete(user.id); setConfirmDelete(false); }}
+                          className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1"
+                          data-testid={`button-confirm-delete-${user.id}`}
+                        >
+                          <Trash2 size={12} /> Confirmar
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors flex items-center gap-1"
+                        data-testid={`button-delete-${user.id}`}
+                      >
+                        <Trash2 size={12} /> Apagar Conta
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -446,10 +554,12 @@ function FeedbackCard({ ticket, onUpdate }: { ticket: FeedbackTicket; onUpdate: 
 
 export default function Admin() {
   const [, setLocation] = useLocation();
+  const { user: authUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
   const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push">("users");
+  const [adminAlert, setAdminAlert] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
@@ -465,13 +575,25 @@ export default function Admin() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await apiRequest("PATCH", `/api/admin/users/${id}`, data);
-      return res.json();
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || "Erro ao atualizar");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setAdminAlert(null);
+    },
+    onError: (error: Error) => {
+      setAdminAlert(error.message);
+      setTimeout(() => setAdminAlert(null), 5000);
     },
   });
 
@@ -536,6 +658,13 @@ export default function Admin() {
           <p className="text-xs text-muted-foreground">Gerencie usuários, feedbacks e acessos</p>
         </div>
       </div>
+
+      {adminAlert && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium flex items-center gap-2 animate-in fade-in duration-200" data-testid="admin-alert">
+          <AlertCircle size={14} />
+          {adminAlert}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button
@@ -652,7 +781,7 @@ export default function Admin() {
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">{filteredUsers.length} usuário(s)</p>
             {filteredUsers.map((user) => (
-              <UserCard key={user.id} user={user} onUpdate={handleUpdate} onDelete={handleDelete} />
+              <UserCard key={user.id} user={user} onUpdate={handleUpdate} onDelete={handleDelete} currentUserEmail={authUser?.email || ""} allUsers={allUsers} />
             ))}
           </div>
         </>

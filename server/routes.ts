@@ -44,9 +44,10 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ message: "Não autenticado" });
   }
   const user = await storage.getUser(req.session.userId);
-  if (!user || user.role !== "admin" || user.email !== ADMIN_EMAIL) {
+  if (!user || user.role !== "admin") {
     return res.status(403).json({ message: "Acesso negado" });
   }
+  (req as any).adminUser = user;
   next();
 }
 
@@ -269,6 +270,7 @@ export async function registerRoutes(
           premiumUntil: u.premiumUntil,
           invitedBy: u.invitedBy,
           createdAt: u.createdAt,
+          isMasterAdmin: u.email === ADMIN_EMAIL,
         };
       });
       res.json(usersWithStatus);
@@ -288,6 +290,36 @@ export async function registerRoutes(
     try {
       const userId = req.params.id;
       const data = updateUserSchema.parse(req.body);
+      const currentAdmin = (req as any).adminUser;
+
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      if (targetUser.email === ADMIN_EMAIL && data.role === "user") {
+        if (currentAdmin.email !== ADMIN_EMAIL) {
+          console.log(`[ALERT] Admin ${currentAdmin.email} tentou despromover o admin master!`);
+          try {
+            const masterUser = await storage.getUserByEmail(ADMIN_EMAIL);
+            if (masterUser) {
+              await storage.createFeedback({
+                userId: masterUser.id,
+                type: "alerta",
+                subject: "Tentativa de despromover Admin Master",
+                message: `O admin ${currentAdmin.name} (${currentAdmin.email}) tentou remover seu cargo de Admin Master em ${new Date().toLocaleString("pt-BR")}.`,
+              });
+            }
+          } catch (e) {
+            console.error("Erro ao criar alerta:", e);
+          }
+        }
+        return res.status(403).json({ message: "O Admin Master não pode ser despromovido" });
+      }
+
+      if (targetUser.email === ADMIN_EMAIL && data.isActive === false) {
+        return res.status(403).json({ message: "O Admin Master não pode ser bloqueado" });
+      }
 
       const updateData: any = {};
       if (data.isPremium !== undefined) updateData.isPremium = data.isPremium;
@@ -370,13 +402,44 @@ export async function registerRoutes(
   app.delete("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const userId = req.params.id;
+      const currentAdmin = (req as any).adminUser;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
+
       if (user.email === ADMIN_EMAIL) {
-        return res.status(403).json({ message: "Não é possível apagar a conta admin" });
+        if (currentAdmin.email !== ADMIN_EMAIL) {
+          return res.status(403).json({ message: "Apenas o Admin Master pode apagar a própria conta" });
+        }
+
+        const { newMasterEmail } = req.body || {};
+        if (!newMasterEmail) {
+          return res.status(400).json({
+            message: "É necessário escolher um novo Admin Master antes de apagar a conta",
+            requiresTransfer: true,
+          });
+        }
+
+        const newMaster = await storage.getUserByEmail(newMasterEmail);
+        if (!newMaster) {
+          return res.status(404).json({ message: "Novo admin master não encontrado" });
+        }
+        if (newMaster.id === userId) {
+          return res.status(400).json({ message: "O novo master deve ser outra pessoa" });
+        }
+
+        await storage.updateUser(newMaster.id, { role: "admin", isPremium: true, isActive: true });
+
+        const deleted = await storage.deleteUser(userId);
+        if (!deleted) {
+          return res.status(500).json({ message: "Erro ao apagar usuário" });
+        }
+
+        req.session.destroy(() => {});
+        return res.json({ message: "Conta apagada. Novo Admin Master definido.", newMasterEmail });
       }
+
       const deleted = await storage.deleteUser(userId);
       if (!deleted) {
         return res.status(500).json({ message: "Erro ao apagar usuário" });
