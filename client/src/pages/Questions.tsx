@@ -1636,6 +1636,11 @@ function CardGame({
     const played = cardsPlayed + 1;
     setCardsPlayed(played);
 
+    if (isFreeLimit && played >= questions.length) {
+      setShowCompleted(true);
+      return;
+    }
+
     if (isShuffling) {
       setIsFlipped(false);
       setTimeout(() => {
@@ -1681,6 +1686,65 @@ function CardGame({
   const progressValue = isShuffling
     ? Math.min(seenIndices.length + 1, totalForProgress)
     : currentIndex + 1;
+
+  if (showCompleted && isFreeLimit) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
+          <Crown size={32} className="text-white" />
+        </div>
+        <h2 className="text-2xl font-serif text-foreground text-center mb-2">Suas cartas grátis acabaram!</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed mb-6">
+          Você explorou {questions.length} perguntas gratuitas de {title}.
+          {savedCards.length > 0 && ` ${savedCards.length} foram salvas.`}
+        </p>
+
+        <div className="w-full max-w-xs bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
+          <div className="flex items-baseline justify-center gap-1 mb-3">
+            <span className="text-3xl font-bold text-foreground">R$9,90</span>
+            <span className="text-sm text-muted-foreground">/mês</span>
+          </div>
+          <ul className="space-y-2 text-sm text-foreground">
+            <li className="flex items-center gap-2">
+              <Check size={16} className="text-amber-600 shrink-0" />
+              <span>Todas as perguntas desbloqueadas</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check size={16} className="text-amber-600 shrink-0" />
+              <span>Modo Sozinho e Conversa completos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check size={16} className="text-amber-600 shrink-0" />
+              <span>Modo Sorteio ilimitado</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check size={16} className="text-amber-600 shrink-0" />
+              <span>Novas perguntas toda semana</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform"
+            data-testid="button-subscribe-end"
+          >
+            Assinar por R$9,90/mês
+          </button>
+          <button
+            onClick={onBack}
+            className="w-full p-4 bg-muted text-foreground rounded-2xl font-medium text-sm"
+            data-testid="button-back-categories"
+          >
+            Voltar
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-4 text-center">
+          Cancele quando quiser.
+        </p>
+      </div>
+    );
+  }
 
   if (showCompleted) {
     return (
@@ -2022,19 +2086,49 @@ function RelationSelect({
 function PremiumGate({ onBack }: { onBack: () => void }) {
   return (
     <div className="px-6 pt-12 pb-8 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in duration-500">
-      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
-        <Lock size={28} className="text-white" />
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
+        <Crown size={32} className="text-white" />
       </div>
-      <h1 className="text-2xl font-serif text-foreground text-center mb-2">Modo Cartas Premium</h1>
-      <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed mb-8">
-        O modo de cartas é exclusivo para assinantes. Desbloqueie perguntas profundas para jogar sozinho ou com quem importa.
+      <h1 className="text-2xl font-serif text-foreground text-center mb-2">Desbloqueie Tudo</h1>
+      <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed mb-6">
+        Você usou suas perguntas gratuitas. Assine para desbloquear todas as perguntas de todos os temas e modos.
       </p>
+
+      <div className="w-full max-w-xs bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
+        <div className="flex items-baseline justify-center gap-1 mb-3">
+          <span className="text-3xl font-bold text-foreground">R$9,90</span>
+          <span className="text-sm text-muted-foreground">/mês</span>
+        </div>
+        <ul className="space-y-2 text-sm text-foreground">
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-amber-600 shrink-0" />
+            <span>Todas as perguntas de todos os temas</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-amber-600 shrink-0" />
+            <span>Modo Sozinho completo</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-amber-600 shrink-0" />
+            <span>Modo Conversa completo</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-amber-600 shrink-0" />
+            <span>Modo Sorteio ilimitado</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-amber-600 shrink-0" />
+            <span>Novas perguntas toda semana</span>
+          </li>
+        </ul>
+      </div>
+
       <div className="w-full max-w-xs space-y-3">
         <button
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg"
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform"
           data-testid="button-subscribe"
         >
-          Assinar Premium
+          Assinar por R$9,90/mês
         </button>
         <button
           onClick={onBack}
@@ -2045,7 +2139,7 @@ function PremiumGate({ onBack }: { onBack: () => void }) {
         </button>
       </div>
       <p className="text-[10px] text-muted-foreground mt-6 text-center max-w-[240px]">
-        Se alguém premium te convidou, entre pelo link que recebeu para jogar junto.
+        Cancele quando quiser. Se alguém premium te convidou, entre pelo link que recebeu.
       </p>
     </div>
   );
@@ -2637,15 +2731,10 @@ export default function Questions() {
   const [soloTheme, setSoloTheme] = useState<SoloThemeId | null>(null);
   const [conversaType, setConversaType] = useState<ConversaType | null>(null);
   const [relation, setRelation] = useState<RelationType | null>(null);
-  const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [showLobby, setShowLobby] = useState(false);
   const [singleDevice, setSingleDevice] = useState(false);
 
   const premium = user?.hasPremium ?? false;
-
-  if (showPremiumGate) {
-    return <PremiumGate onBack={() => setShowPremiumGate(false)} />;
-  }
 
   if (gameMode === "sozinho" && soloTheme) {
     const theme = SOLO_THEMES[soloTheme];
@@ -2670,9 +2759,10 @@ export default function Questions() {
 
   if (gameMode === "conversa" && conversaType && relation && singleDevice) {
     const data = CONVERSATION_QUESTIONS[relation];
+    const questionsToShow = premium ? data.questions : data.questions.slice(0, FREE_QUESTIONS_PER_THEME);
     return (
       <CardGame
-        questions={data.questions}
+        questions={questionsToShow}
         title={data.title}
         emoji={data.emoji}
         color={data.color}
@@ -2680,17 +2770,19 @@ export default function Questions() {
         onBack={() => { setSingleDevice(false); setRelation(null); }}
         weightedMode={true}
         allowAnswer={true}
+        isFreeLimit={!premium}
       />
     );
   }
 
   if (gameMode === "conversa" && conversaType && relation && showLobby) {
     const data = CONVERSATION_QUESTIONS[relation];
+    const questionsToShow = premium ? data.questions : data.questions.slice(0, FREE_QUESTIONS_PER_THEME);
     return (
       <LobbyScreen
         mode={conversaType}
         relation={relation}
-        questions={data.questions}
+        questions={questionsToShow}
         questionData={{ title: data.title, emoji: data.emoji, color: data.color }}
         onBack={() => { setShowLobby(false); setRelation(null); }}
         userName={user?.name || "Jogador"}
@@ -2796,13 +2888,7 @@ export default function Questions() {
         </button>
 
         <button
-          onClick={() => {
-            if (!premium) {
-              setShowPremiumGate(true);
-            } else {
-              setGameMode("conversa");
-            }
-          }}
+          onClick={() => setGameMode("conversa")}
           className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
           data-testid="button-mode-conversa"
         >
@@ -2811,9 +2897,15 @@ export default function Questions() {
           </div>
           <div className="flex-1">
             <h3 className="font-serif text-lg text-foreground">Modo Conversa</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Presencial ou online, com quem importa</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {premium ? "Presencial ou online, com quem importa" : `${FREE_QUESTIONS_PER_THEME} cartas grátis por categoria`}
+            </p>
           </div>
-          {!premium && <Lock size={16} className="text-muted-foreground" />}
+          {!premium && (
+            <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">
+              Grátis
+            </span>
+          )}
         </button>
       </div>
 
