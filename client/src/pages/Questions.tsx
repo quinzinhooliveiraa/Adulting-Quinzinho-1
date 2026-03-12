@@ -3,7 +3,7 @@ import {
   Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
   Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Crown, Sparkles,
   PenLine, X, Lock, Send, Copy, Check, Loader2, Mic, MicOff, Square,
-  Image as ImageIcon
+  Image as ImageIcon, Shuffle, ListOrdered
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
@@ -1509,6 +1509,7 @@ function CardGame({
   onBack,
   weightedMode,
   allowAnswer,
+  isFreeLimit,
 }: {
   questions: string[];
   title: string;
@@ -1518,28 +1519,32 @@ function CardGame({
   onBack: () => void;
   weightedMode?: boolean;
   allowAnswer?: boolean;
+  isFreeLimit?: boolean;
 }) {
   const sessionKey = `casa-dos-20-seen-${title}`;
 
+  const [shuffleMode, setShuffleMode] = useState(!!weightedMode);
+
   const [seenIndices, setSeenIndices] = useState<number[]>(() => {
-    if (!weightedMode) return [];
     try {
       const stored = localStorage.getItem(sessionKey);
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
 
+  const isShuffling = shuffleMode || !!weightedMode;
+
   const getNextCard = useCallback(() => {
-    if (!weightedMode) return null;
+    if (!isShuffling) return null;
     const unseen = questions.map((_, i) => i).filter(i => !seenIndices.includes(i));
     if (unseen.length > 0) {
       return unseen[Math.floor(Math.random() * unseen.length)];
     }
     return Math.floor(Math.random() * questions.length);
-  }, [weightedMode, seenIndices, questions]);
+  }, [isShuffling, seenIndices, questions]);
 
   const [currentIndex, setCurrentIndex] = useState(() => {
-    if (weightedMode) {
+    if (isShuffling) {
       const unseen = questions.map((_, i) => i).filter(i => !seenIndices.includes(i));
       if (unseen.length > 0) return unseen[Math.floor(Math.random() * unseen.length)];
       return 0;
@@ -1562,7 +1567,7 @@ function CardGame({
   }, [showImagePreview, imageTheme, currentIndex, questions]);
 
   const markSeen = (idx: number) => {
-    if (weightedMode && !seenIndices.includes(idx)) {
+    if (isShuffling && !seenIndices.includes(idx)) {
       const updated = [...seenIndices, idx];
       setSeenIndices(updated);
       localStorage.setItem(sessionKey, JSON.stringify(updated));
@@ -1574,7 +1579,7 @@ function CardGame({
     const played = cardsPlayed + 1;
     setCardsPlayed(played);
 
-    if (weightedMode) {
+    if (isShuffling) {
       setIsFlipped(false);
       setTimeout(() => {
         const next = getNextCard();
@@ -1616,7 +1621,7 @@ function CardGame({
   };
 
   const totalForProgress = questions.length;
-  const progressValue = weightedMode
+  const progressValue = isShuffling
     ? Math.min(seenIndices.length + 1, totalForProgress)
     : currentIndex + 1;
 
@@ -1665,11 +1670,34 @@ function CardGame({
             {subtitle}
           </p>
           <p className="text-xs text-foreground font-medium">
-            {weightedMode ? `${seenIndices.length}/${questions.length} vistas` : `${currentIndex + 1} / ${questions.length}`}
+            {isShuffling ? `${seenIndices.length}/${questions.length} vistas` : `${currentIndex + 1} / ${questions.length}`}
           </p>
         </div>
-        <div className="w-10" />
+        <button
+          onClick={() => {
+            setShuffleMode(!shuffleMode);
+            addNotification({
+              type: "journal",
+              title: shuffleMode ? "Modo Sequencial" : "Modo Sorteio",
+              message: shuffleMode ? "Cartas na ordem original." : "Cartas aleatórias ativadas!",
+            });
+          }}
+          className={`p-2 rounded-full transition-colors ${isShuffling ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+          data-testid="button-toggle-shuffle"
+          title={isShuffling ? "Modo Sorteio (ativo)" : "Modo Sequencial"}
+        >
+          {isShuffling ? <Shuffle size={20} /> : <ListOrdered size={20} />}
+        </button>
       </div>
+
+      {isFreeLimit && (
+        <div className="mx-6 mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+          <Lock size={14} className="text-amber-600 shrink-0" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Modo gratuito: {questions.length} cartas de amostra. Desbloqueie todas com o plano premium.
+          </p>
+        </div>
+      )}
 
       <div className="w-full px-6 mb-3">
         <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
@@ -1765,8 +1793,8 @@ function CardGame({
               className={`px-6 py-3 rounded-full bg-gradient-to-r ${color} text-white font-medium flex items-center gap-2 shadow-lg`}
               data-testid="button-next-card"
             >
-              {weightedMode ? (
-                <>Sortear <Sparkles size={16} /></>
+              {isShuffling ? (
+                <>Sortear <Shuffle size={16} /></>
               ) : currentIndex < questions.length - 1 ? (
                 <>Próxima <ArrowRight size={16} /></>
               ) : (
@@ -2500,7 +2528,9 @@ function ConversaTypeSelect({ onSelect, onBack }: { onSelect: (type: ConversaTyp
   );
 }
 
-function SoloThemeSelect({ onSelect, onBack }: { onSelect: (theme: SoloThemeId) => void; onBack: () => void }) {
+const FREE_QUESTIONS_PER_THEME = 5;
+
+function SoloThemeSelect({ onSelect, onBack, isPremium }: { onSelect: (theme: SoloThemeId) => void; onBack: () => void; isPremium: boolean }) {
   const themes = Object.entries(SOLO_THEMES) as [SoloThemeId, typeof SOLO_THEMES[SoloThemeId]][];
 
   return (
@@ -2513,6 +2543,15 @@ function SoloThemeSelect({ onSelect, onBack }: { onSelect: (theme: SoloThemeId) 
         <p className="text-sm text-muted-foreground mt-1">Escolha um tema e mergulhe fundo.</p>
       </div>
 
+      {!isPremium && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+          <Sparkles size={14} className="text-amber-600 shrink-0" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Modo gratuito: {FREE_QUESTIONS_PER_THEME} cartas por tema. Desbloqueie todas com o premium!
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {themes.map(([id, t]) => (
           <button
@@ -2524,7 +2563,9 @@ function SoloThemeSelect({ onSelect, onBack }: { onSelect: (theme: SoloThemeId) 
             <div className="text-2xl">{t.emoji}</div>
             <div>
               <h3 className="font-medium text-foreground text-sm">{t.title}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{t.questions.length} cartas</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {isPremium ? `${t.questions.length} cartas` : `${FREE_QUESTIONS_PER_THEME} / ${t.questions.length} cartas`}
+              </p>
             </div>
           </button>
         ))}
@@ -2551,21 +2592,23 @@ export default function Questions() {
 
   if (gameMode === "sozinho" && soloTheme) {
     const theme = SOLO_THEMES[soloTheme];
+    const questionsToShow = premium ? theme.questions : theme.questions.slice(0, FREE_QUESTIONS_PER_THEME);
     return (
       <CardGame
-        questions={theme.questions}
+        questions={questionsToShow}
         title={theme.title}
         emoji={theme.emoji}
         color={theme.color}
         subtitle="Autoconhecimento"
         onBack={() => setSoloTheme(null)}
         allowAnswer={true}
+        isFreeLimit={!premium}
       />
     );
   }
 
   if (gameMode === "sozinho") {
-    return <SoloThemeSelect onSelect={setSoloTheme} onBack={() => setGameMode(null)} />;
+    return <SoloThemeSelect onSelect={setSoloTheme} onBack={() => setGameMode(null)} isPremium={premium} />;
   }
 
   if (gameMode === "conversa" && conversaType && relation && singleDevice) {
@@ -2675,13 +2718,7 @@ export default function Questions() {
 
       <div className="w-full max-w-sm space-y-3">
         <button
-          onClick={() => {
-            if (!premium) {
-              setShowPremiumGate(true);
-            } else {
-              setGameMode("sozinho");
-            }
-          }}
+          onClick={() => setGameMode("sozinho")}
           className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
           data-testid="button-mode-sozinho"
         >
@@ -2690,9 +2727,15 @@ export default function Questions() {
           </div>
           <div className="flex-1">
             <h3 className="font-serif text-lg text-foreground">Sozinho</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Temas de autoconhecimento</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {premium ? "Temas de autoconhecimento" : `${FREE_QUESTIONS_PER_THEME} cartas grátis por tema`}
+            </p>
           </div>
-          {!premium && <Lock size={16} className="text-muted-foreground" />}
+          {!premium && (
+            <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">
+              Grátis
+            </span>
+          )}
         </button>
 
         <button
