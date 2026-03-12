@@ -268,10 +268,14 @@ function AnswerSheet({
   question,
   onClose,
   onSaved,
+  onShareAnswer,
+  cardIndex,
 }: {
   question: string;
   onClose: () => void;
   onSaved: () => void;
+  onShareAnswer?: (answer: string, cardIndex: number) => void;
+  cardIndex?: number;
 }) {
   const [answer, setAnswer] = useState("");
   const createEntry = useCreateEntry();
@@ -288,6 +292,9 @@ function AnswerSheet({
         text,
         tags: ["perguntas", "reflexão"],
       });
+      if (onShareAnswer && cardIndex !== undefined) {
+        onShareAnswer(answer, cardIndex);
+      }
       onSaved();
       addNotification({
         type: "journal",
@@ -854,6 +861,7 @@ function LobbyScreen({
   const [joinAlert, setJoinAlert] = useState<string | null>(null);
   const joinAlertTimer = useRef<any>(null);
   const prevPlayerCount = useRef(0);
+  const [playerAnswers, setPlayerAnswers] = useState<{ playerName: string; answer: string; cardIndex: number }[]>([]);
 
   const { connect, send, onMessage, disconnect } = useWebSocket();
 
@@ -904,6 +912,14 @@ function LobbyScreen({
         setCurrentTurnName(msg.currentTurnName);
         setCurrentCard(msg.currentCard);
         setIsFlipped(false);
+        setPlayerAnswers([]);
+      }
+      if (msg.type === "player_answer") {
+        setPlayerAnswers(prev => [...prev, {
+          playerName: msg.playerName,
+          answer: msg.answer,
+          cardIndex: msg.cardIndex,
+        }]);
       }
       if (msg.type === "error") {
         setError(msg.message);
@@ -935,6 +951,10 @@ function LobbyScreen({
     disconnect();
     onBack();
   };
+
+  const handleShareAnswer = useCallback((answer: string, cardIndex: number) => {
+    send({ type: "submit_answer", answer, cardIndex });
+  }, [send]);
 
   const copyCode = () => {
     navigator.clipboard.writeText(lobbyCode);
@@ -1074,11 +1094,25 @@ function LobbyScreen({
           </div>
         </div>
 
+        {playerAnswers.length > 0 && (
+          <div className="px-6 mt-4 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Respostas dos jogadores</p>
+            {playerAnswers.map((pa, i) => (
+              <div key={i} className="p-3 rounded-xl bg-muted/50 border border-border animate-in fade-in slide-in-from-bottom-1 duration-300">
+                <p className="text-[10px] text-primary font-bold uppercase tracking-wider mb-1">{pa.playerName}</p>
+                <p className="text-sm text-foreground leading-relaxed">{pa.answer}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {showAnswer && (
           <AnswerSheet
             question={questions[cardIndex]}
             onClose={() => setShowAnswer(false)}
             onSaved={() => setShowAnswer(false)}
+            onShareAnswer={handleShareAnswer}
+            cardIndex={cardIndex}
           />
         )}
       </div>

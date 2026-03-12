@@ -815,6 +815,17 @@ export async function registerRoutes(
           ws.send(JSON.stringify(payload));
         }
 
+        if (msg.type === "submit_answer" && currentLobby && currentLobby.started) {
+          const playerName = currentLobby.players.find(p => p.id === playerId)?.name || "?";
+          broadcastToLobby(currentLobby, {
+            type: "player_answer",
+            playerId,
+            playerName,
+            answer: msg.answer,
+            cardIndex: msg.cardIndex,
+          }, playerId);
+        }
+
         if (msg.type === "leave") {
           if (currentLobby) {
             currentLobby.players = currentLobby.players.filter(p => p.id !== playerId);
