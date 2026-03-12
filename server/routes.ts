@@ -654,7 +654,11 @@ export async function registerRoutes(
       const totalCheckins = checkins.length;
 
       const totalWords = monthEntries.reduce((sum, e) => {
-        const text = typeof e.text === "string" ? e.text : "";
+        let text = typeof e.text === "string" ? e.text : "";
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && typeof parsed.text === "string") text = parsed.text;
+        } catch {}
         return sum + text.split(/\s+/).filter(Boolean).length;
       }, 0);
 

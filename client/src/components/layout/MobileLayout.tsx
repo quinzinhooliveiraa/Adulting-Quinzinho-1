@@ -1,6 +1,6 @@
-import { ReactNode, useState, useRef } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,6 +115,24 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("casa-dos-20-sidebar-collapsed") === "true";
+  });
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem("casa-dos-20-sidebar-collapsed", String(next));
+  };
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     return localStorage.getItem("casa-dos-20-profile-photo");
@@ -155,106 +173,203 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     { id: "system", icon: Monitor },
   ] as const;
 
-  return (
-    <div className="min-h-screen bg-background text-foreground bg-noise flex justify-center">
-      <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-7xl bg-background min-h-screen relative md:shadow-2xl overflow-hidden flex flex-col transition-all">
-        
-        <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
-          <NotificationCenter />
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-primary text-xs font-bold overflow-hidden border border-border/40 bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all"
-              data-testid="button-user-menu"
-            >
-              {profilePhoto ? (
-                <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-foreground/70">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
-              )}
-            </button>
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-11 bg-background border border-border rounded-xl shadow-lg z-50 w-56 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 flex items-center gap-3">
-                    <div className="relative shrink-0">
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden border border-border bg-muted">
-                        {profilePhoto ? (
-                          <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-foreground/60">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow border-2 border-background"
-                        data-testid="button-change-photo"
-                      >
-                        <Camera size={9} className="text-primary-foreground" />
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="mx-3 mb-3 p-1 bg-muted rounded-lg flex gap-0.5">
-                    {themeOptions.map((opt) => {
-                      const Icon = opt.icon;
-                      const isActive = theme === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => setTheme(opt.id)}
-                          className={cn(
-                            "flex-1 flex items-center justify-center py-1.5 rounded-md transition-all",
-                            isActive
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                          data-testid={`button-theme-${opt.id}`}
-                        >
-                          <Icon size={14} />
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="border-t border-border">
-                    <button
-                      onClick={() => { setShowMenu(false); setShowFeedback(true); }}
-                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                      data-testid="button-feedback"
-                    >
-                      <MessageSquare size={15} />
-                      Feedback / Suporte
-                    </button>
-                    {user?.role === "admin" && user?.email === "quinzinhooliveiraa@gmail.com" && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setShowMenu(false)}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-purple-500 hover:bg-muted/50 transition-colors"
-                        data-testid="link-admin"
-                      >
-                        <Shield size={15} />
-                        Painel Admin
-                      </Link>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-red-500 hover:bg-muted/50 transition-colors"
-                      data-testid="button-logout"
-                    >
-                      <LogOut size={15} />
-                      Sair da conta
-                    </button>
-                  </div>
-                </div>
-              </>
+  const userMenuContent = (
+    <>
+      <div className="p-4 flex items-center gap-3">
+        <div className="relative shrink-0">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden border border-border bg-muted">
+            {profilePhoto ? (
+              <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-foreground/60">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
             )}
           </div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow border-2 border-background"
+            data-testid="button-change-photo"
+          >
+            <Camera size={9} className="text-primary-foreground" />
+          </button>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+        </div>
+      </div>
+
+      <div className="mx-3 mb-3 p-1 bg-muted rounded-lg flex gap-0.5">
+        {themeOptions.map((opt) => {
+          const Icon = opt.icon;
+          const isActive = theme === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setTheme(opt.id)}
+              className={cn(
+                "flex-1 flex items-center justify-center py-1.5 rounded-md transition-all",
+                isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              data-testid={`button-theme-${opt.id}`}
+            >
+              <Icon size={14} />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="border-t border-border">
+        <button
+          onClick={() => { setShowMenu(false); setShowFeedback(true); }}
+          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          data-testid="button-feedback"
+        >
+          <MessageSquare size={15} />
+          Feedback / Suporte
+        </button>
+        {user?.role === "admin" && user?.email === "quinzinhooliveiraa@gmail.com" && (
+          <Link
+            href="/admin"
+            onClick={() => setShowMenu(false)}
+            className="w-full flex items-center gap-2 px-4 py-3 text-sm text-purple-500 hover:bg-muted/50 transition-colors"
+            data-testid="link-admin"
+          >
+            <Shield size={15} />
+            Painel Admin
+          </Link>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-red-500 hover:bg-muted/50 transition-colors"
+          data-testid="button-logout"
+        >
+          <LogOut size={15} />
+          Sair da conta
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-background text-foreground bg-noise flex">
+      {isDesktop && (
+        <aside
+          className={cn(
+            "hidden md:flex flex-col h-screen sticky top-0 bg-background border-r border-border z-50 transition-all duration-300 shrink-0",
+            sidebarCollapsed ? "w-[68px]" : "w-[220px]"
+          )}
+        >
+          <div className={cn("flex items-center gap-2 px-4 h-16 border-b border-border", sidebarCollapsed ? "justify-center" : "justify-between")}>
+            {!sidebarCollapsed && <span className="font-serif text-lg text-foreground truncate">Casa dos 20</span>}
+            <button
+              onClick={toggleSidebar}
+              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
+              data-testid="button-toggle-sidebar"
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+          </div>
+
+          <nav className="flex-1 py-4 space-y-1 px-2">
+            {navItems.map((item) => {
+              const isActive = location === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl transition-all duration-200",
+                    sidebarCollapsed ? "justify-center p-3" : "px-4 py-3",
+                    isActive
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                  data-testid={`sidebar-link-${item.label.toLowerCase()}`}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
+                  {!sidebarCollapsed && <span className="text-sm">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="border-t border-border px-2 py-3 space-y-1">
+            <div className="flex items-center gap-2 px-2">
+              <NotificationCenter />
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className={cn(
+                  "w-full flex items-center gap-3 rounded-xl transition-all hover:bg-muted",
+                  sidebarCollapsed ? "justify-center p-3" : "px-4 py-3"
+                )}
+                data-testid="button-user-menu"
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden border border-border bg-muted shrink-0">
+                  {profilePhoto ? (
+                    <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-foreground/70">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                {!sidebarCollapsed && (
+                  <span className="text-sm text-foreground truncate">{user?.name}</span>
+                )}
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                  <div className="absolute left-full bottom-0 ml-2 bg-background border border-border rounded-xl shadow-lg z-50 w-56 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200">
+                    {userMenuContent}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
+
+      <div className="flex-1 flex justify-center min-h-screen">
+        <div className="w-full max-w-md md:max-w-none bg-background min-h-screen relative overflow-hidden flex flex-col transition-all">
+          
+          {!isDesktop && (
+            <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
+              <NotificationCenter />
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-primary text-xs font-bold overflow-hidden border border-border/40 bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all"
+                  data-testid="button-user-menu"
+                >
+                  {profilePhoto ? (
+                    <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-foreground/70">{user?.name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </button>
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                    <div className="absolute right-0 top-11 bg-background border border-border rounded-xl shadow-lg z-50 w-56 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                      {userMenuContent}
+                    </div>
+                  </>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -262,40 +377,42 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             className="hidden"
             onChange={handlePhotoUpload}
           />
+
+          {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
+
+          <main className={cn("flex-1 overflow-y-auto", isDesktop ? "pb-6" : "pb-24")}>
+            {children}
+          </main>
+          
+          {!isDesktop && (
+            <nav className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border pb-safe z-50">
+              <div className="flex justify-around items-center h-16 px-2">
+                {navItems.map((item) => {
+                  const isActive = location === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center w-16 h-full space-y-1">
+                      <Icon 
+                        size={24} 
+                        strokeWidth={isActive ? 2 : 1.5}
+                        className={cn(
+                          "transition-all duration-300",
+                          isActive ? "text-primary scale-110" : "text-muted-foreground"
+                        )} 
+                      />
+                      <span className={cn(
+                        "text-[10px] transition-colors",
+                        isActive ? "text-primary font-medium" : "text-muted-foreground"
+                      )}>
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
         </div>
-
-        {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
-
-        <main className="flex-1 overflow-y-auto pb-24">
-          {children}
-        </main>
-        
-        <nav className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border pb-safe z-50">
-          <div className="flex justify-around items-center h-16 px-2">
-            {navItems.map((item) => {
-              const isActive = location === item.href;
-              const Icon = item.icon;
-              return (
-                <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center w-16 h-full space-y-1">
-                  <Icon 
-                    size={24} 
-                    strokeWidth={isActive ? 2 : 1.5}
-                    className={cn(
-                      "transition-all duration-300",
-                      isActive ? "text-primary scale-110" : "text-muted-foreground"
-                    )} 
-                  />
-                  <span className={cn(
-                    "text-[10px] transition-colors",
-                    isActive ? "text-primary font-medium" : "text-muted-foreground"
-                  )}>
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
       </div>
     </div>
   );

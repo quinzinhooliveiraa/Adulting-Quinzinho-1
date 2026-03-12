@@ -58,8 +58,9 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Theme stored in localStorage key `casa-dos-20-theme`
 
 ## Responsive Layout
-- MobileLayout container: max-w-md (mobile), md:max-w-3xl (tablet), lg:max-w-5xl (desktop), xl:max-w-7xl — SaaS-style wide layout on PC
-- Pages use md:px-10 for extra padding on wider screens
+- Mobile: bottom navigation bar, max-w-md container
+- Desktop (md+): sidebar navigation on the left (collapsible via toggle), full-width content
+- Sidebar state stored in localStorage key `casa-dos-20-sidebar-collapsed`
 - BlogReflectionEditor: responsive padding and font sizes
 
 ## Login Page
@@ -69,7 +70,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 
 ## Express Body Parser
 - JSON limit set to 100mb to support base64 image data in journal entries
-- Max 10 images per reflection (enforced in BlogReflectionEditor)
+- No limit on number of images per reflection
 
 ## Journal Features
 - Entries show title (first line) + summary (first 120 chars)

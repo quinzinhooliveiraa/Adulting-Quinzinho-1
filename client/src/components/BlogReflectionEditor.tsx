@@ -19,7 +19,6 @@ interface ImageElement {
   fit?: "cover" | "contain";
 }
 
-const MAX_IMAGES = 10;
 
 interface BlogReflectionEditorProps {
   initialTitle?: string;
@@ -208,10 +207,6 @@ export default function BlogReflectionEditor({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (images.length >= MAX_IMAGES) {
-      setSaveError(`Limite de ${MAX_IMAGES} fotos atingido. Remova uma antes de adicionar outra.`);
-      return;
-    }
     setSaveError(null);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -689,7 +684,7 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
+                          updateImage(img.id, { textWrap: true, zIndex: 10 });
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
@@ -830,7 +825,7 @@ export default function BlogReflectionEditor({
 
           {images.length > 0 && (
             <p className="text-xs text-muted-foreground text-right">
-              {images.length}/{MAX_IMAGES} fotos
+              {images.length} {images.length === 1 ? "foto" : "fotos"}
             </p>
           )}
 
