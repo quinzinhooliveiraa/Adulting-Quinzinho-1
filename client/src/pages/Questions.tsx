@@ -2,11 +2,12 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Users, User, ChevronLeft, RotateCcw, Share2, Bookmark, ArrowRight,
   Heart, UserPlus, Home as HomeIcon, Wifi, MapPin, Crown, Sparkles,
-  PenLine, X, Lock, Send, Copy, Check, Loader2
+  PenLine, X, Lock, Send, Copy, Check, Loader2, Mic, MicOff, Square
 } from "lucide-react";
 import { addNotification } from "@/utils/notificationService";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
 
 const SOLO_THEMES = {
   identity: {
@@ -274,6 +275,15 @@ function AnswerSheet({
 }) {
   const [answer, setAnswer] = useState("");
   const createEntry = useCreateEntry();
+  const { isRecording, transcript, startRecording, stopRecording, supported } = useSpeechToText();
+
+  const lastTranscriptRef = useRef("");
+  useEffect(() => {
+    if (transcript && transcript !== lastTranscriptRef.current) {
+      lastTranscriptRef.current = transcript;
+      setAnswer(transcript);
+    }
+  }, [transcript]);
 
   const handleSave = async () => {
     if (!answer.trim()) return;
@@ -315,17 +325,37 @@ function AnswerSheet({
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Escreva sua resposta aqui..."
+            placeholder="Escreva ou grave sua resposta..."
             className="w-full min-h-[120px] p-3 rounded-xl bg-muted/50 border border-border text-foreground text-sm placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
             autoFocus
             data-testid="textarea-answer"
           />
+          {isRecording && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 animate-pulse">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <p className="text-xs text-red-500 font-medium">Gravando... fale agora</p>
+            </div>
+          )}
         </div>
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border flex gap-2">
+          {supported && (
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`p-3 rounded-xl transition-colors ${
+                isRecording
+                  ? "bg-red-500 text-white"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="button-voice-answer"
+              title={isRecording ? "Parar gravação" : "Gravar áudio"}
+            >
+              {isRecording ? <Square size={16} /> : <Mic size={16} />}
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={!answer.trim() || createEntry.isPending}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="button-save-answer"
           >
             <Send size={16} />

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ImagePlus, Hash, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { X, ImagePlus, Hash, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
 
 interface ImageElement {
   id: string;
@@ -48,7 +49,7 @@ export default function BlogReflectionEditor({
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingColor, setDrawingColor] = useState("#000000");
   const [isDrawing, setIsDrawing] = useState(false);
-  
+  const { isRecording, transcript, startRecording, stopRecording, supported: speechSupported } = useSpeechToText();
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,17 @@ export default function BlogReflectionEditor({
   const suggestedTags = topic
     ? topic.split(" ").map(word => word.toLowerCase()).filter(w => w.length > 3).slice(0, 3)
     : [];
+
+  const prevTranscriptRef = useRef("");
+  useEffect(() => {
+    if (transcript && transcript !== prevTranscriptRef.current) {
+      const baseContent = prevTranscriptRef.current
+        ? content.replace(prevTranscriptRef.current, "").trimEnd()
+        : content;
+      prevTranscriptRef.current = transcript;
+      setContent(baseContent ? baseContent + " " + transcript : transcript);
+    }
+  }, [transcript]);
 
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {
@@ -247,11 +259,11 @@ export default function BlogReflectionEditor({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-[#faf9f7] rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl">
+      <div className="bg-background rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl">
         
-        <div className="sticky top-0 bg-[#faf9f7] z-30 flex items-center justify-between px-8 py-6 border-b border-border/40">
-          <h2 className="font-serif text-[28px] text-[#4a4a4a]">Guardar Pensamento</h2>
-          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors text-[#4a4a4a]">
+        <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-8 py-6 border-b border-border/40">
+          <h2 className="font-serif text-[28px] text-foreground">Guardar Pensamento</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground">
             <X size={24} strokeWidth={1.5} />
           </button>
         </div>
@@ -267,14 +279,14 @@ export default function BlogReflectionEditor({
         <div className="p-8 space-y-8 flex-1">
           {showTitleEdit && (
             <div className="space-y-3">
-              <label className="text-sm font-medium text-[#7a7a7a]">Título</label>
+              <label className="text-sm font-medium text-muted-foreground">Título</label>
               <div className="relative">
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Dê um título para sua reflexão..."
-                  className="w-full px-6 py-4 bg-white border border-[#e5e5e5] rounded-2xl font-serif text-2xl text-[#333] focus:outline-none focus:border-[#d1d1d1] focus:ring-4 focus:ring-[#f0f0f0] transition-all shadow-sm"
+                  className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl font-serif text-2xl text-foreground focus:outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -282,7 +294,7 @@ export default function BlogReflectionEditor({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#7a7a7a]">Seu Texto</label>
+              <label className="text-sm font-medium text-muted-foreground">Seu Texto</label>
               
               <div className="flex items-center gap-2">
                 {isDrawingMode && (
@@ -297,7 +309,7 @@ export default function BlogReflectionEditor({
                 <button
                   onClick={() => { setIsDrawingMode(!isDrawingMode); }}
                   className={`flex items-center gap-1.5 text-sm transition-colors ${
-                    isDrawingMode ? "text-primary font-medium" : "text-[#7a7a7a] hover:text-[#333]"
+                    isDrawingMode ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"
                   }`}
                   title="Desenhar"
                 >
@@ -305,16 +317,28 @@ export default function BlogReflectionEditor({
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-sm text-[#7a7a7a] hover:text-[#333] transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   title="Adicionar imagem"
                 >
                   <ImagePlus size={16} />
                 </button>
+                {speechSupported && (
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`flex items-center gap-1.5 text-sm transition-colors ${
+                      isRecording ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={isRecording ? "Parar gravação" : "Gravar áudio"}
+                    data-testid="button-voice-editor"
+                  >
+                    {isRecording ? <Square size={16} /> : <Mic size={16} />}
+                  </button>
+                )}
               </div>
             </div>
             
             <div 
-              className="relative w-full min-h-[400px] bg-white border border-[#e5e5e5] rounded-2xl shadow-sm overflow-hidden" 
+              className="relative w-full min-h-[400px] bg-card border border-border rounded-2xl shadow-sm overflow-hidden" 
               ref={contentAreaRef}
             >
               {bannerUrl ? (
@@ -343,7 +367,7 @@ export default function BlogReflectionEditor({
               ) : (
                 <button
                   onClick={() => bannerInputRef.current?.click()}
-                  className="w-full h-24 border-2 border-dashed border-[#e0e0e0] rounded-t-2xl flex items-center justify-center gap-2 text-[#aaa] hover:text-[#777] hover:border-[#ccc] transition-colors"
+                  className="w-full h-24 border-2 border-dashed border-border rounded-t-2xl flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                 >
                   <ImageIcon size={18} />
                   <span className="text-sm font-medium">Adicionar capa</span>
@@ -366,7 +390,7 @@ export default function BlogReflectionEditor({
                     contentEditable={!isDrawingMode}
                     suppressContentEditableWarning
                     onInput={handleContentInput}
-                    className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] dark:text-foreground ${
+                    className={`w-full p-6 bg-transparent focus:outline-none font-serif text-[17px] leading-relaxed text-foreground ${
                       isDrawingMode ? "pointer-events-none opacity-60" : ""
                     }`}
                     style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', minHeight: '350px', position: 'relative', zIndex: 20, cursor: 'text' }}
@@ -382,7 +406,7 @@ export default function BlogReflectionEditor({
                     onPointerDown={(e) => e.stopPropagation()}
                     placeholder="Escreva seus pensamentos aqui..."
                     disabled={isDrawingMode}
-                    className={`w-full min-h-[350px] p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-[#333] dark:text-foreground resize-none ${
+                    className={`w-full min-h-[350px] p-6 bg-transparent border-none focus:outline-none font-serif text-[17px] leading-relaxed text-foreground resize-none ${
                       isDrawingMode ? "pointer-events-none opacity-50" : "pointer-events-auto relative"
                     }`}
                     style={{ zIndex: 20, position: 'relative' }}
@@ -688,8 +712,8 @@ export default function BlogReflectionEditor({
           {(suggestedTags.length > 0 || selectedTags.length > 0) && (
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-2">
-                <Hash size={14} className="text-[#7a7a7a]" />
-                <p className="text-sm font-medium text-[#7a7a7a]">Temas (opcional)</p>
+                <Hash size={14} className="text-muted-foreground" />
+                <p className="text-sm font-medium text-muted-foreground">Temas (opcional)</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {suggestedTags.map((tag) => (
@@ -698,8 +722,8 @@ export default function BlogReflectionEditor({
                     onClick={() => toggleTag(tag)}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                       selectedTags.includes(tag)
-                        ? "bg-[#333] text-white"
-                        : "bg-white border border-[#e5e5e5] text-[#555] hover:border-[#ccc]"
+                        ? "bg-foreground text-background"
+                        : "bg-muted border border-border text-muted-foreground hover:border-foreground/30"
                     }`}
                   >
                     #{tag}
@@ -713,14 +737,14 @@ export default function BlogReflectionEditor({
             <Button
               onClick={onClose}
               variant="outline"
-              className="flex-1 h-14 rounded-2xl border-[#e5e5e5] text-[#555] hover:bg-[#f5f5f5] text-base font-medium"
+              className="flex-1 h-14 rounded-2xl border-border text-muted-foreground hover:bg-muted text-base font-medium"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
               disabled={isSaving || (!title.trim() && !content.trim() && images.length === 0)}
-              className="flex-1 h-14 bg-[#333] hover:bg-black text-white rounded-2xl text-base font-medium shadow-md transition-all active:scale-[0.98]"
+              className="flex-1 h-14 bg-foreground hover:bg-foreground/90 text-background rounded-2xl text-base font-medium shadow-md transition-all active:scale-[0.98]"
             >
               {isSaving ? "Guardando..." : "Guardar Pensamento"}
             </Button>

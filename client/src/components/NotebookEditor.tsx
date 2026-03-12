@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Eye, EyeOff, ImagePlus, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { X, Eye, EyeOff, ImagePlus, PenTool, Palette, ArrowUpToLine, ArrowDownToLine, Trash2, Lock, Unlock, WrapText, Image as ImageIcon, RefreshCw, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
 
 interface NotebookEditorProps {
   initialContent?: string;
@@ -41,9 +42,20 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   const [isDrawing, setIsDrawing] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const contentInitialized = useRef(false);
+  const { isRecording, transcript, startRecording, stopRecording, supported: speechSupported } = useSpeechToText();
 
   const hasWrappedImages = images.some(img => img.textWrap);
-  
+
+  const prevTranscriptRef = useRef("");
+  useEffect(() => {
+    if (transcript && transcript !== prevTranscriptRef.current) {
+      const baseContent = prevTranscriptRef.current
+        ? content.replace(prevTranscriptRef.current, "").trimEnd()
+        : content;
+      prevTranscriptRef.current = transcript;
+      setContent(baseContent ? baseContent + " " + transcript : transcript);
+    }
+  }, [transcript]);
 
   useEffect(() => {
     if (canvasRef.current) {
@@ -309,12 +321,29 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
               title="Cor da caneta"
             />
           )}
+          {speechSupported && !isDrawingMode && (
+            <>
+              <div className="w-px h-6 bg-border mx-1" />
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+                  isRecording
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+                title={isRecording ? "Parar gravação" : "Gravar áudio"}
+                data-testid="button-voice-notebook"
+              >
+                {isRecording ? <Square size={14} /> : <Mic size={14} />}
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto bg-notebook-pattern">
           <div
             ref={notebookRef}
-            className="relative w-full min-h-[800px] bg-white dark:bg-slate-900 mx-auto max-w-lg p-8 shadow-lg overflow-hidden"
+            className="relative w-full min-h-[800px] bg-card mx-auto max-w-lg p-8 shadow-lg overflow-hidden"
             style={{
               backgroundImage: "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px)",
               backgroundSize: "100% 28px",

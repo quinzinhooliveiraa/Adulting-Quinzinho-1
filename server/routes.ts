@@ -560,6 +560,83 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/insights/monthly", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const entries = await storage.getEntries(userId);
+      const checkins = await storage.getCheckins(userId);
+
+      const monthEntries = entries.filter(e => {
+        const d = new Date(e.createdAt!);
+        return d >= firstDay && d <= lastDay;
+      });
+      const monthCheckins = checkins.filter(c => {
+        const d = new Date(c.createdAt!);
+        return d >= firstDay && d <= lastDay;
+      });
+
+      const moodCounts: Record<string, number> = {};
+      monthCheckins.forEach(c => {
+        moodCounts[c.mood] = (moodCounts[c.mood] || 0) + 1;
+      });
+
+      const tagCounts: Record<string, number> = {};
+      monthEntries.forEach(e => {
+        (e.tags || []).forEach((tag: string) => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+      monthCheckins.forEach(c => {
+        (c.tags || []).forEach((tag: string) => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+
+      const topTags = Object.entries(tagCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([tag, count]) => ({ tag, count }));
+
+      const dominantMood = Object.entries(moodCounts)
+        .sort(([, a], [, b]) => b - a)[0]?.[0] || null;
+
+      const activeDays = new Set<string>();
+      monthEntries.forEach(e => activeDays.add(new Date(e.createdAt!).toDateString()));
+      monthCheckins.forEach(c => activeDays.add(new Date(c.createdAt!).toDateString()));
+
+      const totalDays = lastDay.getDate();
+      const streak = activeDays.size;
+
+      const totalEntries = entries.length;
+      const totalCheckins = checkins.length;
+
+      const totalWords = monthEntries.reduce((sum, e) => {
+        const text = typeof e.text === "string" ? e.text : "";
+        return sum + text.split(/\s+/).filter(Boolean).length;
+      }, 0);
+
+      res.json({
+        month: now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+        entriesThisMonth: monthEntries.length,
+        checkinsThisMonth: monthCheckins.length,
+        totalEntries,
+        totalCheckins,
+        totalWords,
+        activeDays: streak,
+        totalDays,
+        dominantMood,
+        moodCounts,
+        topTags,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar insights" });
+    }
+  });
+
   interface LobbyPlayer {
     ws: WebSocket;
     name: string;
@@ -598,7 +675,15 @@ export async function registerRoutes(
     });
   }
 
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/lobby" });
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    if (req.url === "/ws/lobby") {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    }
+  });
 
   wss.on("connection", (ws: WebSocket) => {
     let currentLobby: Lobby | null = null;

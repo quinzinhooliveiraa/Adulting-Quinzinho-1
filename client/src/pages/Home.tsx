@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
@@ -12,6 +12,7 @@ import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
+import { useQuery } from "@tanstack/react-query";
 
 
 // Simple mock logic for auto-tagging
@@ -294,16 +295,68 @@ export default function Home() {
     }, 1500);
   };
 
+  const { data: monthlyInsights } = useQuery({
+    queryKey: ["/api/insights/monthly"],
+    queryFn: async () => {
+      const res = await fetch("/api/insights/monthly", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const moodLabels: Record<string, string> = { "great": "Ótimo", "good": "Bem", "neutral": "Neutro", "bad": "Mal", "awful": "Péssimo" };
+
   const monthlyReport = useMemo(() => {
-    const totalEntries = RECENT_JOURNAL_ENTRIES.length + 5; 
-    const dominantTheme = "Identidade";
-    
+    if (!monthlyInsights) {
+      return {
+        totalEntries: 0,
+        dominantTheme: "—",
+        insight: "Comece a escrever reflexões e fazer check-ins para ver seus insights mensais aqui.",
+        activeDays: 0,
+        totalDays: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
+        totalWords: 0,
+        checkinsThisMonth: 0,
+        dominantMood: null as string | null,
+        topTags: [] as { tag: string; count: number }[],
+        moodCounts: {} as Record<string, number>,
+        month: "",
+      };
+    }
+    const topTag = monthlyInsights.topTags?.[0]?.tag || "—";
+    const totalEntries = monthlyInsights.entriesThisMonth || 0;
+    const activeDays = monthlyInsights.activeDays || 0;
+    const totalDays = monthlyInsights.totalDays || 30;
+    const mood = monthlyInsights.dominantMood;
+    const moodLabel = mood ? (moodLabels[mood] || mood) : "—";
+    const words = monthlyInsights.totalWords || 0;
+
+    let insight = "";
+    if (totalEntries === 0 && monthlyInsights.checkinsThisMonth === 0) {
+      insight = "Você ainda não tem atividade este mês. Comece fazendo um check-in ou escrevendo uma reflexão!";
+    } else {
+      const parts = [];
+      if (totalEntries > 0) parts.push(`Você escreveu ${totalEntries} reflexão(ões) com ${words} palavras`);
+      if (monthlyInsights.checkinsThisMonth > 0) parts.push(`fez ${monthlyInsights.checkinsThisMonth} check-in(s)`);
+      if (activeDays > 0) parts.push(`esteve ativo em ${activeDays} de ${totalDays} dias`);
+      if (topTag !== "—") parts.push(`O tema "${topTag}" apareceu mais vezes`);
+      if (mood) parts.push(`Seu humor predominante foi "${moodLabel}"`);
+      insight = parts.join(". ") + ".";
+    }
+
     return {
       totalEntries,
-      dominantTheme,
-      insight: "Este mês você explorou profundamente sua Identidade. Suas reflexões mostram uma transição de ansiedade para uma calma mais consciente."
+      dominantTheme: topTag,
+      insight,
+      activeDays,
+      totalDays,
+      totalWords: words,
+      checkinsThisMonth: monthlyInsights.checkinsThisMonth || 0,
+      dominantMood: mood,
+      topTags: monthlyInsights.topTags || [],
+      moodCounts: monthlyInsights.moodCounts || {},
+      month: monthlyInsights.month || "",
     };
-  }, []);
+  }, [monthlyInsights]);
 
   const handleSocialShare = (platform: string) => {
     const text = `"${dailyReminder}" - Casa dos 20`;
@@ -789,44 +842,85 @@ export default function Home() {
         </div>
       )}
 
-      {/* Monthly Report Modal */}
       {isReportOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
             onClick={() => setIsReportOpen(false)}
           />
-          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsReportOpen(false)}
-              className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+              className="absolute top-5 right-5 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
             >
               <X size={18} />
             </button>
             
-            <div className="space-y-8">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BookOpen size={32} className="text-primary" />
+            <div className="space-y-5">
+              <div className="text-center space-y-1.5">
+                <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <BarChart3 size={28} className="text-primary" />
                 </div>
-                <h3 className="text-2xl font-serif text-foreground">Insight do Mês</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                  Uma análise profunda das suas <strong>{monthlyReport.totalEntries} reflexões</strong> e check-ins.
-                </p>
+                <h3 className="text-xl font-serif text-foreground">Relatório Mensal</h3>
+                {monthlyReport.month && (
+                  <p className="text-xs text-muted-foreground capitalize">{monthlyReport.month}</p>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-secondary/30 p-4 rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Tema Principal</p>
-                  <p className="text-sm font-bold text-primary">{monthlyReport.dominantTheme}</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                  <FileText size={16} className="text-primary mx-auto mb-1" />
+                  <p className="text-lg font-bold text-foreground">{monthlyReport.totalEntries}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Reflexões</p>
                 </div>
-                <div className="bg-secondary/30 p-4 rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Evolução</p>
-                  <p className="text-sm font-bold text-primary">+12% calma</p>
+                <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                  <Calendar size={16} className="text-primary mx-auto mb-1" />
+                  <p className="text-lg font-bold text-foreground">{monthlyReport.activeDays}/{monthlyReport.totalDays}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Dias Ativos</p>
+                </div>
+                <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                  <TrendingUp size={16} className="text-primary mx-auto mb-1" />
+                  <p className="text-lg font-bold text-foreground">{monthlyReport.totalWords}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Palavras</p>
                 </div>
               </div>
 
-              <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
+              {monthlyReport.checkinsThisMonth > 0 && (
+                <div className="bg-secondary/20 p-4 rounded-2xl space-y-2">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Humor — {monthlyReport.checkinsThisMonth} check-ins</p>
+                  <div className="flex gap-1.5">
+                    {Object.entries(monthlyReport.moodCounts).map(([mood, count]) => {
+                      const total = monthlyReport.checkinsThisMonth;
+                      const pct = total > 0 ? Math.round((count as number / total) * 100) : 0;
+                      const moodEmojis: Record<string, string> = { great: "😊", good: "🙂", neutral: "😐", bad: "😞", awful: "😢" };
+                      return (
+                        <div key={mood} className="flex-1 text-center">
+                          <div className="text-lg">{moodEmojis[mood] || "❓"}</div>
+                          <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="text-[9px] text-muted-foreground mt-0.5">{pct}%</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {monthlyReport.topTags.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Temas mais frequentes</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {monthlyReport.topTags.map((t: { tag: string; count: number }) => (
+                      <span key={t.tag} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        #{t.tag} ({t.count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <p className="text-sm text-foreground leading-relaxed italic text-center">
                   "{monthlyReport.insight}"
                 </p>
@@ -834,7 +928,7 @@ export default function Home() {
 
               <Button 
                 onClick={() => setIsReportOpen(false)}
-                className="w-full bg-primary text-primary-foreground rounded-full h-12 font-medium"
+                className="w-full bg-primary text-primary-foreground rounded-full h-11 font-medium text-sm"
               >
                 Continuar Jornada
               </Button>
