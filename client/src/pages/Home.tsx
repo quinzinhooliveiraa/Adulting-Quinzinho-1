@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
 import { useQuery } from "@tanstack/react-query";
+import { JOURNEYS } from "./Journey";
+import { Flame, Target, ArrowUpRight } from "lucide-react";
 
 
 function extractCleanText(raw: string): string {
@@ -319,6 +321,48 @@ export default function Home() {
     },
   });
 
+  const isPremium = user?.hasPremium || user?.role === "admin";
+
+  const { data: journeyProgressData, refetch: refetchJourney } = useQuery({
+    queryKey: ["/api/journey/progress"],
+    queryFn: async () => {
+      const res = await fetch("/api/journey/progress", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const todayActivity = useMemo(() => {
+    if (!isPremium || !journeyProgressData) return null;
+    const progressMap: Record<string, string[]> = {};
+    (journeyProgressData as any[]).forEach((p: any) => {
+      progressMap[p.journeyId] = p.completedDays;
+    });
+    for (const journey of JOURNEYS) {
+      const completed = progressMap[journey.id];
+      if (!completed || completed.length === 0) continue;
+      if (completed.length >= journey.totalDays) continue;
+      const nextDay = journey.days.find((d) => !completed.includes(d.id));
+      if (nextDay) {
+        return { journey, day: nextDay, completedCount: completed.length };
+      }
+    }
+    return null;
+  }, [isPremium, journeyProgressData]);
+
+  const handleCompleteJourneyDay = async () => {
+    if (!todayActivity) return;
+    try {
+      await fetch("/api/journey/complete-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ journeyId: todayActivity.journey.id, dayId: todayActivity.day.id }),
+      });
+      refetchJourney();
+    } catch {}
+  };
+
   const moodLabels: Record<string, string> = { "great": "Ótimo", "good": "Bem", "neutral": "Neutro", "bad": "Mal", "awful": "Péssimo" };
 
   const monthlyReport = useMemo(() => {
@@ -577,6 +621,75 @@ export default function Home() {
               </button>
             </div>
           </div>
+        </section>
+      )}
+
+      {todayActivity && (
+        <section className="animate-in fade-in slide-in-from-top-2 duration-500" data-testid="home-today-activity">
+          <a href={`/journey/${todayActivity.journey.id}`} className="block">
+            <div
+              className="rounded-2xl border border-primary/20 overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${todayActivity.journey.gradientFrom}08, ${todayActivity.journey.gradientTo}05)` }}
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Flame size={14} className="text-primary" />
+                    <span className="text-[10px] uppercase tracking-[0.12em] font-bold text-primary">Atividade de Hoje</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {todayActivity.journey.title} · Dia {todayActivity.day.day}/{todayActivity.journey.totalDays}
+                  </span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${todayActivity.journey.gradientFrom}, ${todayActivity.journey.gradientTo})` }}
+                  >
+                    <Target size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-foreground">{todayActivity.day.title}</h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{todayActivity.day.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCompleteJourneyDay();
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold active:scale-95 transition-all"
+                        data-testid="button-home-complete-day"
+                      >
+                        <Check size={11} />
+                        Feito
+                      </button>
+                      {todayActivity.day.appLink && (
+                        <a
+                          href={todayActivity.day.appLink}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-primary/30 text-primary text-[10px] font-semibold hover:bg-primary/10 transition-colors"
+                          data-testid="button-home-applink"
+                        >
+                          <ArrowUpRight size={10} />
+                          Ir para o app
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full h-1 bg-muted/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.round((todayActivity.completedCount / todayActivity.journey.totalDays) * 100)}%`,
+                      background: `linear-gradient(90deg, ${todayActivity.journey.gradientFrom}, ${todayActivity.journey.gradientTo})`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </a>
         </section>
       )}
 

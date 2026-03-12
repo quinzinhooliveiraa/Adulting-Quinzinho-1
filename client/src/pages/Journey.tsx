@@ -542,17 +542,6 @@ export default function Journey() {
             </div>
           ))}
 
-          <div className="p-6 rounded-2xl bg-secondary/30 border border-dashed border-border flex flex-col items-center text-center space-y-3 mt-6">
-            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center text-primary shadow-inner">
-              <Sparkles size={20} />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-serif text-base">Novas Jornadas em Breve</h4>
-              <p className="text-[11px] text-muted-foreground px-4">
-                Jornadas sobre Amor Próprio, Finanças dos 20 e Saúde Mental chegando em breve.
-              </p>
-            </div>
-          </div>
         </div>
       )}
     </div>
