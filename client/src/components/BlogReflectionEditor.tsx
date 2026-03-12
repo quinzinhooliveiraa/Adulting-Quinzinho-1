@@ -593,7 +593,7 @@ export default function BlogReflectionEditor({
               )}
               
               <div 
-                className="relative"
+                className="relative overflow-hidden"
                 style={{ isolation: 'isolate' }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
@@ -688,13 +688,17 @@ export default function BlogReflectionEditor({
                     const initialImageX = img.x;
                     const initialImageY = img.y;
 
+                    const container = e.currentTarget.parentElement;
+                    const containerW = container?.offsetWidth || 600;
+                    const containerH = container?.offsetHeight || 800;
+
                     const handlePointerMove = (moveEvent: PointerEvent) => {
                       const deltaX = moveEvent.clientX - startX;
                       const deltaY = moveEvent.clientY - startY;
                       
                       updateImage(img.id, { 
-                        x: Math.max(0, initialImageX + deltaX), 
-                        y: Math.max(0, initialImageY + deltaY) 
+                        x: Math.min(Math.max(0, initialImageX + deltaX), containerW - img.width), 
+                        y: Math.min(Math.max(0, initialImageY + deltaY), containerH - img.height) 
                       });
                     };
 
@@ -771,13 +775,16 @@ export default function BlogReflectionEditor({
                         const startY = e.clientY;
                         const startWidth = img.width;
                         const startHeight = img.height;
+                        const ctr = e.currentTarget.closest('[style*="isolation"]') as HTMLElement;
+                        const maxW = ctr ? ctr.offsetWidth - img.x : 9999;
+                        const maxH = ctr ? ctr.offsetHeight - img.y : 9999;
 
                         const handlePointerMove = (moveEvent: PointerEvent) => {
                           const deltaX = moveEvent.clientX - startX;
                           const deltaY = moveEvent.clientY - startY;
                           updateImage(img.id, {
-                            width: Math.max(50, startWidth + deltaX),
-                            height: Math.max(50, startHeight + deltaY),
+                            width: Math.min(Math.max(50, startWidth + deltaX), maxW),
+                            height: Math.min(Math.max(50, startHeight + deltaY), maxH),
                           });
                         };
 
