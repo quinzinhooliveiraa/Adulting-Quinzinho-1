@@ -53,15 +53,21 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Available in: AnswerSheet (Questions), BlogReflectionEditor, NotebookEditor, Home check-in, Home reflection, Journal textarea
 - Browser-native (no external API needed), supported on Chrome/Edge/Safari
 
+## Theme
+- Default theme: "system" (follows OS preference)
+- Theme stored in localStorage key `casa-dos-20-theme`
+
 ## Responsive Layout
-- MobileLayout container: max-w-md (mobile), md:max-w-2xl (tablet), lg:max-w-4xl (desktop), xl:max-w-6xl (large screens)
-- Pages use responsive padding: px-6 md:px-10 lg:px-16
-- Mood grid: 3 cols mobile, 6 cols on md+
+- MobileLayout container: max-w-md (mobile), md:max-w-lg (tablet), lg:max-w-xl (desktop) — app-like centered column
 - BlogReflectionEditor: responsive padding and font sizes
 
 ## Login Page
-- Logo images: `logo-light.png` (black logo for light mode), `logo-dark.png` (white logo for dark mode)
-- Uses `useTheme().resolvedTheme` to swap logos dynamically
+- Icon images: `icon-light.png` (door icon for light mode), `icon-dark.png` (door icon for dark mode)
+- Uses `useTheme().resolvedTheme` to swap icons dynamically
+- Title "Casa dos 20" displayed as text below icon
+
+## Express Body Parser
+- JSON limit set to 50mb to support base64 image data in journal entries
 
 ## Journal Features
 - Entries show title (first line) + summary (first 120 chars)

@@ -478,7 +478,7 @@ export default function Home() {
   }
 
   return (
-    <div className="px-6 md:px-10 lg:px-16 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+    <div className="px-6 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       
       <header className="space-y-2">
         <div className="flex justify-between items-start">
@@ -1083,12 +1083,18 @@ export default function Home() {
               if (user) {
                 await createEntry.mutateAsync({ text: content, tags: finalTags, mood: mood || undefined });
               }
-            } catch {}
-            addNotification({
-              type: "journal",
-              title: "✍️ Pensamento Guardado",
-              message: `"${title}" foi salvo com sucesso!`,
-            });
+              addNotification({
+                type: "journal",
+                title: "✍️ Pensamento Guardado",
+                message: `"${title}" foi salvo com sucesso!`,
+              });
+            } catch (err) {
+              addNotification({
+                type: "journal",
+                title: "Erro ao Salvar",
+                message: "Não foi possível salvar sua reflexão. Tente novamente.",
+              });
+            }
           }}
         />
       )}

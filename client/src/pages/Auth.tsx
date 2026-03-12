@@ -3,8 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound } from "lucide-react";
-import logoLight from "@/assets/images/logo-light.png";
-import logoDark from "@/assets/images/logo-dark.png";
+import iconLight from "@/assets/images/icon-light.png";
+import iconDark from "@/assets/images/icon-dark.png";
 import { useTheme } from "next-themes";
 
 export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => void }) {
@@ -89,16 +89,16 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
   const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isResetValid;
 
-  const logoSrc = resolvedTheme === "dark" ? logoDark : logoLight;
+  const iconSrc = resolvedTheme === "dark" ? iconDark : iconLight;
 
   return (
     <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-8 overflow-y-auto">
       <div className="w-full max-w-sm flex flex-col items-center space-y-8">
-        <div className="w-48 h-48 flex items-center justify-center overflow-hidden">
-          <img src={logoSrc} alt="Casa dos 20" className="w-full h-full object-contain" />
-        </div>
-
-        <div className="text-center space-y-2">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-24 h-24 flex items-center justify-center overflow-hidden">
+            <img src={iconSrc} alt="Casa dos 20" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-2xl font-serif text-foreground tracking-wide">Casa dos 20</h1>
           <p className="text-sm text-muted-foreground">
             {mode === "login" ? "Bem-vindo de volta" : mode === "register" ? "Crie sua conta" : "Redefinir senha"}
           </p>

@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Mic, Square } from "lucide-react";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioButtonProps {
   onText: (text: string) => void;
@@ -9,11 +10,18 @@ interface AudioButtonProps {
 }
 
 export default function AudioButton({ onText, className = "", size = 18 }: AudioButtonProps) {
+  const { toast } = useToast();
   const handleSpeechText = useCallback((text: string) => {
     onText(text);
   }, [onText]);
 
-  const { isRecording, startRecording, stopRecording, supported } = useSpeechToText(handleSpeechText);
+  const { isRecording, startRecording, stopRecording, supported, error } = useSpeechToText(handleSpeechText);
+
+  useEffect(() => {
+    if (error) {
+      toast({ title: "Áudio", description: error, variant: "destructive" });
+    }
+  }, [error, toast]);
 
   if (!supported) return null;
 

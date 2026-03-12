@@ -611,7 +611,7 @@ export default function Book() {
 
   return (
     <div className="min-h-screen bg-background animate-in fade-in duration-700">
-      <div className="px-6 md:px-10 lg:px-16 pt-12 pb-24">
+      <div className="px-6 pt-12 pb-24">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-serif text-foreground">O Livro</h1>
           <Bookmark size={20} className="text-muted-foreground" />

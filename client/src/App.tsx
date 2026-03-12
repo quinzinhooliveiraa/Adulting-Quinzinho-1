@@ -59,7 +59,7 @@ function AuthGate() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="casa-dos-20-theme" attribute="class">
+    <ThemeProvider defaultTheme="system" storageKey="casa-dos-20-theme" attribute="class">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
