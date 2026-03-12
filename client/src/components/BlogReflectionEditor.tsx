@@ -25,6 +25,7 @@ interface BlogReflectionEditorProps {
   initialText: string;
   initialImages?: ImageElement[];
   initialBanner?: string;
+  initialDrawing?: string;
   origin?: string;
   topic?: string;
   showTitleEdit?: boolean;
@@ -37,6 +38,7 @@ export default function BlogReflectionEditor({
   initialText,
   initialImages,
   initialBanner,
+  initialDrawing,
   origin,
   topic = "",
   showTitleEdit = true,
@@ -88,6 +90,8 @@ export default function BlogReflectionEditor({
       .slice(0, 3);
   })();
 
+  const drawingRestored = useRef(false);
+
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {
       const canvas = canvasRef.current;
@@ -98,7 +102,16 @@ export default function BlogReflectionEditor({
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.scale(2, 2);
-        if (prevData) ctx.putImageData(prevData, 0, 0);
+        if (prevData) {
+          ctx.putImageData(prevData, 0, 0);
+        } else if (initialDrawing && !drawingRestored.current) {
+          drawingRestored.current = true;
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width / 2, canvas.height / 2);
+          };
+          img.src = initialDrawing;
+        }
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctxRef.current = ctx;
@@ -296,13 +309,25 @@ export default function BlogReflectionEditor({
 
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const getDrawingData = (): string | undefined => {
+    if (!canvasRef.current || !ctxRef.current) return undefined;
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hasContent = data.data.some((v, i) => i % 4 === 3 && v > 0);
+    if (!hasContent) return undefined;
+    return canvas.toDataURL('image/png');
+  };
+
   const handleSave = async () => {
     if (!title.trim() && !content.trim() && images.length === 0) return;
     setIsSaving(true);
     setSaveError(null);
+
+    const drawing = getDrawingData();
     
-    const finalContent = (images.length > 0 || bannerUrl)
-      ? JSON.stringify({ text: content, images, banner: bannerUrl }) 
+    const finalContent = (images.length > 0 || bannerUrl || drawing)
+      ? JSON.stringify({ text: content, images, banner: bannerUrl, drawing }) 
       : content;
 
     const contentSizeMB = new Blob([finalContent]).size / (1024 * 1024);
@@ -600,32 +625,30 @@ export default function BlogReflectionEditor({
                   />
               )}
 
-              {isDrawingMode && (
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={(e) => {
-                    const touch = e.touches[0];
-                    const rect = canvasRef.current?.getBoundingClientRect();
-                    if(rect) {
-                       startDrawing({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
-                    }
-                  }}
-                  onTouchMove={(e) => {
-                    const touch = e.touches[0];
-                    const rect = canvasRef.current?.getBoundingClientRect();
-                    if(rect) {
-                       draw({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
-                    }
-                  }}
-                  onTouchEnd={stopDrawing}
-                  className={`absolute inset-0 w-full h-full pointer-events-auto ${isEraser ? 'cursor-cell' : 'cursor-crosshair'}`}
-                  style={{ zIndex: 50 }}
-                />
-              )}
+              <canvas
+                ref={canvasRef}
+                onMouseDown={isDrawingMode ? startDrawing : undefined}
+                onMouseMove={isDrawingMode ? draw : undefined}
+                onMouseUp={isDrawingMode ? stopDrawing : undefined}
+                onMouseLeave={isDrawingMode ? stopDrawing : undefined}
+                onTouchStart={isDrawingMode ? (e) => {
+                  const touch = e.touches[0];
+                  const rect = canvasRef.current?.getBoundingClientRect();
+                  if(rect) {
+                     startDrawing({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
+                  }
+                } : undefined}
+                onTouchMove={isDrawingMode ? (e) => {
+                  const touch = e.touches[0];
+                  const rect = canvasRef.current?.getBoundingClientRect();
+                  if(rect) {
+                     draw({ nativeEvent: { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }});
+                  }
+                } : undefined}
+                onTouchEnd={isDrawingMode ? stopDrawing : undefined}
+                className={`absolute inset-0 w-full h-full ${isDrawingMode ? `pointer-events-auto ${isEraser ? 'cursor-cell' : 'cursor-crosshair'}` : 'pointer-events-none'}`}
+                style={{ zIndex: isDrawingMode ? 50 : 2 }}
+              />
 
               {freeImages.map((img) => (
                 <div

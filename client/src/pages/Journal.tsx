@@ -274,9 +274,14 @@ export default function Journal() {
             {parsed.banner && (
               <img src={parsed.banner} alt="" className="w-full h-48 object-cover rounded-2xl" />
             )}
-            <p className="text-foreground text-lg leading-relaxed font-serif whitespace-pre-wrap">
-              {parsed.text}
-            </p>
+            <div className="relative">
+              <p className="text-foreground text-lg leading-relaxed font-serif whitespace-pre-wrap">
+                {parsed.text}
+              </p>
+              {parsed.drawing && (
+                <img src={parsed.drawing} alt="" className="absolute inset-0 w-full h-full pointer-events-none" style={{ objectFit: 'fill' }} />
+              )}
+            </div>
             {parsed.images && parsed.images.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {parsed.images.map((img: any, i: number) => (
@@ -642,6 +647,13 @@ export default function Journal() {
             try {
               const parsed = JSON.parse(editingEntry.text);
               if (parsed && parsed.banner) return parsed.banner;
+            } catch {}
+            return undefined;
+          })()}
+          initialDrawing={(() => {
+            try {
+              const parsed = JSON.parse(editingEntry.text);
+              if (parsed && parsed.drawing) return parsed.drawing;
             } catch {}
             return undefined;
           })()}
