@@ -19,6 +19,8 @@ interface ImageElement {
   fit?: "cover" | "contain";
 }
 
+const MAX_IMAGES = 10;
+
 interface BlogReflectionEditorProps {
   initialTitle?: string;
   initialText: string;
@@ -28,7 +30,7 @@ interface BlogReflectionEditorProps {
   topic?: string;
   showTitleEdit?: boolean;
   onClose: () => void;
-  onSave: (title: string, content: string, tags: string[]) => void;
+  onSave: (title: string, content: string, tags: string[]) => void | Promise<void>;
 }
 
 export default function BlogReflectionEditor({
@@ -69,9 +71,19 @@ export default function BlogReflectionEditor({
 
   const hasWrappedImages = images.some(img => img.textWrap);
 
-  const suggestedTags = topic
-    ? topic.split(" ").map(word => word.toLowerCase()).filter(w => w.length > 3).slice(0, 3)
-    : [];
+  const suggestedTags = (() => {
+    if (!topic) return [];
+    let cleanText = topic;
+    try {
+      const parsed = JSON.parse(topic);
+      if (parsed && parsed.text) cleanText = parsed.text;
+    } catch {}
+    return cleanText
+      .split(/\s+/)
+      .map(word => word.toLowerCase().replace(/[^a-záàâãéèêíïóôõúüç]/gi, ""))
+      .filter(w => w.length > 3)
+      .slice(0, 3);
+  })();
 
   useEffect(() => {
     if (canvasRef.current && contentAreaRef.current) {
@@ -195,33 +207,37 @@ export default function BlogReflectionEditor({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
-          const newImage: ImageElement = {
-            id: `img-${Date.now()}`,
-            src: event.target?.result as string,
-            width: 200,
-            height: (200 * img.height) / img.width,
-            naturalWidth: img.width,
-            naturalHeight: img.height,
-            x: 20,
-            y: 20,
-            rotation: 0,
-            zIndex: maxZ + 1,
-            locked: false,
-            textWrap: false,
-          };
-          setImages(prev => [...prev, newImage]);
-          setIsDrawingMode(false);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (images.length >= MAX_IMAGES) {
+      setSaveError(`Limite de ${MAX_IMAGES} fotos atingido. Remova uma antes de adicionar outra.`);
+      return;
     }
+    setSaveError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxZ = images.reduce((max, i) => Math.max(max, i.zIndex || 20), 20);
+        const newImage: ImageElement = {
+          id: `img-${Date.now()}`,
+          src: event.target?.result as string,
+          width: 200,
+          height: (200 * img.height) / img.width,
+          naturalWidth: img.width,
+          naturalHeight: img.height,
+          x: 20,
+          y: 20,
+          rotation: 0,
+          zIndex: maxZ + 1,
+          locked: false,
+          textWrap: false,
+        };
+        setImages(prev => [...prev, newImage]);
+        setIsDrawingMode(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const updateImage = (id: string, updates: Partial<ImageElement>) => {
@@ -241,19 +257,39 @@ export default function BlogReflectionEditor({
     }
   };
 
-  const handleSave = () => {
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleSave = async () => {
     if (!title.trim() && !content.trim() && images.length === 0) return;
     setIsSaving(true);
+    setSaveError(null);
     
     const finalContent = (images.length > 0 || bannerUrl)
       ? JSON.stringify({ text: content, images, banner: bannerUrl }) 
       : content;
+
+    const contentSizeMB = new Blob([finalContent]).size / (1024 * 1024);
+    if (contentSizeMB > 45) {
+      setSaveError(`Conteúdo muito grande (${contentSizeMB.toFixed(1)}MB). Remova algumas fotos e tente novamente.`);
+      setIsSaving(false);
+      return;
+    }
       
-    setTimeout(() => {
-      onSave(title || "Reflexão sem título", finalContent, selectedTags);
+    try {
+      await onSave(title || "Reflexão sem título", finalContent, selectedTags);
       setIsSaving(false);
       onClose();
-    }, 800);
+    } catch (err: any) {
+      setIsSaving(false);
+      const msg = err?.message || "";
+      if (msg.includes("413") || msg.includes("large")) {
+        setSaveError("O conteúdo é muito grande. Tente remover algumas fotos.");
+      } else if (msg.includes("500") || msg.includes("network") || msg.includes("Failed")) {
+        setSaveError("Erro ao salvar. Verifique sua conexão e tente novamente.");
+      } else {
+        setSaveError("Não foi possível salvar. Sua reflexão não foi perdida — tente novamente.");
+      }
+    }
   };
 
   const getTouchDistance = (touches: React.TouchList) => {
@@ -786,7 +822,19 @@ export default function BlogReflectionEditor({
             </div>
           )}
 
-          <div className="flex gap-4 pt-6">
+          {saveError && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-600 dark:text-red-400">
+              {saveError}
+            </div>
+          )}
+
+          {images.length > 0 && (
+            <p className="text-xs text-muted-foreground text-right">
+              {images.length}/{MAX_IMAGES} fotos
+            </p>
+          )}
+
+          <div className="flex gap-4 pt-4">
             <Button
               onClick={onClose}
               variant="outline"

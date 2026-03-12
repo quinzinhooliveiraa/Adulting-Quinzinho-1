@@ -266,7 +266,7 @@ export default function Journal() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
-      <div className="px-6 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
+      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-serif text-foreground">Diário</h1>
           <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export default function Journal() {
         )}
       </div>
 
-      <div className="px-6 space-y-4">
+      <div className="px-6 md:px-10 space-y-4">
         {viewingEntry ? (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center">
@@ -623,24 +623,16 @@ export default function Journal() {
           }}
           onSave={async (title, content, tags) => {
             const finalTags = tags.length > 0 ? tags : editingEntry.tags;
-            try {
-              if (isEditing) {
-                await updateEntryMut.mutateAsync({ id: isEditing, text: content, tags: finalTags });
-              } else {
-                await createEntryMut.mutateAsync({ text: content, tags: finalTags });
-              }
-              addNotification({
-                type: "journal",
-                title: "Pensamento Guardado",
-                message: `"${title}" foi salvo com sucesso!`,
-              });
-            } catch (err) {
-              addNotification({
-                type: "journal",
-                title: "Erro ao Salvar",
-                message: "Não foi possível salvar. Tente novamente.",
-              });
+            if (isEditing) {
+              await updateEntryMut.mutateAsync({ id: isEditing, text: content, tags: finalTags });
+            } else {
+              await createEntryMut.mutateAsync({ text: content, tags: finalTags });
             }
+            addNotification({
+              type: "journal",
+              title: "Pensamento Guardado",
+              message: `"${title}" foi salvo com sucesso!`,
+            });
             setIsWriting(false);
             setEntryText("");
             setSelectedTags([]);

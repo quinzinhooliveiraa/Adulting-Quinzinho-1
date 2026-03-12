@@ -157,7 +157,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground bg-noise flex justify-center">
-      <div className="w-full max-w-md md:max-w-lg lg:max-w-xl bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col transition-all">
+      <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-7xl bg-background min-h-screen relative md:shadow-2xl overflow-hidden flex flex-col transition-all">
         
         <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
           <NotificationCenter />
