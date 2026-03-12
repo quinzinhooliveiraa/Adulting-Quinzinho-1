@@ -1782,11 +1782,11 @@ function CardGame({
 
   return (
     <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
-      <div className="px-6 pt-8 pb-4 flex items-center justify-between">
+      <div className="px-6 pt-14 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
           <ChevronLeft size={24} className="text-foreground" />
         </button>
-        <div className="text-center">
+        <div className="text-center flex-1">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
             {subtitle}
           </p>
