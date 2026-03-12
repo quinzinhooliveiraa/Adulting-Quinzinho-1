@@ -392,7 +392,12 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "feedback">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push">("users");
+  const [pushTitle, setPushTitle] = useState("Casa dos 20");
+  const [pushBody, setPushBody] = useState("");
+  const [pushUrl, setPushUrl] = useState("/");
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
@@ -510,6 +515,18 @@ export default function Admin() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab("push")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            activeTab === "push"
+              ? "bg-foreground text-background"
+              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
+          }`}
+          data-testid="tab-push"
+        >
+          <Send size={16} />
+          Push
+        </button>
       </div>
 
       {activeTab === "users" && (
@@ -608,6 +625,80 @@ export default function Admin() {
               <FeedbackCard key={ticket.id} ticket={ticket} onUpdate={handleFeedbackUpdate} />
             ))
           )}
+        </div>
+      )}
+
+      {activeTab === "push" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Send size={16} className="text-foreground" />
+            <h2 className="text-sm font-medium text-foreground">Enviar Notificação Push</h2>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Título</label>
+              <input
+                value={pushTitle}
+                onChange={(e) => setPushTitle(e.target.value)}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                placeholder="Casa dos 20"
+                data-testid="input-push-title"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mensagem</label>
+              <textarea
+                value={pushBody}
+                onChange={(e) => setPushBody(e.target.value)}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none min-h-20"
+                placeholder="Hora de fazer seu check-in de hoje!"
+                data-testid="input-push-body"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Link (caminho)</label>
+              <input
+                value={pushUrl}
+                onChange={(e) => setPushUrl(e.target.value)}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                placeholder="/"
+                data-testid="input-push-url"
+              />
+            </div>
+
+            {pushResult && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">{pushResult}</p>
+            )}
+
+            <button
+              onClick={async () => {
+                if (!pushBody.trim()) return;
+                setPushSending(true);
+                setPushResult(null);
+                try {
+                  const res = await fetch("/api/push/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl }),
+                  });
+                  const data = await res.json();
+                  setPushResult(`Enviado para ${data.sent} dispositivo(s). ${data.failed > 0 ? `${data.failed} falhou.` : ""}`);
+                  setPushBody("");
+                } catch {
+                  setPushResult("Erro ao enviar notificações.");
+                } finally {
+                  setPushSending(false);
+                }
+              }}
+              disabled={pushSending || !pushBody.trim()}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+              data-testid="button-send-push"
+            >
+              {pushSending ? "Enviando..." : "Enviar para Todos"}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -946,5 +946,114 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/push/vapid-key", (_req, res) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
+  });
+
+  app.post("/api/push/subscribe", requireAuth, async (req, res) => {
+    try {
+      const { endpoint, p256dh, auth } = req.body;
+      if (!endpoint || !p256dh || !auth) {
+        return res.status(400).json({ error: "Dados incompletos" });
+      }
+      const sub = await storage.savePushSubscription({
+        userId: req.session.userId!,
+        endpoint,
+        p256dh,
+        auth,
+      });
+      res.json(sub);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", requireAuth, async (req, res) => {
+    try {
+      const { endpoint } = req.body;
+      await storage.deletePushSubscription(req.session.userId!, endpoint);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/send", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+      const webpush = await import("web-push");
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+        process.env.VAPID_PUBLIC_KEY || "",
+        process.env.VAPID_PRIVATE_KEY || ""
+      );
+      const { title, body, url, targetUserId } = req.body;
+      const payload = JSON.stringify({ title: title || "Casa dos 20", body: body || "", url: url || "/" });
+
+      let subscriptions;
+      if (targetUserId) {
+        subscriptions = await storage.getPushSubscriptions(targetUserId);
+      } else {
+        subscriptions = await storage.getAllPushSubscriptions();
+      }
+
+      let sent = 0;
+      let failed = 0;
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            payload
+          );
+          sent++;
+        } catch {
+          await storage.deletePushSubscription(sub.userId, sub.endpoint);
+          failed++;
+        }
+      }
+      res.json({ sent, failed, total: subscriptions.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/test", requireAuth, async (req, res) => {
+    try {
+      const webpush = await import("web-push");
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+        process.env.VAPID_PUBLIC_KEY || "",
+        process.env.VAPID_PRIVATE_KEY || ""
+      );
+      const subscriptions = await storage.getPushSubscriptions(req.session.userId!);
+      if (subscriptions.length === 0) {
+        return res.status(404).json({ error: "Nenhuma assinatura encontrada" });
+      }
+      const payload = JSON.stringify({
+        title: "Casa dos 20",
+        body: "As notificações estão funcionando! 🎉",
+        url: "/",
+      });
+      let sent = 0;
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            payload
+          );
+          sent++;
+        } catch {
+          await storage.deletePushSubscription(sub.userId, sub.endpoint);
+        }
+      }
+      res.json({ sent });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
 }

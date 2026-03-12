@@ -6,6 +6,7 @@ import {
   moodCheckins,
   feedbackTickets,
   journeyProgress,
+  pushSubscriptions,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -16,6 +17,8 @@ import {
   type InsertFeedbackTicket,
   type JourneyProgress,
   type InsertJourneyProgress,
+  type PushSubscription,
+  type InsertPushSubscription,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -48,6 +51,11 @@ export interface IStorage {
   startJourney(data: InsertJourneyProgress): Promise<JourneyProgress>;
   completeJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
   uncompleteJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined>;
+
+  savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
+  deletePushSubscription(userId: string, endpoint: string): Promise<boolean>;
+  getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
+  getAllPushSubscriptions(): Promise<PushSubscription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -217,6 +225,28 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
       .returning();
     return updated;
+  }
+  async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
+    const existing = await db.select().from(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, sub.userId), eq(pushSubscriptions.endpoint, sub.endpoint)));
+    if (existing.length > 0) return existing[0];
+    const [created] = await db.insert(pushSubscriptions).values(sub).returning();
+    return created;
+  }
+
+  async deletePushSubscription(userId: string, endpoint: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async getAllPushSubscriptions(): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions);
   }
 }
 

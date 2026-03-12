@@ -22,6 +22,16 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt
 - `journey_progress`: id (serial), userId (FK), journeyId (text), completedDays (text[]), startedAt (timestamp), lastActivityAt (timestamp)
+- `push_subscriptions`: id (serial), userId (FK), endpoint (text), p256dh (text), auth (text), createdAt (timestamp)
+
+## Push Notifications (PWA)
+- Service worker at `client/public/sw.js` handles push events and notification clicks
+- PWA manifest at `client/public/manifest.json` enables "Add to Home Screen"
+- VAPID keys stored as env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Frontend utility: `client/src/utils/pushNotifications.ts` (subscribe, unsubscribe, permission)
+- API routes: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/send` (admin), `/api/push/test`
+- Toggle in user menu (MobileLayout); admin can send to all from Admin > Push tab
+- Service worker registered on app load in `client/src/main.tsx`
 
 ## Jornadas (30-Day Challenges)
 - 6 journeys across 2 seasons aligned with book themes: autoconhecimento, propósito, relações, incerteza, crescimento, solidão

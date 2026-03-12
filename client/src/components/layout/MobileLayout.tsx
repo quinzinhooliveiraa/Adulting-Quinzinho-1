@@ -1,12 +1,13 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed } from "@/utils/pushNotifications";
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -114,6 +115,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const { theme, setTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(() => isPushSubscribed());
+  const [pushLoading, setPushLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem("casa-dos-20-sidebar-collapsed") === "true";
@@ -127,6 +130,21 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  const handleTogglePush = async () => {
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush();
+        setPushEnabled(false);
+      } else {
+        const ok = await subscribeToPush();
+        setPushEnabled(ok);
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed;
@@ -221,6 +239,17 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       </div>
 
       <div className="border-t border-border">
+        {isPushSupported() && (
+          <button
+            onClick={handleTogglePush}
+            disabled={pushLoading}
+            className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            data-testid="button-toggle-push"
+          >
+            {pushEnabled ? <BellOff size={15} /> : <Bell size={15} />}
+            {pushLoading ? "Processando..." : pushEnabled ? "Desativar Notificações" : "Ativar Notificações"}
+          </button>
+        )}
         <button
           onClick={() => { setShowMenu(false); setShowFeedback(true); }}
           className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"

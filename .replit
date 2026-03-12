@@ -57,3 +57,10 @@ waitForPort = 5000
 [agent]
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BALI2zeL7b-W9KsN73z0lGFlFUVI2OsbFkxKClAvjKPemyPeB5KNilS_V6xefhQCeaRnhCJb-eASQPNqFkLleck"
+VAPID_PRIVATE_KEY = "uRoed2G4LOeEcwAjIPMrPQxMmod_CRppla1z1oxkxq0"
+VAPID_SUBJECT = "mailto:quinzinhooliveiraa@gmail.com"
