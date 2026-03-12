@@ -1,4 +1,4 @@
-import { Bookmark, LockKeyhole, ChevronRight, BookOpen, Instagram, Mail, MessageCircle, X } from "lucide-react";
+import { Bookmark, LockKeyhole, ChevronRight, BookOpen, Instagram, Mail, MessageCircle, X, ExternalLink, ShoppingBag } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import solitudeArt from "@/assets/images/solitude.png";
 import { Button } from "@/components/ui/button";
@@ -590,12 +590,27 @@ function ChapterModal({ chapter, onClose }: any) {
             onClick={() => window.open('https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/', '_blank')}
             className="w-full p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-2xl font-bold text-sm hover:shadow-lg transition-all active:scale-95"
           >
-            📖 Ler Mais na Amazon
+            📖 Comprar na Amazon
           </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => window.open('https://books.apple.com/us/book/a-casa-dos-20/id6760140786', '_blank')}
+              className="flex-1 p-3 bg-gray-500/10 border border-gray-500/20 rounded-xl text-xs font-semibold text-foreground hover:bg-gray-500/15 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              🍎 Apple Books
+            </button>
+            <button
+              onClick={() => window.open('https://clubedeautores.pt/livro/a-casa-dos-20', '_blank')}
+              className="flex-1 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs font-semibold text-foreground hover:bg-blue-500/15 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              📦 Físico
+            </button>
+          </div>
           
           <div className="bg-primary/5 rounded-2xl p-4 border border-primary/20">
             <p className="text-xs text-muted-foreground">
-              Este é um trecho do livro "A Casa dos 20" por Quinzinho Oliveira. Clique acima para comprar o livro completo na Amazon.
+              Este é um trecho do livro "A Casa dos 20" por Quinzinho Oliveira. Compre o livro completo numa das plataformas acima.
             </p>
           </div>
         </div>
@@ -625,6 +640,59 @@ export default function Book() {
           <h2 className="mt-8 font-serif text-2xl text-center text-foreground tracking-tight">A Casa dos 20</h2>
           <p className="text-sm text-muted-foreground text-center mt-2 italic font-serif">Refletindo sobre os Desafios da Transição para a Vida Adulta</p>
           <p className="text-xs text-primary/70 font-medium uppercase tracking-widest mt-4">Por Quinzinho Oliveira</p>
+        </div>
+
+        <div className="mb-12 bg-card rounded-3xl p-6 border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag size={18} className="text-primary" />
+            <h3 className="font-serif text-lg text-foreground">Compre o Livro</h3>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.open('https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/', '_blank')}
+              className="w-full p-4 bg-[#FF9900]/10 hover:bg-[#FF9900]/20 border border-[#FF9900]/30 rounded-2xl flex items-center gap-4 transition-all active:scale-[0.98]"
+              data-testid="button-buy-amazon"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#FF9900]/20 flex items-center justify-center shrink-0">
+                <span className="text-lg font-bold text-[#FF9900]">A</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground">Amazon Brasil</p>
+                <p className="text-[11px] text-muted-foreground">E-book e físico</p>
+              </div>
+              <ExternalLink size={16} className="text-muted-foreground" />
+            </button>
+
+            <button
+              onClick={() => window.open('https://books.apple.com/us/book/a-casa-dos-20/id6760140786', '_blank')}
+              className="w-full p-4 bg-gray-500/10 hover:bg-gray-500/15 border border-gray-500/20 rounded-2xl flex items-center gap-4 transition-all active:scale-[0.98]"
+              data-testid="button-buy-apple"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gray-500/15 flex items-center justify-center shrink-0">
+                <span className="text-lg">🍎</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground">Apple Books</p>
+                <p className="text-[11px] text-muted-foreground">iBook digital</p>
+              </div>
+              <ExternalLink size={16} className="text-muted-foreground" />
+            </button>
+
+            <button
+              onClick={() => window.open('https://clubedeautores.pt/livro/a-casa-dos-20', '_blank')}
+              className="w-full p-4 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 rounded-2xl flex items-center gap-4 transition-all active:scale-[0.98]"
+              data-testid="button-buy-physical"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
+                <span className="text-lg">📦</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground">Clube de Autores</p>
+                <p className="text-[11px] text-muted-foreground">Livro físico • Envio internacional</p>
+              </div>
+              <ExternalLink size={16} className="text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Contact Author Section */}
