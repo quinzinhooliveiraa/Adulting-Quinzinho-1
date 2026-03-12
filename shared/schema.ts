@@ -15,6 +15,8 @@ export const users = pgTable("users", {
   trialEndsAt: timestamp("trial_ends_at"),
   premiumUntil: timestamp("premium_until"),
   invitedBy: varchar("invited_by"),
+  journeyOnboardingDone: boolean("journey_onboarding_done").notNull().default(false),
+  journeyOrder: text("journey_order").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

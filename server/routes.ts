@@ -143,6 +143,8 @@ export async function registerRoutes(
         hasPremium: premiumStatus.hasPremium,
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
+        journeyOnboardingDone: user.journeyOnboardingDone,
+        journeyOrder: user.journeyOrder,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -186,6 +188,8 @@ export async function registerRoutes(
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
         premiumUntil: user.premiumUntil,
+        journeyOnboardingDone: user.journeyOnboardingDone,
+        journeyOrder: user.journeyOrder,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -236,6 +240,8 @@ export async function registerRoutes(
       trialEndsAt: user.trialEndsAt,
       premiumUntil: user.premiumUntil,
       isActive: user.isActive,
+      journeyOnboardingDone: user.journeyOnboardingDone,
+      journeyOrder: user.journeyOrder,
     });
   });
 
@@ -686,6 +692,23 @@ export async function registerRoutes(
       res.json(progress);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar progresso" });
+    }
+  });
+
+  app.post("/api/journey/onboarding", requireAuth, async (req, res) => {
+    try {
+      const { journeyOrder } = req.body;
+      if (!Array.isArray(journeyOrder) || journeyOrder.length === 0) {
+        return res.status(400).json({ message: "journeyOrder obrigatório" });
+      }
+      const updated = await storage.updateUser(req.session.userId!, {
+        journeyOnboardingDone: true,
+        journeyOrder,
+      });
+      if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+      res.json({ success: true, journeyOrder: updated.journeyOrder });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao salvar onboarding" });
     }
   });
 

@@ -12,6 +12,8 @@ interface AuthUser {
   trialEndsAt: string | null;
   premiumUntil: string | null;
   isActive: boolean;
+  journeyOnboardingDone: boolean;
+  journeyOrder: string[];
 }
 
 interface AuthContextType {
@@ -20,12 +22,13 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  refetch: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading } = useQuery<AuthUser | null>({
+  const { data: user, isLoading, refetch } = useQuery<AuthUser | null>({
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
@@ -83,8 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await logoutMutation.mutateAsync();
   };
 
+  const refetchUser = () => {
+    refetch();
+  };
+
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, logout, refetch: refetchUser }}>
       {children}
     </AuthContext.Provider>
   );

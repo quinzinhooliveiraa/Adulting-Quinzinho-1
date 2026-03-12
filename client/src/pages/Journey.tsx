@@ -20,8 +20,12 @@ import {
   Smartphone,
   Briefcase,
   Shield,
+  Zap,
+  Calendar,
+  Play,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 export interface JourneyDay {
   id: string;
@@ -376,12 +380,305 @@ interface ProgressData {
   completedDays: string[];
 }
 
+const QUIZ_QUESTIONS = [
+  {
+    question: "O que mais te incomoda na sua vida agora?",
+    options: [
+      { label: "Não sei quem eu sou de verdade", journeys: ["autoconhecimento", "solidao"] },
+      { label: "Sinto que estou sem direção", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "Meus relacionamentos estão confusos", journeys: ["relacoes", "autoconhecimento"] },
+      { label: "Tenho medo do futuro", journeys: ["incerteza", "crescimento"] },
+    ],
+  },
+  {
+    question: "Em qual área você quer crescer mais?",
+    options: [
+      { label: "Me conhecer melhor", journeys: ["autoconhecimento", "solidao"] },
+      { label: "Encontrar meu propósito", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "Melhorar minhas relações", journeys: ["relacoes", "autoconhecimento"] },
+      { label: "Lidar com incertezas", journeys: ["incerteza", "proposito-profissional"] },
+    ],
+  },
+  {
+    question: "Como você se sente quando está sozinho(a)?",
+    options: [
+      { label: "Ansioso(a), preciso de distração", journeys: ["solidao", "autoconhecimento"] },
+      { label: "Entediado(a), não sei o que fazer", journeys: ["proposito-profissional", "crescimento"] },
+      { label: "Tranquilo(a), até gosto", journeys: ["relacoes", "incerteza"] },
+      { label: "Reflexivo(a), penso demais", journeys: ["autoconhecimento", "solidao"] },
+    ],
+  },
+  {
+    question: "O que te impede de avançar?",
+    options: [
+      { label: "Medo de errar", journeys: ["incerteza", "crescimento"] },
+      { label: "Opinião dos outros", journeys: ["autoconhecimento", "relacoes"] },
+      { label: "Falta de clareza", journeys: ["proposito-profissional", "autoconhecimento"] },
+      { label: "Me saboto sem perceber", journeys: ["crescimento", "solidao"] },
+    ],
+  },
+];
+
+function calculateJourneyOrder(answers: number[]): string[] {
+  const scores: Record<string, number> = {};
+  JOURNEYS.forEach((j) => { scores[j.id] = 0; });
+
+  answers.forEach((answerIdx, questionIdx) => {
+    const q = QUIZ_QUESTIONS[questionIdx];
+    if (q && q.options[answerIdx]) {
+      const selected = q.options[answerIdx];
+      selected.journeys.forEach((jId, priority) => {
+        scores[jId] = (scores[jId] || 0) + (2 - priority);
+      });
+    }
+  });
+
+  return JOURNEYS
+    .map((j) => j.id)
+    .sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
+}
+
+const INTRO_STEPS = [
+  {
+    icon: Sparkles,
+    title: "Bem-vindo às Jornadas",
+    description: "Jornadas são desafios de 30 dias pensados para te ajudar a crescer de verdade. Cada dia traz uma atividade diferente — reflexões, exercícios, meditações e desafios.",
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10",
+  },
+  {
+    icon: Calendar,
+    title: "Como funciona?",
+    description: "Todo dia você recebe uma atividade nova. Leva de 5 a 20 minutos. Faça na hora que quiser. Complete uma jornada para desbloquear a próxima. Seu progresso é salvo para sempre.",
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+  },
+  {
+    icon: Zap,
+    title: "Os benefícios",
+    description: "Mais clareza mental, menos ansiedade, decisões mais conscientes. Não é mágica — é o poder de parar 15 minutos por dia para olhar pra dentro e se transformar.",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+  },
+];
+
+function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => void }) {
+  const [phase, setPhase] = useState<"intro" | "quiz">("intro");
+  const [introStep, setIntroStep] = useState(0);
+  const [quizStep, setQuizStep] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  if (phase === "intro") {
+    const current = INTRO_STEPS[introStep];
+    const StepIcon = current.icon;
+    const isLastIntro = introStep === INTRO_STEPS.length - 1;
+
+    return (
+      <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="journey-onboarding">
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-100/40 via-blue-50/20 to-transparent dark:from-violet-950/20 dark:via-blue-950/10 dark:to-transparent" />
+          <div className="relative px-6 pt-14 pb-6">
+            <h1 className="text-3xl font-serif text-foreground">A Jornada</h1>
+            <p className="text-sm text-muted-foreground mt-1">Descubra seu caminho</p>
+          </div>
+        </div>
+
+        <div className="px-6 mt-4">
+          <div className="flex gap-1.5 mb-8">
+            {INTRO_STEPS.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                  i <= introStep ? "bg-foreground" : "bg-border"
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="animate-in fade-in slide-in-from-right-4 duration-300" key={introStep}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${current.bgColor}`}>
+              <StepIcon size={32} className={current.color} />
+            </div>
+            <h2 className="text-xl font-serif text-foreground text-center mb-3" data-testid="text-onboarding-title">
+              {current.title}
+            </h2>
+            <p className="text-sm text-muted-foreground text-center leading-relaxed max-w-sm mx-auto">
+              {current.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+          <div className="flex gap-3">
+            {introStep > 0 && (
+              <button
+                onClick={() => setIntroStep(introStep - 1)}
+                className="px-5 py-3 rounded-2xl border border-border text-sm font-medium text-foreground active:scale-95 transition-all"
+              >
+                Voltar
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (isLastIntro) {
+                  setPhase("quiz");
+                } else {
+                  setIntroStep(introStep + 1);
+                }
+              }}
+              className="flex-1 py-3 rounded-2xl bg-foreground text-background text-sm font-semibold active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+              data-testid="button-onboarding-next"
+            >
+              {isLastIntro ? "Vamos começar o quiz" : "Continuar"}
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQ = QUIZ_QUESTIONS[quizStep];
+  const isLastQuiz = quizStep === QUIZ_QUESTIONS.length - 1;
+  const currentAnswer = answers[quizStep];
+
+  const handleSelectAnswer = (idx: number) => {
+    const newAnswers = [...answers];
+    newAnswers[quizStep] = idx;
+    setAnswers(newAnswers);
+  };
+
+  const handleFinish = async () => {
+    const order = calculateJourneyOrder(answers);
+    setSaving(true);
+    try {
+      await fetch("/api/journey/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ journeyOrder: order }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      onComplete(order);
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="journey-quiz">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-amber-100/40 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-orange-950/10 dark:to-transparent" />
+        <div className="relative px-6 pt-14 pb-6">
+          <h1 className="text-2xl font-serif text-foreground">Personalize sua Jornada</h1>
+          <p className="text-sm text-muted-foreground mt-1">Responda {QUIZ_QUESTIONS.length} perguntas para criar seu caminho</p>
+        </div>
+      </div>
+
+      <div className="px-6 mt-2">
+        <div className="flex gap-1.5 mb-6">
+          {QUIZ_QUESTIONS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                i < quizStep ? "bg-foreground" : i === quizStep ? "bg-foreground/60" : "bg-border"
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="animate-in fade-in slide-in-from-right-4 duration-300" key={quizStep}>
+          <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground mb-2">
+            Pergunta {quizStep + 1} de {QUIZ_QUESTIONS.length}
+          </p>
+          <h2 className="text-lg font-serif text-foreground mb-5" data-testid="text-quiz-question">
+            {currentQ.question}
+          </h2>
+
+          <div className="space-y-2.5">
+            {currentQ.options.map((opt, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSelectAnswer(idx)}
+                className={`w-full text-left px-4 py-3.5 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                  currentAnswer === idx
+                    ? "border-foreground bg-foreground/5"
+                    : "border-border hover:border-foreground/30"
+                }`}
+                data-testid={`quiz-option-${quizStep}-${idx}`}
+              >
+                <span className={`text-sm font-medium ${currentAnswer === idx ? "text-foreground" : "text-muted-foreground"}`}>
+                  {opt.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              if (quizStep === 0) {
+                setPhase("intro");
+                setIntroStep(INTRO_STEPS.length - 1);
+              } else {
+                setQuizStep(quizStep - 1);
+              }
+            }}
+            className="px-5 py-3 rounded-2xl border border-border text-sm font-medium text-foreground active:scale-95 transition-all"
+          >
+            Voltar
+          </button>
+          {isLastQuiz ? (
+            <button
+              onClick={handleFinish}
+              disabled={currentAnswer === undefined || saving}
+              className="flex-1 py-3 rounded-2xl bg-foreground text-background text-sm font-semibold active:scale-[0.97] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              data-testid="button-finish-quiz"
+            >
+              {saving ? "Salvando..." : (
+                <>
+                  <Play size={16} />
+                  Ver minha Jornada
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => setQuizStep(quizStep + 1)}
+              disabled={currentAnswer === undefined}
+              className="flex-1 py-3 rounded-2xl bg-foreground text-background text-sm font-semibold active:scale-[0.97] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              data-testid="button-quiz-next"
+            >
+              Próxima
+              <ChevronRight size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Journey() {
-  const { user } = useAuth();
-  const isPremium = user?.hasPremium || user?.role === "admin";
+  const { user, refetch: refetchUser } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const hasAccess = user?.hasPremium || isAdmin;
   const [progressMap, setProgressMap] = useState<Record<string, ProgressData>>({});
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
+  const [journeyOrder, setJourneyOrder] = useState<string[]>(user?.journeyOrder || []);
+  const [onboardingDone, setOnboardingDone] = useState(user?.journeyOnboardingDone || false);
+
+  useEffect(() => {
+    if (user) {
+      setOnboardingDone(user.journeyOnboardingDone || false);
+      setJourneyOrder(user.journeyOrder || []);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetch("/api/journey/progress", { credentials: "include" })
@@ -397,33 +694,84 @@ export default function Journey() {
       .finally(() => setLoading(false));
   }, []);
 
-  const isJourneyUnlocked = (journey: JourneyData): boolean => {
-    if (isPremium) return true;
-    if (!journey.unlockAfter) return true;
-    const prev = progressMap[journey.unlockAfter];
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen pb-24 animate-in fade-in duration-700" data-testid="page-journey-locked">
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-amber-100/40 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-orange-950/10 dark:to-transparent" />
+          <div className="relative px-6 pt-14 pb-8">
+            <h1 className="text-3xl font-serif text-foreground">A Jornada</h1>
+            <p className="text-sm text-muted-foreground mt-1">Seu caminho através da Casa dos 20</p>
+          </div>
+        </div>
+        <div className="px-6 mt-8">
+          <div className="text-center py-12 space-y-4">
+            <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+              <LockKeyhole size={32} className="text-amber-600" />
+            </div>
+            <h2 className="text-xl font-serif text-foreground">Acesso Bloqueado</h2>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+              Seu período de teste acabou. Assine o plano premium para continuar suas jornadas. Seu progresso está salvo e esperando por você.
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={() => setLocation("/premium")}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold active:scale-95 transition-all"
+                data-testid="button-unlock-premium"
+              >
+                <Crown size={16} />
+                Desbloquear Jornadas
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!onboardingDone) {
+    return (
+      <JourneyOnboarding
+        onComplete={(order) => {
+          setJourneyOrder(order);
+          setOnboardingDone(true);
+        }}
+      />
+    );
+  }
+
+  const getOrderedJourneys = () => {
+    if (journeyOrder.length === 0) return JOURNEYS;
+    const ordered: JourneyData[] = [];
+    journeyOrder.forEach((id) => {
+      const j = JOURNEYS.find((j) => j.id === id);
+      if (j) ordered.push(j);
+    });
+    JOURNEYS.forEach((j) => {
+      if (!ordered.find((o) => o.id === j.id)) ordered.push(j);
+    });
+    return ordered;
+  };
+
+  const orderedJourneys = getOrderedJourneys();
+
+  const isJourneyUnlocked = (journey: JourneyData, index: number): boolean => {
+    if (isAdmin) return true;
+    if (index === 0) return true;
+    const prevJourney = orderedJourneys[index - 1];
+    if (!prevJourney) return true;
+    const prev = progressMap[prevJourney.id];
     if (!prev) return false;
-    const prevJourney = JOURNEYS.find((j) => j.id === journey.unlockAfter);
-    if (!prevJourney) return false;
     return prev.completedDays.length >= prevJourney.totalDays;
   };
 
-  const getProgress = (journeyId: string, totalDays: number) => {
-    const p = progressMap[journeyId];
-    if (!p) return 0;
-    return Math.round((p.completedDays.length / totalDays) * 100);
-  };
-
-  const getStatus = (journey: JourneyData): "locked" | "not-started" | "in-progress" | "completed" => {
-    if (!isPremium && !isJourneyUnlocked(journey)) return "locked";
+  const getStatus = (journey: JourneyData, index: number): "locked" | "not-started" | "in-progress" | "completed" => {
+    if (!isJourneyUnlocked(journey, index)) return "locked";
     const p = progressMap[journey.id];
     if (!p || p.completedDays.length === 0) return "not-started";
     if (p.completedDays.length >= journey.totalDays) return "completed";
     return "in-progress";
   };
-
-  const seasons = [...new Set(JOURNEYS.map((j) => j.season))];
-
-  const orderedJourneys = JOURNEYS.map((j, i) => ({ ...j, index: i + 1 }));
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-700" data-testid="page-journey">
@@ -437,21 +785,9 @@ export default function Journey() {
         </div>
         <div className="relative px-6 pt-14 pb-8">
           <h1 className="text-3xl font-serif text-foreground" data-testid="text-journey-title">A Jornada</h1>
-          <p className="text-sm text-muted-foreground mt-1">Seu caminho através da Casa dos 20</p>
+          <p className="text-sm text-muted-foreground mt-1">Seu caminho personalizado</p>
         </div>
       </div>
-
-      {!isPremium && (
-        <div className="mx-6 mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-          <div className="flex items-center gap-2 mb-1">
-            <Crown size={16} className="text-amber-600" />
-            <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Recurso Premium</span>
-          </div>
-          <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-            Desbloqueie todas as jornadas com o plano premium.
-          </p>
-        </div>
-      )}
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -463,8 +799,8 @@ export default function Journey() {
             <div className="absolute left-[19px] top-6 bottom-6 w-px bg-border" />
 
             <div className="space-y-1">
-              {orderedJourneys.map((journey) => {
-                const status = getStatus(journey);
+              {orderedJourneys.map((journey, index) => {
+                const status = getStatus(journey, index);
                 const isLocked = status === "locked";
                 const isInProgress = status === "in-progress";
                 const isCompleted = status === "completed";
@@ -493,7 +829,7 @@ export default function Journey() {
                         className={`block ${!isLocked ? "cursor-pointer" : ""}`}
                       >
                         <h3 className={`text-lg font-serif ${isLocked ? "text-muted-foreground" : "text-foreground"}`}>
-                          {journey.index}. {journey.title}
+                          {index + 1}. {journey.title}
                         </h3>
                         <p className={`text-sm mt-0.5 ${isLocked ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
                           {journey.subtitle}
@@ -522,7 +858,7 @@ export default function Journey() {
                         {isLocked && (
                           <p className="text-[11px] text-muted-foreground/60 mt-1.5 flex items-center gap-1">
                             <LockKeyhole size={10} />
-                            Desbloqueie no nível anterior
+                            Complete a jornada anterior
                           </p>
                         )}
                       </div>
