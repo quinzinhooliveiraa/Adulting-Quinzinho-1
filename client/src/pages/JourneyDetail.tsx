@@ -21,6 +21,7 @@ import {
   Play,
   RotateCcw,
   AlertTriangle,
+  LockKeyhole,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
@@ -223,6 +224,15 @@ export default function JourneyDetail() {
     weeks.push(journey.days.slice(i, i + 7));
   }
 
+  const isAdmin = user?.role === "admin";
+  const nextDayIndex = journey.days.findIndex((d) => !completedDays.includes(d.id));
+  const isDayAccessible = (day: JourneyDay): boolean => {
+    if (isAdmin) return true;
+    if (completedDays.includes(day.id)) return true;
+    const dayIdx = journey.days.findIndex((d) => d.id === day.id);
+    return dayIdx === nextDayIndex;
+  };
+
   const streakCount = (() => {
     let streak = 0;
     for (let i = journey.days.length - 1; i >= 0; i--) {
@@ -424,6 +434,7 @@ export default function JourneyDetail() {
 
           {weeks.map((week, weekIndex) => {
             const weekCompleted = week.filter((d) => completedDays.includes(d.id)).length;
+            const weekHasAccessible = week.some((d) => isDayAccessible(d));
             const isExpanded = expandedWeek === weekIndex;
             const weekLabel = weekIndex < 4 ? `Semana ${weekIndex + 1}` : `Dias ${weekIndex * 7 + 1}-${Math.min((weekIndex + 1) * 7, journey.totalDays)}`;
 
@@ -438,12 +449,14 @@ export default function JourneyDetail() {
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
                       weekCompleted === week.length
                         ? "bg-green-500/10 text-green-600"
-                        : weekCompleted > 0
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                        : weekHasAccessible
+                        ? weekCompleted > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                        : "bg-muted text-muted-foreground/40"
                     }`}>
                       {weekCompleted === week.length ? (
                         <CheckCircle2 size={16} />
+                      ) : !weekHasAccessible && !isAdmin ? (
+                        <LockKeyhole size={14} />
                       ) : (
                         `${weekCompleted}/${week.length}`
                       )}
@@ -462,9 +475,26 @@ export default function JourneyDetail() {
                   <div className="border-t border-border divide-y divide-border/50 animate-in slide-in-from-top-2 duration-200">
                     {week.map((day) => {
                       const isDone = completedDays.includes(day.id);
+                      const accessible = isDayAccessible(day);
                       const config = TYPE_CONFIG[day.type] || TYPE_CONFIG.reflexao;
                       const TypeIcon = config.icon;
                       const isAnimating = animatingDay === day.id;
+
+                      if (!accessible && !isDone) {
+                        return (
+                          <div
+                            key={day.id}
+                            className="p-4 flex items-center gap-3 opacity-40"
+                            data-testid={`day-${day.id}`}
+                          >
+                            <LockKeyhole size={18} className="text-muted-foreground/40 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[10px] font-bold text-muted-foreground">DIA {day.day}</span>
+                              <p className="text-xs text-muted-foreground/60 italic">Complete o dia anterior para desbloquear</p>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       return (
                         <div

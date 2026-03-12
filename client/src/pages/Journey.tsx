@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ChevronRight,
@@ -23,6 +23,8 @@ import {
   Zap,
   Calendar,
   Play,
+  Eye,
+  Footprints,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
@@ -491,27 +493,66 @@ const INTRO_STEPS = [
     bgColor: "bg-violet-500/10",
   },
   {
-    icon: Calendar,
-    title: "Como funciona?",
-    description: "Todo dia você recebe uma atividade nova. Leva de 5 a 20 minutos. Faça na hora que quiser. Complete uma jornada para desbloquear a próxima. Seu progresso é salvo para sempre.",
+    icon: Footprints,
+    title: "Um passo por vez",
+    description: "Você só vê a atividade de hoje e as que já fez. Os próximos dias aparecem conforme você avança. Isso não é por acaso — ver tudo de uma vez cria ruído mental e ansiedade. Aqui, você foca só no agora.",
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
   },
   {
-    icon: Zap,
-    title: "Os benefícios",
-    description: "Mais clareza mental, menos ansiedade, decisões mais conscientes. Não é mágica — é o poder de parar 15 minutos por dia para olhar pra dentro e se transformar.",
+    icon: LockKeyhole,
+    title: "Desbloqueio progressivo",
+    description: "Você começa com uma jornada. Ao completar, a próxima se abre. Cada jornada foi pensada para te preparar para a seguinte. Confie no processo — seu caminho será personalizado pra você.",
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+  },
+  {
+    icon: Eye,
+    title: "Por que assim?",
+    description: "A mente funciona melhor com foco. Quando você vê 30 dias de uma vez, sente peso. Quando vê só o de hoje, sente leveza. Menos ruído, mais presença. Esse é o segredo da transformação real.",
     color: "text-amber-500",
     bgColor: "bg-amber-500/10",
   },
 ];
 
+function LoadingDots({ onStep }: { onStep: () => void }) {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      onStep();
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [onStep]);
+
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-2 h-2 rounded-full bg-primary/40"
+          style={{
+            animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes pulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1.2); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => void }) {
-  const [phase, setPhase] = useState<"intro" | "quiz">("intro");
+  const [phase, setPhase] = useState<"intro" | "quiz" | "loading">("intro");
   const [introStep, setIntroStep] = useState(0);
   const [quizStep, setQuizStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [pendingOrder, setPendingOrder] = useState<string[]>([]);
+  const pathRef = useRef<SVGPathElement>(null);
 
   if (phase === "intro") {
     const current = INTRO_STEPS[introStep];
@@ -583,6 +624,121 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
     );
   }
 
+  const LOADING_MESSAGES = [
+    { text: "Analisando suas respostas...", icon: Brain },
+    { text: "Mapeando seu momento de vida...", icon: Compass },
+    { text: "Escolhendo a melhor ordem...", icon: Target },
+    { text: "Montando seu caminho personalizado...", icon: Footprints },
+    { text: "Sua jornada está pronta!", icon: Sparkles },
+  ];
+
+  if (phase === "loading") {
+    const firstJourney = pendingOrder.length > 0 ? JOURNEYS.find(j => j.id === pendingOrder[0]) : null;
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 animate-in fade-in duration-500" data-testid="journey-loading">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="relative w-full h-48 mx-auto">
+            <svg viewBox="0 0 300 180" className="w-full h-full" fill="none">
+              <path
+                ref={pathRef}
+                d="M20,160 C60,160 60,100 100,100 C140,100 140,50 180,50 C220,50 220,20 260,20"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                className="text-border"
+              />
+              <path
+                d="M20,160 C60,160 60,100 100,100 C140,100 140,50 180,50 C220,50 220,20 260,20"
+                stroke="url(#pathGradient)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray="400"
+                strokeDashoffset={400 - (loadingStep / (LOADING_MESSAGES.length - 1)) * 400}
+                style={{ transition: "stroke-dashoffset 1s ease-out" }}
+              />
+              <defs>
+                <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="50%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#f59e0b" />
+                </linearGradient>
+              </defs>
+
+              {[
+                { cx: 20, cy: 160 },
+                { cx: 100, cy: 100 },
+                { cx: 180, cy: 50 },
+                { cx: 260, cy: 20 },
+              ].map((point, i) => (
+                <circle
+                  key={i}
+                  cx={point.cx}
+                  cy={point.cy}
+                  r={i <= Math.floor(loadingStep * 3 / (LOADING_MESSAGES.length - 1)) ? 8 : 5}
+                  className={`transition-all duration-500 ${
+                    i <= Math.floor(loadingStep * 3 / (LOADING_MESSAGES.length - 1))
+                      ? "fill-foreground"
+                      : "fill-muted stroke-border stroke-2"
+                  }`}
+                />
+              ))}
+
+              <circle
+                cx={20 + (loadingStep / (LOADING_MESSAGES.length - 1)) * 240}
+                cy={160 - (loadingStep / (LOADING_MESSAGES.length - 1)) * 140}
+                r="6"
+                className="fill-primary"
+                style={{ transition: "cx 1s ease-out, cy 1s ease-out" }}
+              >
+                <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite" />
+              </circle>
+            </svg>
+          </div>
+
+          <div className="text-center space-y-3 animate-in fade-in duration-300" key={loadingStep}>
+            {(() => {
+              const msg = LOADING_MESSAGES[loadingStep];
+              const MsgIcon = msg.icon;
+              return (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                    <MsgIcon size={24} className="text-primary" />
+                  </div>
+                  <p className="text-lg font-serif text-foreground">{msg.text}</p>
+                </>
+              );
+            })()}
+          </div>
+
+          {loadingStep < LOADING_MESSAGES.length - 1 ? (
+            <LoadingDots onStep={() => setLoadingStep(s => Math.min(s + 1, LOADING_MESSAGES.length - 1))} />
+          ) : (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+              {firstJourney && (
+                <div className="p-4 rounded-2xl border border-border bg-card text-center space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: firstJourney.gradientFrom }}>
+                    Sua primeira jornada
+                  </p>
+                  <h3 className="text-lg font-serif text-foreground">{firstJourney.title}</h3>
+                  <p className="text-xs text-muted-foreground">{firstJourney.subtitle}</p>
+                </div>
+              )}
+              <button
+                onClick={() => onComplete(pendingOrder)}
+                className="w-full py-3.5 rounded-2xl bg-foreground text-background text-sm font-semibold active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+                data-testid="button-enter-journey"
+              >
+                <Play size={16} />
+                Começar minha Jornada
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const currentQ = QUIZ_QUESTIONS[quizStep];
   const isLastQuiz = quizStep === QUIZ_QUESTIONS.length - 1;
   const currentAnswer = answers[quizStep];
@@ -596,6 +752,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
   const handleFinish = async () => {
     const order = calculateJourneyOrder(answers);
     setSaving(true);
+    setPendingOrder(order);
     try {
       await fetch("/api/journey/onboarding", {
         method: "POST",
@@ -604,7 +761,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
         body: JSON.stringify({ journeyOrder: order }),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      onComplete(order);
+      setPhase("loading");
     } catch {
       setSaving(false);
     }
