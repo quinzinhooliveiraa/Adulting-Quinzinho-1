@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   ChevronRight,
   LockKeyhole,
@@ -381,6 +381,7 @@ export default function Journey() {
   const isPremium = user?.hasPremium || user?.role === "admin";
   const [progressMap, setProgressMap] = useState<Record<string, ProgressData>>({});
   const [loading, setLoading] = useState(true);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     fetch("/api/journey/progress", { credentials: "include" })
@@ -487,10 +488,9 @@ export default function Journey() {
                     </div>
 
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <Link
-                        href={isLocked ? "#" : `/journey/${journey.id}`}
-                        onClick={(e) => isLocked && e.preventDefault()}
-                        className="block"
+                      <div
+                        onClick={() => !isLocked && setLocation(`/journey/${journey.id}`)}
+                        className={`block ${!isLocked ? "cursor-pointer" : ""}`}
                       >
                         <h3 className={`text-lg font-serif ${isLocked ? "text-muted-foreground" : "text-foreground"}`}>
                           {journey.index}. {journey.title}
@@ -500,13 +500,23 @@ export default function Journey() {
                         </p>
 
                         {isInProgress && (
-                          <button
+                          <span
                             className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium active:scale-95 transition-all"
                             data-testid={`button-continue-${journey.id}`}
                           >
                             Continuar a jornada
                             <ChevronRight size={16} />
-                          </button>
+                          </span>
+                        )}
+
+                        {status === "not-started" && (
+                          <span
+                            className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-foreground/20 text-foreground text-sm font-medium active:scale-95 transition-all hover:bg-foreground/5"
+                            data-testid={`button-start-${journey.id}`}
+                          >
+                            Começar jornada
+                            <ChevronRight size={16} />
+                          </span>
                         )}
 
                         {isLocked && (
@@ -515,7 +525,7 @@ export default function Journey() {
                             Desbloqueie no nível anterior
                           </p>
                         )}
-                      </Link>
+                      </div>
                     </div>
                   </div>
                 );

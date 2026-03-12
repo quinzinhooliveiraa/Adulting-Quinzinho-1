@@ -18,6 +18,11 @@ import {
   Crown,
   ArrowUpRight,
   Smartphone,
+  Calendar,
+  Zap,
+  Heart,
+  ChevronRight,
+  Play,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +39,155 @@ const TYPE_CONFIG: Record<string, { icon: any; label: string; color: string }> =
   app: { icon: Smartphone, label: "No App", color: "text-primary bg-primary/10" },
 };
 
+const ONBOARDING_STEPS = [
+  {
+    icon: Sparkles,
+    title: "O que é uma Jornada?",
+    description: "Uma jornada é um desafio de 30 dias que vai te guiar numa transformação real. Cada dia traz uma atividade diferente — reflexões, exercícios práticos, meditações e desafios — pensados para você crescer de verdade.",
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10",
+  },
+  {
+    icon: Calendar,
+    title: "Como funciona?",
+    description: "Todo dia você recebe uma atividade nova. Leva de 5 a 20 minutos. Pode fazer na hora que quiser — de manhã, no intervalo, antes de dormir. O importante é a consistência, não a perfeição.",
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+  },
+  {
+    icon: Zap,
+    title: "Os benefícios",
+    description: "Pessoas que completam jornadas relatam mais clareza mental, menos ansiedade e decisões mais conscientes. Não é mágica — é o poder de parar 15 minutos por dia para olhar pra dentro.",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+  },
+  {
+    icon: Heart,
+    title: "Use a seu favor",
+    description: "Combine as atividades com o Diário para registrar seus insights. Use as Perguntas pra ir mais fundo. Compartilhe sua evolução. Essa jornada é sua — faça do seu jeito.",
+    color: "text-rose-500",
+    bgColor: "bg-rose-500/10",
+  },
+];
+
+function JourneyOnboarding({ journey, onStart }: { journey: JourneyData; onStart: () => void }) {
+  const [step, setStep] = useState(0);
+  const current = ONBOARDING_STEPS[step];
+  const StepIcon = current.icon;
+  const isLast = step === ONBOARDING_STEPS.length - 1;
+
+  return (
+    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500" data-testid="journey-onboarding">
+      <div
+        className="relative pt-14 pb-8 px-6"
+        style={{
+          background: `linear-gradient(135deg, ${journey.gradientFrom}20, ${journey.gradientTo}10)`,
+        }}
+      >
+        <Link href="/journey">
+          <button className="p-2 -ml-2 rounded-full hover:bg-muted/50 transition-colors" data-testid="button-back-onboarding">
+            <ChevronLeft size={24} className="text-foreground" />
+          </button>
+        </Link>
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: journey.gradientFrom }}>
+            {journey.subtitle}
+          </p>
+          <h1 className="text-2xl font-serif text-foreground">{journey.title}</h1>
+          <p className="text-xs text-muted-foreground mt-1">{journey.description}</p>
+        </div>
+      </div>
+
+      <div className="px-6 mt-6">
+        <div className="flex gap-1.5 mb-8">
+          {ONBOARDING_STEPS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                i <= step ? "bg-foreground" : "bg-border"
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="animate-in fade-in slide-in-from-right-4 duration-300" key={step}>
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${current.bgColor}`}>
+            <StepIcon size={32} className={current.color} />
+          </div>
+
+          <h2 className="text-xl font-serif text-foreground text-center mb-3" data-testid="text-onboarding-title">
+            {current.title}
+          </h2>
+
+          <p className="text-sm text-muted-foreground text-center leading-relaxed max-w-sm mx-auto" data-testid="text-onboarding-desc">
+            {current.description}
+          </p>
+        </div>
+
+        {isLast && (
+          <div className="mt-8 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${journey.gradientFrom}, ${journey.gradientTo})` }}
+                >
+                  <Calendar size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{journey.totalDays} dias de transformação</p>
+                  <p className="text-[11px] text-muted-foreground">5-20 min por dia</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["Reflexão", "Escrita", "Meditação", "Desafios", "Prática"].map((tag) => (
+                  <span key={tag} className="px-2.5 py-1 rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="flex gap-3">
+          {step > 0 && (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="px-5 py-3 rounded-2xl border border-border text-sm font-medium text-foreground active:scale-95 transition-all"
+              data-testid="button-onboarding-back"
+            >
+              Voltar
+            </button>
+          )}
+          {isLast ? (
+            <button
+              onClick={onStart}
+              className="flex-1 py-3 rounded-2xl text-sm font-semibold text-white active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${journey.gradientFrom}, ${journey.gradientTo})` }}
+              data-testid="button-start-journey"
+            >
+              <Play size={16} />
+              Começar Jornada
+            </button>
+          ) : (
+            <button
+              onClick={() => setStep(step + 1)}
+              className="flex-1 py-3 rounded-2xl bg-foreground text-background text-sm font-semibold active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+              data-testid="button-onboarding-next"
+            >
+              Continuar
+              <ChevronRight size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JourneyDetail() {
   const [, params] = useRoute("/journey/:id");
   const journeyId = params?.id || "";
@@ -46,6 +200,7 @@ export default function JourneyDetail() {
   const [loading, setLoading] = useState(true);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [animatingDay, setAnimatingDay] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!journeyId) return;
@@ -53,7 +208,11 @@ export default function JourneyDetail() {
       .then((r) => r.json())
       .then((data: any[]) => {
         const p = data.find((d) => d.journeyId === journeyId);
-        if (p) setCompletedDays(p.completedDays);
+        if (p) {
+          setCompletedDays(p.completedDays);
+        } else {
+          setShowOnboarding(true);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -80,6 +239,23 @@ export default function JourneyDetail() {
         </div>
       </div>
     );
+  }
+
+  const handleStartJourney = async () => {
+    try {
+      await fetch("/api/journey/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ journeyId }),
+      });
+      setShowOnboarding(false);
+      setCompletedDays([]);
+    } catch {}
+  };
+
+  if (showOnboarding && !loading) {
+    return <JourneyOnboarding journey={journey} onStart={handleStartJourney} />;
   }
 
   const progress = Math.round((completedDays.length / journey.totalDays) * 100);
