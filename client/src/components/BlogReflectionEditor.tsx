@@ -149,22 +149,27 @@ export default function BlogReflectionEditor({
     wrapImages.sort((a, b) => a.y - b.y);
     const containerWidth = el.offsetWidth || 600;
 
+    const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
+    const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+
     wrapImages.forEach(img => {
+      const adjustedY = Math.max(0, img.y - elPadding);
+      const adjustedX = Math.max(0, img.x - elPaddingLeft);
       const side = img.x < containerWidth / 2 ? 'left' : 'right';
       const gap = 16;
-      const imgRight = img.x + img.width;
-      const imgBottom = img.y + img.height;
+      const imgRight = adjustedX + img.width;
+      const imgBottom = adjustedY + img.height;
 
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
       spacer.contentEditable = 'false';
 
       if (side === 'right') {
-        const w = containerWidth - img.x + gap;
-        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${img.y}px 0 0 0); pointer-events: none; opacity: 0;`;
+        const w = containerWidth - adjustedX + gap;
+        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       } else {
         const w = imgRight + gap;
-        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${img.y}px 0 0 0); pointer-events: none; opacity: 0;`;
+        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       }
 
       if (el.firstChild) {

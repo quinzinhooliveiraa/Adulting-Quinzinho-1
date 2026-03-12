@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, X } from "lucide-react";
 import { getUnreadNotifications, dismissNotification, Notification } from "@/utils/notificationService";
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
     setNotifications(getUnreadNotifications());
@@ -14,6 +16,30 @@ export default function NotificationCenter() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewW = window.innerWidth;
+      const viewH = window.innerHeight;
+      const dropW = 288;
+      const dropH = 320;
+
+      let left = rect.left;
+      let top = rect.bottom + 8;
+
+      if (left + dropW > viewW - 8) {
+        left = viewW - dropW - 8;
+      }
+      if (left < 8) left = 8;
+
+      if (top + dropH > viewH - 8) {
+        top = rect.top - dropH - 8;
+      }
+
+      setDropdownStyle({ position: 'fixed', left, top, width: dropW });
+    }
+  }, [isOpen]);
+
   const handleDismiss = (id: string) => {
     dismissNotification(id);
     setNotifications(notifications.filter(n => n.id !== id));
@@ -22,7 +48,7 @@ export default function NotificationCenter() {
   const unreadCount = notifications.length;
 
   return (
-    <>
+    <div ref={containerRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative w-9 h-9 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border/40 hover:bg-muted transition-colors shadow-sm"
@@ -38,8 +64,11 @@ export default function NotificationCenter() {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 w-72 max-h-80 bg-background border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+          <div
+            className="z-[9999] max-h-80 bg-background border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+            style={dropdownStyle}
+          >
             <div className="px-4 py-3 border-b border-border flex justify-between items-center">
               <h3 className="text-sm font-medium text-foreground">Notificações</h3>
               {unreadCount > 0 && (
@@ -76,6 +105,6 @@ export default function NotificationCenter() {
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }
