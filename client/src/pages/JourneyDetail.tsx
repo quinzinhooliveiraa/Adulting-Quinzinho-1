@@ -16,9 +16,12 @@ import {
   ChevronDown,
   ChevronUp,
   Crown,
+  ArrowUpRight,
+  Smartphone,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { JOURNEYS, type JourneyData, type JourneyDay } from "./Journey";
 
 const TYPE_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
@@ -28,6 +31,7 @@ const TYPE_CONFIG: Record<string, { icon: any; label: string; color: string }> =
   meditacao: { icon: Eye, label: "Meditação", color: "text-emerald-500 bg-emerald-500/10" },
   desafio: { icon: Flame, label: "Desafio", color: "text-red-500 bg-red-500/10" },
   leitura: { icon: BookOpen, label: "Leitura", color: "text-cyan-500 bg-cyan-500/10" },
+  app: { icon: Smartphone, label: "No App", color: "text-primary bg-primary/10" },
 };
 
 export default function JourneyDetail() {
@@ -36,6 +40,7 @@ export default function JourneyDetail() {
   const journey = JOURNEYS.find((j) => j.id === journeyId);
   const { user } = useAuth();
   const isPremium = user?.hasPremium || user?.role === "admin";
+  const [, navigate] = useLocation();
 
   const [completedDays, setCompletedDays] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,6 +190,56 @@ export default function JourneyDetail() {
         </div>
       ) : (
         <div className="px-6 mt-6 space-y-3">
+          {!isCompleted && isPremium && (() => {
+            const nextDay = journey.days.find((d) => !completedDays.includes(d.id));
+            if (!nextDay) return null;
+            const config = TYPE_CONFIG[nextDay.type] || TYPE_CONFIG.reflexao;
+            const TypeIcon = config.icon;
+            return (
+              <div
+                className="p-4 rounded-2xl border-2 border-primary/30 bg-primary/5 space-y-3 mb-2"
+                data-testid="today-activity"
+              >
+                <div className="flex items-center gap-2">
+                  <Flame size={14} className="text-primary" />
+                  <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-primary">Atividade de Hoje</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${config.color}`}>
+                    <TypeIcon size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[10px] font-bold text-muted-foreground">DIA {nextDay.day}</span>
+                    </div>
+                    <h4 className="text-sm font-semibold text-foreground">{nextDay.title}</h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{nextDay.description}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        onClick={() => toggleDay(nextDay.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95 transition-all"
+                        data-testid="button-complete-today"
+                      >
+                        <CheckCircle2 size={12} />
+                        Marcar como feito
+                      </button>
+                      {nextDay.appLink && (
+                        <button
+                          onClick={() => navigate(nextDay.appLink!)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-primary/30 text-primary text-[11px] font-semibold hover:bg-primary/10 transition-colors"
+                          data-testid="button-today-applink"
+                        >
+                          <ArrowUpRight size={11} />
+                          Ir para o app
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {isCompleted && (
             <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-center space-y-2 mb-4 animate-in fade-in duration-500">
               <Trophy size={32} className="text-green-500 mx-auto" />
@@ -272,9 +327,24 @@ export default function JourneyDetail() {
                             <p className={`text-[11px] mt-0.5 ${isDone ? "text-muted-foreground/60" : "text-muted-foreground"}`}>
                               {day.description}
                             </p>
-                            <div className="flex items-center gap-1 mt-1.5">
-                              <Clock size={10} className="text-muted-foreground/50" />
-                              <span className="text-[10px] text-muted-foreground/50">{day.duration}</span>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <div className="flex items-center gap-1">
+                                <Clock size={10} className="text-muted-foreground/50" />
+                                <span className="text-[10px] text-muted-foreground/50">{day.duration}</span>
+                              </div>
+                              {day.appLink && !isDone && isPremium && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(day.appLink!);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold hover:bg-primary/20 transition-colors"
+                                  data-testid={`button-applink-${day.id}`}
+                                >
+                                  <ArrowUpRight size={10} />
+                                  Abrir no app
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
