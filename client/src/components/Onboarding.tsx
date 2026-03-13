@@ -61,15 +61,19 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
   };
 
+  const [checkoutError, setCheckoutError] = useState("");
+
   const handleStartTrial = async () => {
     setCheckoutLoading(true);
+    setCheckoutError("");
     try {
       const productsRes = await fetch("/api/stripe/products");
       const products = await productsRes.json();
       const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
 
       if (!monthlyPrice?.price_id) {
-        onComplete();
+        setCheckoutError("Planos ainda não disponíveis. Tente novamente mais tarde.");
+        setCheckoutLoading(false);
         return;
       }
 
@@ -86,10 +90,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        onComplete();
+        setCheckoutError("Erro ao iniciar pagamento. Tente novamente.");
       }
     } catch {
-      onComplete();
+      setCheckoutError("Erro de conexão. Tente novamente.");
     }
     setCheckoutLoading(false);
   };
@@ -102,7 +106,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     "translate-x-0 opacity-100 scale-100";
 
   return (
-    <div className={`fixed inset-0 z-[100] bg-background flex flex-col overflow-y-auto transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0 scale-105"}`}>
+    <div className={`fixed inset-0 z-[100] bg-background flex flex-col transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0 scale-105"}`}>
       <style>{`
         @keyframes slideInRight {
           from { transform: translateX(30px); opacity: 0; }
@@ -135,7 +139,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         .stagger-5 { animation: staggerFade 0.5s ease-out 0.5s both; }
       `}</style>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-screen">
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6 py-8">
         <div className={`w-full max-w-sm flex flex-col items-center transition-all duration-300 ease-out ${slideClass}`}>
 
           {currentStep === "welcome" && (
@@ -448,8 +452,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="w-full max-w-sm mt-8 space-y-4 px-2">
+      <div className="shrink-0 w-full flex justify-center pb-6 pt-4 px-6 bg-background">
+        <div className="w-full max-w-sm space-y-4">
           <div className="flex justify-center gap-1.5">
             {STEP_ORDER.map((_, i) => (
               <button
@@ -463,6 +469,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
           {currentStep === "premium" ? (
             <div className="space-y-3">
+              {checkoutError && (
+                <p className="text-xs text-red-500 text-center" data-testid="text-checkout-error">{checkoutError}</p>
+              )}
               <Button
                 onClick={handleStartTrial}
                 disabled={checkoutLoading}
@@ -501,7 +510,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
                 data-testid="button-onboarding-next"
               >
-                {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Próximo"}
+                {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
                 <ArrowRight className="ml-2" size={18} />
               </Button>
 
