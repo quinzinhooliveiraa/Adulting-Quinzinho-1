@@ -1311,6 +1311,61 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/journey/report-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const reports = await storage.getJourneyReports(req.session.userId!);
+      const totalReports = reports.length;
+      const isFree = totalReports === 0;
+      res.json({ totalReports, isFree, pricePerReport: "R$ 2,90" });
+    } catch {
+      res.status(500).json({ message: "Erro ao verificar status" });
+    }
+  });
+
+  app.post("/api/journey/report-checkout", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { journeyId } = req.body;
+      if (!journeyId) return res.status(400).json({ message: "journeyId obrigatório" });
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const premiumStatus = getUserPremiumStatus(user);
+      if (!premiumStatus.hasPremium) {
+        return res.status(403).json({ message: "Recurso premium" });
+      }
+
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-04-30.basil" as any });
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: "Relatório de Jornada com IA",
+              description: "Análise personalizada da sua jornada com inteligência artificial",
+            },
+            unit_amount: 290,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          userId: req.session.userId!,
+          journeyId,
+          type: "journey_report",
+        },
+        success_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/journey/${journeyId}?report_paid=true`,
+        cancel_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/journey/${journeyId}`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Erro ao criar checkout de relatório:", error);
+      res.status(500).json({ message: "Erro ao iniciar pagamento" });
+    }
+  });
+
   app.post("/api/journey/report", requireAuth, async (req: Request, res: Response) => {
     try {
       const { journeyId, journeyTitle, totalDays, completedDays, dayDescriptions } = req.body;
@@ -1324,6 +1379,19 @@ export async function registerRoutes(
       const premiumStatus = getUserPremiumStatus(user);
       if (!premiumStatus.hasPremium) {
         return res.status(403).json({ message: "Recurso premium" });
+      }
+
+      const existingReports = await storage.getJourneyReports(req.session.userId!);
+      const isFirstReport = existingReports.length === 0;
+      const alreadyHasReportForJourney = existingReports.some(r => r.journeyId === journeyId);
+      const forcePaid = req.body.forcePaid === true;
+
+      if (!isFirstReport && !alreadyHasReportForJourney && !forcePaid) {
+        return res.status(402).json({
+          message: "Este relatório custa R$ 2,90. O primeiro é grátis!",
+          requiresPayment: true,
+          price: "R$ 2,90",
+        });
       }
 
       const journeyEntries = await storage.getEntriesByTag(req.session.userId!, "jornada");

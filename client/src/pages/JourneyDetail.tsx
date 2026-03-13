@@ -264,6 +264,8 @@ export default function JourneyDetail() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     if (!journeyId) return;
@@ -285,6 +287,63 @@ export default function JourneyDetail() {
       .finally(() => setLoading(false));
   }, [journeyId]);
 
+  const generateReport = async (forcePaid = false) => {
+    if (!journey) return;
+    setLoadingReport(true);
+    setReportError("");
+    try {
+      const dayDescs = journey.days.map(d => `Dia ${d.day}: ${d.title} (${d.type})`).join("\n");
+      const res = await fetch("/api/journey/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          journeyId: journey.id,
+          journeyTitle: journey.title,
+          totalDays: journey.totalDays,
+          completedDays: completedDays.length,
+          dayDescriptions: dayDescs,
+          forcePaid,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReport(data.report);
+        setShowReport(true);
+      } else if (res.status === 402) {
+        setShowPaymentPopup(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setReportError(err.message || "Erro ao gerar relatório. Tente novamente.");
+      }
+    } catch {
+      setReportError("Erro de conexão. Verifique sua internet e tente novamente.");
+    }
+    setLoadingReport(false);
+  };
+
+  const handleReportCheckout = async () => {
+    if (!journey) return;
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/journey/report-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ journeyId: journey.id }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setReportError("Erro ao iniciar pagamento.");
+      }
+    } catch {
+      setReportError("Erro de conexão.");
+    }
+    setCheckoutLoading(false);
+  };
+
   useEffect(() => {
     if (!journeyId || loading || completedDays.length === 0) return;
     if (journey && completedDays.length >= journey.totalDays) {
@@ -299,6 +358,12 @@ export default function JourneyDetail() {
           }
         })
         .catch(() => {});
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("report_paid") === "true") {
+        window.history.replaceState({}, "", window.location.pathname);
+        generateReport(true);
+      }
     }
   }, [journeyId, loading, completedDays.length]);
 
@@ -698,39 +763,12 @@ export default function JourneyDetail() {
                 Parabéns! Você completou todos os {journey.totalDays} dias. Sua evolução é real.
               </p>
               <button
-                onClick={async () => {
+                onClick={() => {
                   if (report) {
                     setShowReport(true);
                     return;
                   }
-                  setLoadingReport(true);
-                  setReportError("");
-                  try {
-                    const dayDescs = journey.days.map(d => `Dia ${d.day}: ${d.title} (${d.type})`).join("\n");
-                    const res = await fetch("/api/journey/report", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({
-                        journeyId: journey.id,
-                        journeyTitle: journey.title,
-                        totalDays: journey.totalDays,
-                        completedDays: completedDays.length,
-                        dayDescriptions: dayDescs,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setReport(data.report);
-                      setShowReport(true);
-                    } else {
-                      const err = await res.json().catch(() => ({}));
-                      setReportError(err.message || "Erro ao gerar relatório. Tente novamente.");
-                    }
-                  } catch {
-                    setReportError("Erro de conexão. Verifique sua internet e tente novamente.");
-                  }
-                  setLoadingReport(false);
+                  generateReport();
                 }}
                 disabled={loadingReport}
                 className="mx-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium shadow-lg active:scale-[0.97] transition-transform disabled:opacity-60"
@@ -757,6 +795,69 @@ export default function JourneyDetail() {
               {reportError && (
                 <p className="text-xs text-red-500 text-center mt-2" data-testid="text-report-error">{reportError}</p>
               )}
+            </div>
+          )}
+
+          {showPaymentPopup && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in duration-200">
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPaymentPopup(false)} />
+              <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+                <button
+                  onClick={() => setShowPaymentPopup(false)}
+                  className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-muted transition-colors"
+                  data-testid="button-close-payment"
+                >
+                  <X size={16} />
+                </button>
+                <div className="text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${journey.gradientFrom}20, ${journey.gradientTo}15)` }}>
+                    <Brain size={28} style={{ color: journey.gradientFrom }} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif text-foreground">Relatório com IA</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Receba uma análise personalizada da sua jornada feita por inteligência artificial
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-green-500/5 border border-green-500/20">
+                    <p className="text-[10px] text-green-600 font-medium">Seu primeiro relatório já foi usado ✓</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-left text-xs text-muted-foreground">
+                      <Star size={12} className="text-amber-500 shrink-0" />
+                      <span>Pontos fortes e de atenção personalizados</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-left text-xs text-muted-foreground">
+                      <TrendingUp size={12} className="text-blue-500 shrink-0" />
+                      <span>Análise do que melhorou e pode melhorar</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-left text-xs text-muted-foreground">
+                      <Lightbulb size={12} className="text-violet-500 shrink-0" />
+                      <span>Dica prática e frase motivacional</span>
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-2xl font-bold text-foreground">R$ 2,90</p>
+                    <p className="text-[10px] text-muted-foreground">pagamento único por relatório</p>
+                  </div>
+                  <button
+                    onClick={handleReportCheckout}
+                    disabled={checkoutLoading}
+                    className="w-full py-3 rounded-xl text-white text-sm font-semibold shadow-lg active:scale-[0.97] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                    style={{ background: `linear-gradient(135deg, ${journey.gradientFrom}, ${journey.gradientTo})` }}
+                    data-testid="button-pay-report"
+                  >
+                    {checkoutLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        Gerar Relatório
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -431,7 +431,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       "Tudo do plano gratuito",
                       "Todas as cartas de reflexão ilimitadas",
                       "Jornadas completas de 30 dias",
-                      "Relatórios personalizados com IA",
+                      "1º relatório de jornada com IA grátis",
                       "Diário com fotos, desenhos e banners",
                       "Todos os capítulos do livro",
                       "Notificações personalizadas"
