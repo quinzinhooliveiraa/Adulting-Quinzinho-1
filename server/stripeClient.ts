@@ -25,11 +25,13 @@ async function getStripeCredentials() {
   const data = await res.json();
   const connection = data.items?.[0];
 
-  if (!connection?.settings?.stripe_api_key) {
+  const apiKey = connection?.settings?.stripe_api_key || connection?.settings?.secret;
+
+  if (!apiKey) {
     throw new Error("Stripe not connected");
   }
 
-  return { apiKey: connection.settings.stripe_api_key };
+  return { apiKey };
 }
 
 export async function getUncachableStripeClient(): Promise<Stripe> {
@@ -41,5 +43,5 @@ export async function getStripeSync(): Promise<StripeSync> {
   const { apiKey } = await getStripeCredentials();
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL required");
-  return new StripeSync({ apiKey, databaseUrl });
+  return new StripeSync({ stripeSecretKey: apiKey, databaseUrl });
 }
