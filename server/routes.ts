@@ -544,35 +544,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/trial/activate", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = await storage.getUser(req.session.userId!);
-      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
-
-      if (user.trialEndsAt) {
-        return res.status(400).json({ message: "Você já usou seu período de teste gratuito." });
-      }
-      if (user.isPremium) {
-        return res.status(400).json({ message: "Você já tem acesso premium." });
-      }
-
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-      const updated = await storage.updateUser(user.id, { trialEndsAt });
-
-      const premiumStatus = getUserPremiumStatus(updated!);
-      res.json({
-        message: "Trial ativado! Você tem 14 dias de acesso completo.",
-        hasPremium: premiumStatus.hasPremium,
-        premiumReason: premiumStatus.reason,
-        trialEndsAt: updated!.trialEndsAt,
-      });
-    } catch (error: any) {
-      console.error("Trial activation error:", error);
-      res.status(500).json({ message: "Erro ao ativar período de teste" });
-    }
-  });
-
   app.post("/api/stripe/checkout", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);

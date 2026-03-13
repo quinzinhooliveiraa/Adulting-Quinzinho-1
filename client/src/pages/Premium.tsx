@@ -3,13 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift } from "lucide-react";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 
 export default function Premium() {
-  const { user, refetch } = useAuth();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/stripe/products"],
@@ -22,42 +20,20 @@ export default function Premium() {
   const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
   const yearlyPrice = products.find((p: any) => p.recurring?.interval === "year");
 
-  const handleCheckout = async (priceId: string) => {
-    setLoading(priceId);
+  const handleCheckout = async (priceId: string, trialDays?: number) => {
+    setLoading(trialDays ? "trial" : priceId);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ priceId, trialDays }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       }
     } catch {
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleActivateTrial = async () => {
-    setLoading("trial");
-    try {
-      const res = await fetch("/api/trial/activate", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: "Trial ativado!", description: "Você tem 14 dias de acesso completo." });
-        await refetch();
-        setLocation("/");
-      } else {
-        toast({ title: "Erro", description: data.message, variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Erro", description: "Não foi possível ativar o trial.", variant: "destructive" });
     } finally {
       setLoading(null);
     }
@@ -106,7 +82,7 @@ export default function Premium() {
               Seu trial está ativo! {trialDaysLeft} {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Assine agora para garantir acesso contínuo após o trial
+              Após o trial, sua assinatura começa automaticamente
             </p>
           </div>
         )}
@@ -124,25 +100,24 @@ export default function Premium() {
         </div>
 
         <div className="space-y-4">
-          {canActivateTrial && (
+          {canActivateTrial && monthlyPrice && (
             <button
-              onClick={handleActivateTrial}
+              onClick={() => handleCheckout(monthlyPrice.price_id, 14)}
               disabled={!!loading}
               className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-500/5 hover:bg-green-500/10 transition-colors text-left"
               data-testid="button-activate-trial"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Gift className="w-6 h-6 text-green-600" />
+                  <Gift className="w-6 h-6 text-green-600 flex-shrink-0" />
                   <div>
                     <p className="font-bold text-lg">Experimentar Grátis</p>
-                    <p className="text-muted-foreground text-sm">14 dias de acesso completo, sem cartão</p>
+                    <p className="text-muted-foreground text-sm">14 dias grátis, depois R$9,90/mês</p>
                   </div>
                 </div>
-                <p className="text-xl font-bold text-green-600">Grátis</p>
               </div>
               {loading === "trial" && (
-                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Ativando...</p>
+                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Redirecionando...</p>
               )}
             </button>
           )}
