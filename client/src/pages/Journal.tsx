@@ -182,7 +182,31 @@ function getFirstImage(text: string): string | null {
   return null;
 }
 
-const TAGS = ["Todas", "ansiedade", "propósito", "identidade", "solidão", "crescimento", "amor", "incerteza", "relações"];
+const SOURCE_CATEGORIES = [
+  { key: "Todas", label: "Todas", icon: null },
+  { key: "diario", label: "Diário", icon: "📝" },
+  { key: "perguntas", label: "Perguntas", icon: "💬" },
+  { key: "jornada", label: "Jornadas", icon: "🗺️" },
+];
+
+function getEntrySource(entry: { tags: string[] }): string {
+  if (entry.tags.includes("perguntas") || entry.tags.includes("reflexão")) return "perguntas";
+  if (entry.tags.includes("jornada")) return "jornada";
+  return "diario";
+}
+
+function getSourceLabel(source: string): string {
+  const cat = SOURCE_CATEGORIES.find(c => c.key === source);
+  return cat?.label || source;
+}
+
+function getSourceColor(source: string): string {
+  switch (source) {
+    case "perguntas": return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+    case "jornada": return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800";
+    default: return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800";
+  }
+}
 
 interface LocalJournalEntry {
   id: number | string;
@@ -362,28 +386,9 @@ export default function Journal() {
     setViewingEntry(entry);
   };
 
-  const TAG_KEYWORDS: Record<string, string[]> = {
-    ansiedade: ["ansiedade", "ansioso", "ansiosa", "medo", "preocup", "nervos", "pânico", "aflição", "apreensivo"],
-    propósito: ["propósito", "objetivo", "sentido", "carreira", "trabalho", "vocação", "missão", "meta", "sonho"],
-    identidade: ["identidade", "autêntico", "autêntica", "essência", "quem sou", "personalidade", "eu mesmo"],
-    solidão: ["solidão", "sozinho", "sozinha", "solitário", "solitária", "isolado", "isolada", "solitude"],
-    crescimento: ["crescimento", "evoluir", "aprender", "crescer", "melhorar", "amadurecer", "desenvolver", "progresso"],
-    amor: ["amor", "amoroso", "amorosa", "apaixonado", "apaixonada", "paixão", "coração", "enamorado", "romântico"],
-    incerteza: ["incerteza", "dúvida", "confuso", "confusa", "perdido", "perdida", "não sei", "indeciso", "indecisa"],
-    relações: ["relações", "namorado", "namorada", "relacionamento", "amigo", "amiga", "amigos", "amigas", "casamento", "família"],
-  };
-
-  const tagMatchesTheme = (tag: string, theme: string): boolean => {
-    if (tag === theme) return true;
-    const keywords = TAG_KEYWORDS[theme];
-    if (!keywords) return false;
-    const lower = tag.toLowerCase();
-    return keywords.some(kw => lower.includes(kw) || kw.includes(lower));
-  };
-
   const filteredEntries = activeTag === "Todas"
     ? entries
-    : entries.filter(e => e.tags.some(t => tagMatchesTheme(t, activeTag)));
+    : entries.filter(e => getEntrySource(e) === activeTag);
   const visibleEntries = showArchived 
     ? filteredEntries.filter(e => archivedIds.has(e.id))
     : filteredEntries.filter(e => !archivedIds.has(e.id));
@@ -461,19 +466,25 @@ export default function Journal() {
 
         {!isWriting && !viewingEntry && (
           <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
-            {TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => setActiveTag(tag)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-300 ${
-                  activeTag === tag 
-                    ? "bg-primary text-primary-foreground font-medium" 
-                    : "bg-card border border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {tag.charAt(0).toUpperCase() + tag.slice(1)}
-              </button>
-            ))}
+            {SOURCE_CATEGORIES.map(cat => {
+              const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => setActiveTag(cat.key)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-300 flex items-center gap-1.5 ${
+                    activeTag === cat.key
+                      ? "bg-primary text-primary-foreground font-medium" 
+                      : "bg-card border border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                  data-testid={`filter-${cat.key}`}
+                >
+                  {cat.icon && <span className="text-xs">{cat.icon}</span>}
+                  <span>{cat.label}</span>
+                  <span className={`text-[10px] ${activeTag === cat.key ? "opacity-80" : "opacity-50"}`}>({count})</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -532,7 +543,10 @@ export default function Journal() {
               {renderEntryContent(viewingEntry.text)}
 
               <div className="flex flex-wrap gap-2 pt-2">
-                {viewingEntry.tags.map(tag => (
+                <span className={`text-[10px] px-3 py-1.5 rounded-full border font-bold uppercase tracking-tighter ${getSourceColor(getEntrySource(viewingEntry))}`}>
+                  {getSourceLabel(getEntrySource(viewingEntry))}
+                </span>
+                {viewingEntry.tags.filter(t => !["perguntas", "reflexão", "jornada"].includes(t)).map(tag => (
                   <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
                     #{tag}
                   </span>
@@ -720,7 +734,10 @@ export default function Journal() {
                         </p>
                         
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          {entry.tags.map(tag => (
+                          <span className={`text-[9px] px-2 py-1 rounded-full border font-bold uppercase tracking-tighter ${getSourceColor(getEntrySource(entry))}`}>
+                            {getSourceLabel(getEntrySource(entry))}
+                          </span>
+                          {entry.tags.filter(t => !["perguntas", "reflexão", "jornada"].includes(t)).map(tag => (
                             <span key={tag} className="text-[9px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
                               #{tag}
                             </span>

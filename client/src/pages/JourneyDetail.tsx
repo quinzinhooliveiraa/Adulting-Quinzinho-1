@@ -271,7 +271,7 @@ export default function JourneyDetail() {
     try {
       await apiRequest("POST", "/api/journal", {
         text: writingText,
-        tags: [journey.title.toLowerCase()],
+        tags: ["jornada", journey.title.toLowerCase()],
         mood: null,
         date: new Date().toISOString().split("T")[0],
       });
