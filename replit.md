@@ -87,6 +87,20 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
   - Journal: 15 entries/month (`FREE_MONTHLY_JOURNAL_LIMIT`), enforced server-side + client banner/popup
   - Room creation: premium only (free users can join rooms created by premium users)
   - API: `GET /api/journal/limit` returns `{ count, limit, remaining }`
+- Removing premium (admin sets isPremium=false, clears trialEndsAt/premiumUntil) immediately reverts to free limits
+
+## Journey Completion Report
+- AI-generated personalized report at the end of each 30-day journey (Gemini 2.0 Flash via `@google/generative-ai`)
+- Endpoint: `POST /api/journey/report` (premium only)
+- Analyzes: journal entries tagged with journey name, mood checkins, journey activities completed
+- Returns structured JSON: título, resumo, pontosFortes, pontosAtencao, oQueMelhorou, oQuePodeMelhorar, dicaPratica, fraseMotivacional
+- Frontend: Full-screen report overlay in JourneyDetail.tsx with color-coded sections
+
+## Journal Categories
+- Entries are categorized by source: Diário (📝), Perguntas (💬), Jornadas (🗺️)
+- Source detection via tags: "perguntas"/"reflexão" → Perguntas, "jornada" → Jornadas, else → Diário
+- Filter tabs at top of Journal page with counts per category
+- Color-coded source badges on each entry card (purple=Diário, blue=Perguntas, green=Jornadas)
 - Admin users always have full access
 - `getUserPremiumStatus()` in routes.ts determines access: admin > paid > granted > trial > expired > blocked
 - Frontend checks `user.hasPremium` from auth context

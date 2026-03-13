@@ -12,6 +12,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
 import { getUncachableResendClient } from "./resendClient";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const PgStore = connectPgSimple(session);
 
@@ -1290,6 +1291,103 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Erro ao recomeçar jornada" });
+    }
+  });
+
+  app.post("/api/journey/report", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { journeyId, journeyTitle, totalDays, completedDays, dayDescriptions } = req.body;
+      if (!journeyId || !journeyTitle) {
+        return res.status(400).json({ message: "Dados da jornada obrigatórios" });
+      }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const premiumStatus = getUserPremiumStatus(user);
+      if (!premiumStatus.hasPremium) {
+        return res.status(403).json({ message: "Recurso premium" });
+      }
+
+      const journeyEntries = await storage.getEntriesByTag(req.session.userId!, "jornada");
+      const relevantEntries = journeyEntries.filter(e =>
+        e.tags.includes(journeyTitle.toLowerCase())
+      );
+
+      const checkins = await storage.getCheckins(req.session.userId!);
+      const recentMoods = checkins.slice(0, 30).map(c => c.mood).filter(Boolean);
+
+      const apiKey = process.env.GOOGLE_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "Serviço de IA indisponível" });
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const entriesText = relevantEntries.length > 0
+        ? relevantEntries.map((e, i) => {
+            let text = e.text;
+            try { const p = JSON.parse(e.text); if (p?.text) text = p.text; } catch {}
+            return `Reflexão ${i + 1} (${e.date}): "${text.substring(0, 500)}"`;
+          }).join("\n")
+        : "Nenhuma reflexão escrita registrada.";
+
+      const daysInfo = dayDescriptions
+        ? `\nAtividades da jornada:\n${dayDescriptions}`
+        : "";
+
+      const prompt = `Você é um mentor de autoconhecimento para jovens de 17-30 anos. Analise os dados abaixo e gere um relatório pessoal e realista sobre a jornada "${journeyTitle}" completada por ${user.name || "o(a) participante"}.
+
+DADOS:
+- Jornada: "${journeyTitle}" (${totalDays} dias)
+- Dias completados: ${completedDays || totalDays}${daysInfo}
+- Reflexões escritas durante a jornada (${relevantEntries.length} entradas):
+${entriesText}
+- Humores recentes: ${recentMoods.length > 0 ? recentMoods.join(", ") : "sem registros"}
+
+GERE O RELATÓRIO em formato JSON com exatamente esta estrutura (sem markdown, apenas JSON puro):
+{
+  "titulo": "Título curto e impactante do relatório",
+  "resumo": "Parágrafo de 2-3 frases resumindo a jornada dessa pessoa com empatia",
+  "pontosFortes": ["ponto 1", "ponto 2", "ponto 3"],
+  "pontosAtencao": ["ponto 1", "ponto 2"],
+  "oQueMelhorou": "Parágrafo sobre o que provavelmente evoluiu baseado nas reflexões",
+  "oQuePodeMelhorar": "Parágrafo com sugestões práticas e realistas",
+  "dicaPratica": "Uma dica acionável e concreta para o próximo passo",
+  "fraseMotivacional": "Frase curta e inspiradora para fechar"
+}
+
+REGRAS:
+- Seja REALISTA e HONESTO, não genérico. Se as reflexões forem superficiais, diga isso com carinho.
+- Use linguagem jovem brasileira, informal mas respeitosa.
+- Se não houver reflexões escritas, baseie-se no fato de a pessoa ter completado a jornada e nos temas da jornada.
+- Pontos fortes devem ser específicos e baseados nos dados.
+- Pontos de atenção devem ser construtivos, nunca agressivos.
+- Retorne APENAS o JSON, sem texto adicional.`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      let report;
+      try {
+        const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        report = JSON.parse(cleaned);
+      } catch {
+        return res.status(500).json({ message: "Erro ao processar relatório" });
+      }
+
+      res.json({
+        report,
+        journeyTitle,
+        completedDays: completedDays || totalDays,
+        totalDays,
+        entriesCount: relevantEntries.length,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      res.status(500).json({ message: "Erro ao gerar relatório da jornada" });
     }
   });
 

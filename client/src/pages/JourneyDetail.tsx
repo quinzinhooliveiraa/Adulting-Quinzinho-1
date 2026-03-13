@@ -22,6 +22,15 @@ import {
   RotateCcw,
   AlertTriangle,
   LockKeyhole,
+  Sparkles,
+  Star,
+  TrendingUp,
+  AlertCircle,
+  Lightbulb,
+  Quote,
+  Loader2,
+  FileText,
+  X,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +38,122 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { JOURNEYS, type JourneyData, type JourneyDay } from "./Journey";
 import { apiRequest } from "@/lib/queryClient";
+
+interface JourneyReport {
+  titulo: string;
+  resumo: string;
+  pontosFortes: string[];
+  pontosAtencao: string[];
+  oQueMelhorou: string;
+  oQuePodeMelhorar: string;
+  dicaPratica: string;
+  fraseMotivacional: string;
+}
+
+function JourneyReportView({ report, journeyTitle, onClose, gradientFrom, gradientTo }: {
+  report: JourneyReport;
+  journeyTitle: string;
+  onClose: () => void;
+  gradientFrom: string;
+  gradientTo: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-background overflow-y-auto animate-in fade-in duration-500">
+      <div className="min-h-screen pb-24">
+        <div className="relative pt-12 pb-8 px-6" style={{ background: `linear-gradient(135deg, ${gradientFrom}30, ${gradientTo}15)` }}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-full bg-background/80 backdrop-blur-sm"
+            data-testid="button-close-report"
+          >
+            <X size={20} />
+          </button>
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}>
+              <FileText size={28} className="text-white" />
+            </div>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: gradientFrom }}>
+              Relatório da Jornada
+            </p>
+            <h1 className="text-xl font-serif text-foreground mb-1" data-testid="text-report-title">
+              {report.titulo}
+            </h1>
+            <p className="text-xs text-muted-foreground">{journeyTitle}</p>
+          </div>
+        </div>
+
+        <div className="px-6 space-y-5 mt-6">
+          <div className="p-4 rounded-2xl bg-card border border-border">
+            <p className="text-sm text-foreground leading-relaxed" data-testid="text-report-summary">
+              {report.resumo}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-green-500/5 border border-green-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Star size={18} className="text-green-600" />
+              <h3 className="text-sm font-bold text-green-700 dark:text-green-400">Seus Pontos Fortes</h3>
+            </div>
+            <ul className="space-y-2">
+              {report.pontosFortes.map((ponto, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                  <span className="text-green-500 mt-0.5 shrink-0">✓</span>
+                  <span>{ponto}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle size={18} className="text-amber-600" />
+              <h3 className="text-sm font-bold text-amber-700 dark:text-amber-400">Pontos de Atenção</h3>
+            </div>
+            <ul className="space-y-2">
+              {report.pontosAtencao.map((ponto, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                  <span className="text-amber-500 mt-0.5 shrink-0">!</span>
+                  <span>{ponto}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp size={18} className="text-blue-600" />
+              <h3 className="text-sm font-bold text-blue-700 dark:text-blue-400">O Que Melhorou</h3>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">{report.oQueMelhorou}</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-violet-500/5 border border-violet-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={18} className="text-violet-600" />
+              <h3 className="text-sm font-bold text-violet-700 dark:text-violet-400">O Que Pode Melhorar</h3>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">{report.oQuePodeMelhorar}</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb size={18} className="text-primary" />
+              <h3 className="text-sm font-bold text-primary">Dica Prática</h3>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed font-medium">{report.dicaPratica}</p>
+          </div>
+
+          <div className="p-5 rounded-2xl text-center" style={{ background: `linear-gradient(135deg, ${gradientFrom}15, ${gradientTo}10)` }}>
+            <Quote size={20} className="mx-auto mb-2 opacity-40" />
+            <p className="text-base font-serif text-foreground italic leading-relaxed">
+              "{report.fraseMotivacional}"
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const TYPE_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
   reflexao: { icon: Brain, label: "Reflexão", color: "text-violet-500 bg-violet-500/10" },
@@ -124,6 +249,9 @@ export default function JourneyDetail() {
   const [writingDayId, setWritingDayId] = useState<string | null>(null);
   const [writingText, setWritingText] = useState("");
   const [savingEntry, setSavingEntry] = useState(false);
+  const [report, setReport] = useState<JourneyReport | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     if (!journeyId) return;
@@ -529,13 +657,74 @@ export default function JourneyDetail() {
           })()}
 
           {isCompleted && (
-            <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-center space-y-2 mb-4 animate-in fade-in duration-500">
+            <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-center space-y-3 mb-4 animate-in fade-in duration-500">
               <Trophy size={32} className="text-green-500 mx-auto" />
               <h3 className="font-serif text-lg text-green-700 dark:text-green-400">Jornada Concluída!</h3>
               <p className="text-xs text-green-600/80 dark:text-green-400/80">
                 Parabéns! Você completou todos os {journey.totalDays} dias. Sua evolução é real.
               </p>
+              <button
+                onClick={async () => {
+                  if (report) {
+                    setShowReport(true);
+                    return;
+                  }
+                  setLoadingReport(true);
+                  try {
+                    const dayDescs = journey.days.map(d => `Dia ${d.day}: ${d.title} (${d.type})`).join("\n");
+                    const res = await fetch("/api/journey/report", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        journeyId: journey.id,
+                        journeyTitle: journey.title,
+                        totalDays: journey.totalDays,
+                        completedDays: completedDays.length,
+                        dayDescriptions: dayDescs,
+                      }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setReport(data.report);
+                      setShowReport(true);
+                    }
+                  } catch {}
+                  setLoadingReport(false);
+                }}
+                disabled={loadingReport}
+                className="mx-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium shadow-lg active:scale-[0.97] transition-transform disabled:opacity-60"
+                style={{ background: `linear-gradient(135deg, ${journey.gradientFrom}, ${journey.gradientTo})` }}
+                data-testid="button-generate-report"
+              >
+                {loadingReport ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Gerando relatório...</span>
+                  </>
+                ) : report ? (
+                  <>
+                    <FileText size={16} />
+                    <span>Ver Meu Relatório</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Gerar Meu Relatório</span>
+                  </>
+                )}
+              </button>
             </div>
+          )}
+
+          {showReport && report && (
+            <JourneyReportView
+              report={report}
+              journeyTitle={journey.title}
+              onClose={() => setShowReport(false)}
+              gradientFrom={journey.gradientFrom}
+              gradientTo={journey.gradientTo}
+            />
           )}
 
           {weeks.map((week, weekIndex) => {
