@@ -2149,13 +2149,19 @@ function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const handlersRef = useRef<((msg: any) => void)[]>([]);
+  const pendingRef = useRef<any[]>([]);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws/lobby`);
-    ws.onopen = () => setConnected(true);
+    ws.onopen = () => {
+      setConnected(true);
+      pendingRef.current.forEach(msg => ws.send(JSON.stringify(msg)));
+      pendingRef.current = [];
+    };
     ws.onclose = () => setConnected(false);
+    ws.onerror = () => setConnected(false);
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
@@ -2168,8 +2174,11 @@ function useWebSocket() {
   const send = useCallback((data: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(data));
+    } else {
+      pendingRef.current.push(data);
+      connect();
     }
-  }, []);
+  }, [connect]);
 
   const onMessage = useCallback((handler: (msg: any) => void) => {
     handlersRef.current.push(handler);
@@ -2199,6 +2208,7 @@ function LobbyScreen({
   questionData,
   onBack,
   userName,
+  isPremium,
 }: {
   mode: ConversaType;
   relation: RelationType;
@@ -2206,6 +2216,7 @@ function LobbyScreen({
   questionData: { title: string; emoji: string; color: string };
   onBack: () => void;
   userName: string;
+  isPremium: boolean;
 }) {
   const [screen, setScreen] = useState<"choice" | "create" | "join" | "waiting" | "game">("choice");
   const [lobbyCode, setLobbyCode] = useState("");
@@ -2587,16 +2598,22 @@ function LobbyScreen({
 
       <div className="space-y-3">
         <button
-          onClick={handleCreate}
-          className="w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98]"
+          onClick={() => {
+            if (!isPremium) {
+              setError("Crie salas com o plano premium! Você pode entrar em salas criadas por amigos premium.");
+              return;
+            }
+            handleCreate();
+          }}
+          className={`w-full p-5 rounded-2xl bg-muted/50 border border-border hover:bg-muted transition-all flex items-center gap-4 text-left active:scale-[0.98] ${!isPremium ? "opacity-60" : ""}`}
           data-testid="button-create-lobby"
         >
           <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${questionData.color} flex items-center justify-center shadow-sm`}>
             <Crown size={20} className="text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Criar Sala</p>
-            <p className="text-xs text-muted-foreground">Você será o host e compartilha o código</p>
+            <p className="text-sm font-medium text-foreground">Criar Sala {!isPremium && <span className="text-[10px] text-amber-600 ml-1">PREMIUM</span>}</p>
+            <p className="text-xs text-muted-foreground">{isPremium ? "Você será o host e compartilha o código" : "Apenas assinantes premium podem criar salas"}</p>
           </div>
         </button>
 
@@ -2786,6 +2803,7 @@ export default function Questions() {
         questionData={{ title: data.title, emoji: data.emoji, color: data.color }}
         onBack={() => { setShowLobby(false); setRelation(null); }}
         userName={user?.name || "Jogador"}
+        isPremium={premium}
       />
     );
   }

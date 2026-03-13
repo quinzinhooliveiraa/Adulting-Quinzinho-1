@@ -990,8 +990,40 @@ export async function registerRoutes(
     date: z.string().optional(),
   });
 
+  const FREE_MONTHLY_JOURNAL_LIMIT = 15;
+
+  app.get("/api/journal/limit", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+      const premiumStatus = getUserPremiumStatus(user);
+      const monthlyCount = await storage.getMonthlyEntryCount(req.session.userId!);
+      res.json({
+        count: monthlyCount,
+        limit: premiumStatus.hasPremium ? null : FREE_MONTHLY_JOURNAL_LIMIT,
+        remaining: premiumStatus.hasPremium ? null : Math.max(0, FREE_MONTHLY_JOURNAL_LIMIT - monthlyCount),
+      });
+    } catch {
+      res.status(500).json({ message: "Erro ao verificar limite" });
+    }
+  });
+
   app.post("/api/journal", requireAuth, async (req: Request, res: Response) => {
     try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+      const premiumStatus = getUserPremiumStatus(user);
+      if (!premiumStatus.hasPremium) {
+        const monthlyCount = await storage.getMonthlyEntryCount(req.session.userId!);
+        if (monthlyCount >= FREE_MONTHLY_JOURNAL_LIMIT) {
+          return res.status(403).json({
+            message: "Limite mensal atingido",
+            code: "JOURNAL_LIMIT_REACHED",
+            limit: FREE_MONTHLY_JOURNAL_LIMIT,
+            count: monthlyCount,
+          });
+        }
+      }
       const data = createEntrySchema.parse(req.body);
       const now = new Date();
       const entry = await storage.createEntry({
@@ -1231,7 +1263,7 @@ export async function registerRoutes(
         });
       }
       const updated = await storage.completeJourneyDay(req.session.userId!, journeyId, dayId);
-      res.json(updated);
+      res.json({ ...updated, lastCompletedAt: new Date().toISOString() });
     } catch (error) {
       res.status(500).json({ message: "Erro ao completar dia" });
     }

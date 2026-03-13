@@ -50,6 +50,8 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - **Restart journey**: Users can restart any journey from JourneyDetail (RotateCcw icon in header); requires typing "recomeçar" to confirm
 - **Access model**: Available during trial (14 days); after trial ends, Jornadas menu shows paywall; progress is NEVER lost
 - Progress persisted in DB via `/api/journey/progress`, `/api/journey/start`, `/api/journey/complete-day`, `/api/journey/uncomplete-day`, `/api/journey/onboarding`, `/api/journey/restart`
+- **Day unlock**: Next day only accessible after midnight (local time) following completion of previous day; shows "Próxima atividade amanhã" banner
+- **Writing challenges**: escrita/reflexao type challenges open inline textarea editor; saved to journal diary on completion
 - Journey content defined in `client/src/pages/Journey.tsx` (exported `JOURNEYS` array)
 
 ## Email Verification
@@ -81,6 +83,10 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Card game mode requires premium access (trial, paid, or admin-granted)
 - Jornadas require premium access (admin has full access)
 - Solo/Conversa modes free with 5-question limit per theme; paywall after exhaustion
+- **Free user limits**:
+  - Journal: 15 entries/month (`FREE_MONTHLY_JOURNAL_LIMIT`), enforced server-side + client banner/popup
+  - Room creation: premium only (free users can join rooms created by premium users)
+  - API: `GET /api/journal/limit` returns `{ count, limit, remaining }`
 - Admin users always have full access
 - `getUserPremiumStatus()` in routes.ts determines access: admin > paid > granted > trial > expired > blocked
 - Frontend checks `user.hasPremium` from auth context
@@ -108,6 +114,8 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Turn rotation: host or current player can draw next card
 - Weighted random cards (unseen pool, resets when all seen)
 - Host handoff on disconnect
+- WebSocket client uses pending queue pattern: messages sent before connection opens are queued and flushed on `onopen`
+- Native share API: uses `navigator.share()` when available on mobile (fallback to social buttons)
 
 ## Speech-to-Text / Audio
 - Uses Web Speech API (SpeechRecognition / webkitSpeechRecognition)

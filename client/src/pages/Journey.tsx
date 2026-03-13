@@ -760,7 +760,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
         credentials: "include",
         body: JSON.stringify({ journeyOrder: order }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setPhase("loading");
     } catch {
       setSaving(false);

@@ -97,10 +97,22 @@ interface LocalJournalEntry {
 
 export default function Journal() {
   const { user } = useAuth();
+  const isPremium = user?.hasPremium || user?.role === "admin";
   const { data: apiEntries = [], isLoading } = useJournalEntries();
   const createEntryMut = useCreateEntry();
   const updateEntryMut = useUpdateEntry();
   const deleteEntryMut = useDeleteEntry();
+  const [journalLimit, setJournalLimit] = useState<{ count: number; limit: number | null; remaining: number | null } | null>(null);
+  const [showUpgradePopup, setShowUpgradePopup] = useState(false);
+
+  useEffect(() => {
+    if (!isPremium) {
+      fetch("/api/journal/limit", { credentials: "include" })
+        .then(r => r.json())
+        .then(data => setJournalLimit(data))
+        .catch(() => {});
+    }
+  }, [isPremium, apiEntries.length]);
 
   const [activeTag, setActiveTag] = useState("Todas");
   const [isWriting, setIsWriting] = useState(false);
@@ -221,8 +233,18 @@ export default function Journal() {
     setViewingEntry(null);
   };
 
-  const handleShare = (entry: LocalJournalEntry, platform: string) => {
+  const handleShare = async (entry: LocalJournalEntry, platform: string) => {
     const plainText = getEntrySummary(entry.text);
+    if (platform === "native" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "Casa dos 20 — Diário",
+          text: `"${plainText}"\n\n— Casa dos 20`,
+        });
+        setShowShare(null);
+        return;
+      } catch {}
+    }
     const shareData = { id: String(entry.id), date: entry.date, text: plainText, tags: entry.tags, timestamp: Date.now() };
     const url = shareEntry(shareData, platform);
     if (platform === "instagram") {
@@ -303,6 +325,18 @@ export default function Journal() {
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
       <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
+        {!isPremium && journalLimit && journalLimit.remaining !== null && (
+          <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
+            journalLimit.remaining <= 3
+              ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+              : "bg-muted text-muted-foreground"
+          }`} data-testid="journal-limit-banner">
+            <PenLine size={12} />
+            {journalLimit.remaining > 0
+              ? `${journalLimit.remaining} reflexão${journalLimit.remaining !== 1 ? "ões" : ""} gratuita${journalLimit.remaining !== 1 ? "s" : ""} restante${journalLimit.remaining !== 1 ? "s" : ""} este mês`
+              : "Limite mensal atingido — assine o premium para continuar"}
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-serif text-foreground">Diário</h1>
           <div className="flex items-center gap-2">
@@ -405,7 +439,10 @@ export default function Journal() {
               </div>
 
               {showShare === viewingEntry.id && (
-                <div className="flex gap-2 animate-in slide-in-from-bottom">
+                <div className="flex flex-wrap gap-2 animate-in slide-in-from-bottom">
+                  {typeof navigator !== "undefined" && navigator.share && (
+                    <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">Compartilhar</Button>
+                  )}
                   <Button size="sm" onClick={() => handleShare(viewingEntry, "twitter")} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">Twitter</Button>
                   <Button size="sm" onClick={() => handleShare(viewingEntry, "substack")} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">Substack</Button>
                   <Button size="sm" onClick={() => handleShare(viewingEntry, "instagram")} className="flex-1 bg-pink-500 hover:bg-pink-600 text-white">Instagram</Button>
@@ -686,10 +723,49 @@ export default function Journal() {
         />
       )}
 
+      {showUpgradePopup && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-card rounded-2xl p-6 max-w-sm w-full space-y-4 border border-border shadow-xl">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+                <PenLine size={24} className="text-amber-600" />
+              </div>
+              <h3 className="text-lg font-serif text-foreground">Limite Mensal Atingido</h3>
+              <p className="text-sm text-muted-foreground">
+                Você usou todas as suas {journalLimit?.limit || 15} reflexões gratuitas deste mês. 
+                Assine o premium para escrever sem limites!
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <a
+                href="/subscribe"
+                className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold text-center"
+                data-testid="button-upgrade-journal"
+              >
+                Assinar Premium — R$9,90/mês
+              </a>
+              <button
+                onClick={() => setShowUpgradePopup(false)}
+                className="w-full py-2 text-sm text-muted-foreground"
+                data-testid="button-close-upgrade"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!isWriting && !viewingEntry && (
         <div className="fixed bottom-24 right-6 z-40 animate-in zoom-in slide-in-from-bottom-4 duration-500">
           <Button 
-            onClick={() => setIsWriting(true)}
+            onClick={() => {
+              if (!isPremium && journalLimit && journalLimit.remaining !== null && journalLimit.remaining <= 0) {
+                setShowUpgradePopup(true);
+                return;
+              }
+              setIsWriting(true);
+            }}
             size="icon" 
             className="rounded-full bg-primary text-primary-foreground w-14 h-14 shadow-2xl hover:shadow-primary/20 active:scale-95 transition-all border-4 border-background"
           >

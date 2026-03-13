@@ -23,10 +23,12 @@ import {
   AlertTriangle,
   LockKeyhole,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { JOURNEYS, type JourneyData, type JourneyDay } from "./Journey";
+import { apiRequest } from "@/lib/queryClient";
 
 const TYPE_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
   reflexao: { icon: Brain, label: "Reflexão", color: "text-violet-500 bg-violet-500/10" },
@@ -111,6 +113,7 @@ export default function JourneyDetail() {
   const [, navigate] = useLocation();
 
   const [completedDays, setCompletedDays] = useState<string[]>([]);
+  const [completedTimestamps, setCompletedTimestamps] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [animatingDay, setAnimatingDay] = useState<string | null>(null);
@@ -118,6 +121,9 @@ export default function JourneyDetail() {
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [restartInput, setRestartInput] = useState("");
   const [restarting, setRestarting] = useState(false);
+  const [writingDayId, setWritingDayId] = useState<string | null>(null);
+  const [writingText, setWritingText] = useState("");
+  const [savingEntry, setSavingEntry] = useState(false);
 
   useEffect(() => {
     if (!journeyId) return;
@@ -214,6 +220,9 @@ export default function JourneyDetail() {
       if (res.ok) {
         const data = await res.json();
         setCompletedDays(data.completedDays);
+        if (isCompleting) {
+          setCompletedTimestamps(prev => ({ ...prev, [dayId]: data.lastCompletedAt || new Date().toISOString() }));
+        }
       }
     } catch {}
     setTimeout(() => setAnimatingDay(null), 300);
@@ -226,11 +235,51 @@ export default function JourneyDetail() {
 
   const isAdmin = user?.role === "admin";
   const nextDayIndex = journey.days.findIndex((d) => !completedDays.includes(d.id));
+
   const isDayAccessible = (day: JourneyDay): boolean => {
     if (isAdmin) return true;
     if (completedDays.includes(day.id)) return true;
     const dayIdx = journey.days.findIndex((d) => d.id === day.id);
-    return dayIdx === nextDayIndex;
+    if (dayIdx !== nextDayIndex) return false;
+    if (dayIdx === 0) return true;
+    const prevDay = journey.days[dayIdx - 1];
+    const prevCompletedAt = completedTimestamps[prevDay.id];
+    if (!prevCompletedAt) return true;
+    const completedDate = new Date(prevCompletedAt);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return completedDate < todayStart;
+  };
+
+  const isDayLockedUntilTomorrow = (day: JourneyDay): boolean => {
+    if (isAdmin) return false;
+    if (completedDays.includes(day.id)) return false;
+    const dayIdx = journey.days.findIndex((d) => d.id === day.id);
+    if (dayIdx !== nextDayIndex || dayIdx === 0) return false;
+    const prevDay = journey.days[dayIdx - 1];
+    const prevCompletedAt = completedTimestamps[prevDay.id];
+    if (!prevCompletedAt) return false;
+    const completedDate = new Date(prevCompletedAt);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return completedDate >= todayStart;
+  };
+
+  const handleSaveWriting = async (day: JourneyDay) => {
+    if (!writingText.trim()) return;
+    setSavingEntry(true);
+    try {
+      await apiRequest("POST", "/api/journal", {
+        text: writingText,
+        tags: [journey.title.toLowerCase()],
+        mood: null,
+        date: new Date().toISOString().split("T")[0],
+      });
+      await toggleDay(day.id);
+      setWritingDayId(null);
+      setWritingText("");
+    } catch {}
+    setSavingEntry(false);
   };
 
   const streakCount = (() => {
@@ -375,6 +424,22 @@ export default function JourneyDetail() {
           {!isCompleted && isPremium && (() => {
             const nextDay = journey.days.find((d) => !completedDays.includes(d.id));
             if (!nextDay) return null;
+            const accessible = isDayAccessible(nextDay);
+            const lockedTomorrow = isDayLockedUntilTomorrow(nextDay);
+            if (!accessible && lockedTomorrow) {
+              return (
+                <div className="p-4 rounded-2xl border-2 border-amber-500/20 bg-amber-500/5 space-y-2 mb-2" data-testid="today-locked">
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} className="text-amber-600" />
+                    <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-amber-600 dark:text-amber-400">Próxima atividade amanhã</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Bom trabalho hoje! Volte amanhã para o Dia {nextDay.day}: <span className="font-medium text-foreground">{nextDay.title}</span>
+                  </p>
+                </div>
+              );
+            }
+            if (!accessible) return null;
             const config = TYPE_CONFIG[nextDay.type] || TYPE_CONFIG.reflexao;
             const TypeIcon = config.icon;
             return (
@@ -397,14 +462,25 @@ export default function JourneyDetail() {
                     <h4 className="text-sm font-semibold text-foreground">{nextDay.title}</h4>
                     <p className="text-[11px] text-muted-foreground mt-0.5">{nextDay.description}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      <button
-                        onClick={() => toggleDay(nextDay.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95 transition-all"
-                        data-testid="button-complete-today"
-                      >
-                        <CheckCircle2 size={12} />
-                        Marcar como feito
-                      </button>
+                      {(nextDay.type === "escrita" || nextDay.type === "reflexao") && writingDayId !== nextDay.id ? (
+                        <button
+                          onClick={() => { setWritingDayId(nextDay.id); setWritingText(""); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95 transition-all"
+                          data-testid="button-write-today"
+                        >
+                          <PenLine size={12} />
+                          Escrever Reflexão
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleDay(nextDay.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95 transition-all"
+                          data-testid="button-complete-today"
+                        >
+                          <CheckCircle2 size={12} />
+                          Marcar como feito
+                        </button>
+                      )}
                       {nextDay.appLink && (
                         <button
                           onClick={() => navigate(nextDay.appLink!)}
@@ -416,6 +492,36 @@ export default function JourneyDetail() {
                         </button>
                       )}
                     </div>
+                    {writingDayId === nextDay.id && (
+                      <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="writing-editor-today">
+                        <Textarea
+                          value={writingText}
+                          onChange={(e) => setWritingText(e.target.value)}
+                          placeholder={nextDay.type === "escrita" ? "Escreva seus pensamentos aqui..." : "Anote sua reflexão..."}
+                          className="min-h-[120px] text-sm resize-none rounded-xl border-primary/20 focus:border-primary/40"
+                          autoFocus
+                          data-testid="textarea-writing"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleSaveWriting(nextDay)}
+                            disabled={!writingText.trim() || savingEntry}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 text-white text-[11px] font-semibold active:scale-95 transition-all disabled:opacity-50"
+                            data-testid="button-save-writing"
+                          >
+                            <CheckCircle2 size={12} />
+                            {savingEntry ? "Salvando..." : "Salvar e Completar"}
+                          </button>
+                          <button
+                            onClick={() => { setWritingDayId(null); setWritingText(""); }}
+                            className="px-3 py-1.5 rounded-full border border-border text-[11px] font-medium text-muted-foreground"
+                            data-testid="button-cancel-writing"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -480,6 +586,7 @@ export default function JourneyDetail() {
                       const TypeIcon = config.icon;
                       const isAnimating = animatingDay === day.id;
 
+                      const lockedTomorrow = isDayLockedUntilTomorrow(day);
                       if (!accessible && !isDone) {
                         return (
                           <div
@@ -490,7 +597,9 @@ export default function JourneyDetail() {
                             <LockKeyhole size={18} className="text-muted-foreground/40 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <span className="text-[10px] font-bold text-muted-foreground">DIA {day.day}</span>
-                              <p className="text-xs text-muted-foreground/60 italic">Complete o dia anterior para desbloquear</p>
+                              <p className="text-xs text-muted-foreground/60 italic">
+                                {lockedTomorrow ? "Disponível amanhã — descanse e reflita" : "Complete o dia anterior para desbloquear"}
+                              </p>
                             </div>
                           </div>
                         );
@@ -547,7 +656,46 @@ export default function JourneyDetail() {
                                   Abrir no app
                                 </button>
                               )}
+                              {!isDone && isPremium && (day.type === "escrita" || day.type === "reflexao") && writingDayId !== day.id && accessible && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setWritingDayId(day.id); setWritingText(""); }}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold hover:bg-amber-500/20 transition-colors"
+                                  data-testid={`button-write-${day.id}`}
+                                >
+                                  <PenLine size={10} />
+                                  Escrever
+                                </button>
+                              )}
                             </div>
+                            {writingDayId === day.id && (
+                              <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200" data-testid={`writing-editor-${day.id}`}>
+                                <Textarea
+                                  value={writingText}
+                                  onChange={(e) => setWritingText(e.target.value)}
+                                  placeholder={day.type === "escrita" ? "Escreva seus pensamentos aqui..." : "Anote sua reflexão..."}
+                                  className="min-h-[100px] text-sm resize-none rounded-xl border-primary/20 focus:border-primary/40"
+                                  autoFocus
+                                  data-testid={`textarea-writing-${day.id}`}
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleSaveWriting(day)}
+                                    disabled={!writingText.trim() || savingEntry}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 text-white text-[11px] font-semibold active:scale-95 transition-all disabled:opacity-50"
+                                    data-testid={`button-save-writing-${day.id}`}
+                                  >
+                                    <CheckCircle2 size={12} />
+                                    {savingEntry ? "Salvando..." : "Salvar e Completar"}
+                                  </button>
+                                  <button
+                                    onClick={() => { setWritingDayId(null); setWritingText(""); }}
+                                    className="px-3 py-1.5 rounded-full border border-border text-[11px] font-medium text-muted-foreground"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

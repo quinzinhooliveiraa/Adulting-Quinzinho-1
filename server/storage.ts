@@ -1,4 +1,4 @@
-import { eq, and, desc, ne } from "drizzle-orm";
+import { eq, and, desc, ne, gte, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -41,6 +41,7 @@ export interface IStorage {
   updateEntry(id: number, userId: string, text: string, tags: string[]): Promise<JournalEntry | undefined>;
   deleteEntry(id: number, userId: string): Promise<boolean>;
   getEntriesByTag(userId: string, tag: string): Promise<JournalEntry[]>;
+  getMonthlyEntryCount(userId: string): Promise<number>;
 
   getCheckins(userId: string): Promise<MoodCheckin[]>;
   getLatestCheckin(userId: string): Promise<MoodCheckin | undefined>;
@@ -140,6 +141,14 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(journalEntries.id, id), eq(journalEntries.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  async getMonthlyEntryCount(userId: string): Promise<number> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db.select({ value: count() }).from(journalEntries)
+      .where(and(eq(journalEntries.userId, userId), gte(journalEntries.createdAt, monthStart)));
+    return result?.value || 0;
   }
 
   async getEntriesByTag(userId: string, tag: string): Promise<JournalEntry[]> {
