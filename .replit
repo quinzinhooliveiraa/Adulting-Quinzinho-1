@@ -63,7 +63,4 @@ integrations = ["stripe:1.0.0", "resend:1.0.0"]
 
 [userenv.shared]
 VAPID_PUBLIC_KEY = "BALI2zeL7b-W9KsN73z0lGFlFUVI2OsbFkxKClAvjKPemyPeB5KNilS_V6xefhQCeaRnhCJb-eASQPNqFkLleck"
-VAPID_PRIVATE_KEY = "uRoed2G4LOeEcwAjIPMrPQxMmod_CRppla1z1oxkxq0"
 VAPID_SUBJECT = "mailto:quinzinhooliveiraa@gmail.com"
-STRIPE_SECRET_KEY = "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"
-STRIPE_PUBLISHABLE_KEY = "pk_live_51TAL2tRW1J118pY4qrzz3woUzg2LdY3em5vBKpGNpqMvCULa7MGSGnBDYXzAl0SfpLf61p1Y0Ctraty3poA9moB400LYrgBcVE"
