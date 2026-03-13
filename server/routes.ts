@@ -5,9 +5,12 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
 import { storage } from "./storage";
-import { pool } from "./db";
+import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema } from "@shared/schema";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
+import { getUncachableStripeClient } from "./stripeClient";
+import { getUncachableResendClient } from "./resendClient";
 
 const PgStore = connectPgSimple(session);
 
@@ -49,6 +52,32 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
   (req as any).adminUser = user;
   next();
+}
+
+async function sendVerificationEmail(email: string, token: string, name: string) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000";
+    const verifyUrl = `https://${domain}/api/auth/verify-email?token=${token}`;
+    await client.emails.send({
+      from: fromEmail || "Casa dos 20 <noreply@resend.dev>",
+      to: email,
+      subject: "Confirme seu email — Casa dos 20",
+      html: `
+        <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+          <h2 style="color: #1a1a1a;">Olá, ${name}! 👋</h2>
+          <p style="color: #333; line-height: 1.6;">Bem-vindo à Casa dos 20. Para confirmar seu email e ativar todas as funcionalidades, clique no botão abaixo:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verifyUrl}" style="background: #7c3aed; color: white; padding: 14px 32px; border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block;">Confirmar Email</a>
+          </div>
+          <p style="color: #888; font-size: 13px;">Se você não criou esta conta, ignore este email.</p>
+        </div>
+      `,
+    });
+    console.log(`[email] Verification sent to ${email}`);
+  } catch (err: any) {
+    console.error("[email] Failed to send verification:", err.message);
+  }
 }
 
 function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEndsAt: Date | null; premiumUntil: Date | null; isActive: boolean }) {
@@ -121,6 +150,7 @@ export async function registerRoutes(
       trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
       const isAdminEmail = data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const verificationToken = randomBytes(32).toString("hex");
       const user = await storage.createUser({
         username: data.email,
         password: hashPassword(data.password),
@@ -132,7 +162,13 @@ export async function registerRoutes(
         trialEndsAt,
         premiumUntil: null,
         invitedBy: data.inviteCode || null,
+        emailVerified: isAdminEmail,
+        emailVerificationToken: isAdminEmail ? null : verificationToken,
       });
+
+      if (!isAdminEmail) {
+        sendVerificationEmail(data.email, verificationToken, data.name);
+      }
 
       req.session.userId = user.id;
       const premiumStatus = getUserPremiumStatus(user);
@@ -144,6 +180,7 @@ export async function registerRoutes(
         hasPremium: premiumStatus.hasPremium,
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
+        emailVerified: user.emailVerified,
         journeyOnboardingDone: user.journeyOnboardingDone,
         journeyOrder: user.journeyOrder,
       });
@@ -189,6 +226,7 @@ export async function registerRoutes(
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
         premiumUntil: user.premiumUntil,
+        emailVerified: user.emailVerified,
         journeyOnboardingDone: user.journeyOnboardingDone,
         journeyOrder: user.journeyOrder,
       });
@@ -268,6 +306,7 @@ export async function registerRoutes(
       trialEndsAt: user.trialEndsAt,
       premiumUntil: user.premiumUntil,
       isActive: user.isActive,
+      emailVerified: user.emailVerified,
       journeyOnboardingDone: user.journeyOnboardingDone,
       journeyOrder: user.journeyOrder,
     });
@@ -277,6 +316,236 @@ export async function registerRoutes(
     req.session.destroy(() => {
       res.json({ message: "Logout realizado" });
     });
+  });
+
+  app.get("/api/auth/verify-email", async (req: Request, res: Response) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).send("Token inválido");
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find(u => u.emailVerificationToken === token);
+      if (!user) {
+        return res.status(404).send(`
+          <html><body style="font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;height:100vh;background:#fafafa;">
+            <div style="text-align:center;padding:40px;">
+              <h2>Link inválido ou expirado</h2>
+              <p>Tente reenviar o email de verificação.</p>
+            </div>
+          </body></html>
+        `);
+      }
+
+      await storage.updateUser(user.id, { emailVerified: true, emailVerificationToken: null });
+      res.send(`
+        <html><body style="font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;height:100vh;background:#fafafa;">
+          <div style="text-align:center;padding:40px;">
+            <h2 style="color:#7c3aed;">Email confirmado!</h2>
+            <p>Obrigado, ${user.name}. Seu email foi verificado com sucesso.</p>
+            <a href="/" style="display:inline-block;margin-top:20px;background:#7c3aed;color:white;padding:12px 28px;border-radius:999px;text-decoration:none;font-weight:bold;">Voltar para a Casa dos 20</a>
+          </div>
+        </body></html>
+      `);
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).send("Erro ao verificar email");
+    }
+  });
+
+  app.post("/api/auth/resend-verification", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (user.emailVerified) return res.json({ message: "Email já verificado" });
+
+      const token = randomBytes(32).toString("hex");
+      await storage.updateUser(user.id, { emailVerificationToken: token });
+      await sendVerificationEmail(user.email, token, user.name);
+      res.json({ message: "Email de verificação reenviado" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao reenviar email" });
+    }
+  });
+
+  app.get("/api/auth/google-client-id", (_req: Request, res: Response) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || "";
+    res.json({ clientId });
+  });
+
+  app.post("/api/auth/google", async (req: Request, res: Response) => {
+    try {
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({ message: "Token do Google não fornecido" });
+      }
+
+      const parts = credential.split(".");
+      if (parts.length !== 3) {
+        return res.status(400).json({ message: "Token inválido" });
+      }
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+
+      if (!payload.email || !payload.sub) {
+        return res.status(400).json({ message: "Token do Google inválido" });
+      }
+
+      const googleId = payload.sub;
+      const email = payload.email;
+      const name = payload.name || email.split("@")[0];
+      const emailVerified = payload.email_verified || false;
+
+      let user = await storage.getUserByGoogleId(googleId);
+
+      if (!user) {
+        user = await storage.getUserByEmail(email);
+        if (user) {
+          await storage.updateUser(user.id, { googleId, emailVerified: emailVerified || user.emailVerified });
+          user = (await storage.getUser(user.id))!;
+        }
+      }
+
+      if (!user) {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+        const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+        user = await storage.createUser({
+          username: email,
+          password: hashPassword(randomBytes(32).toString("hex")),
+          name,
+          email,
+          role: isAdminEmail ? "admin" : "user",
+          isPremium: isAdminEmail,
+          isActive: true,
+          trialEndsAt,
+          premiumUntil: null,
+          invitedBy: null,
+          googleId,
+          emailVerified: true,
+        });
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
+
+      req.session.userId = user.id;
+      const premiumStatus = getUserPremiumStatus(user);
+      res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: user.trialEndsAt,
+        premiumUntil: user.premiumUntil,
+        emailVerified: user.emailVerified,
+        journeyOnboardingDone: user.journeyOnboardingDone,
+        journeyOrder: user.journeyOrder,
+      });
+    } catch (error) {
+      console.error("Google auth error:", error);
+      res.status(500).json({ message: "Erro ao fazer login com Google" });
+    }
+  });
+
+  app.post("/api/stripe/checkout", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const stripe = await getUncachableStripeClient();
+      const { priceId } = req.body;
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
+        });
+        await storage.updateUser(user.id, { stripeCustomerId: customer.id });
+        customerId = customer.id;
+      }
+
+      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: "subscription",
+        success_url: `${domain}/?checkout=success`,
+        cancel_url: `${domain}/?checkout=cancel`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Checkout error:", error);
+      res.status(500).json({ message: "Erro ao criar sessão de pagamento" });
+    }
+  });
+
+  app.get("/api/stripe/products", async (_req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT
+          p.id as product_id,
+          p.name as product_name,
+          p.description as product_description,
+          p.metadata as product_metadata,
+          pr.id as price_id,
+          pr.unit_amount,
+          pr.currency,
+          pr.recurring
+        FROM stripe.products p
+        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = true
+        ORDER BY p.id, pr.unit_amount
+      `);
+      res.json(result.rows);
+    } catch (error: any) {
+      console.error("Products error:", error);
+      res.json([]);
+    }
+  });
+
+  app.post("/api/stripe/portal", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: "Nenhuma assinatura encontrada" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${domain}/`,
+      });
+
+      res.json({ url: portalSession.url });
+    } catch (error: any) {
+      console.error("Portal error:", error);
+      res.status(500).json({ message: "Erro ao abrir portal" });
+    }
+  });
+
+  app.get("/api/stripe/subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+      const result = await db.execute(
+        sql`SELECT * FROM stripe.subscriptions WHERE id = ${user.stripeSubscriptionId}`
+      );
+      res.json({ subscription: result.rows[0] || null });
+    } catch (error) {
+      res.json({ subscription: null });
+    }
   });
 
   app.get("/api/admin/users", requireAdmin, async (_req: Request, res: Response) => {

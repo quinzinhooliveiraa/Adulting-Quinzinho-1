@@ -17,6 +17,11 @@ export const users = pgTable("users", {
   invitedBy: varchar("invited_by"),
   journeyOnboardingDone: boolean("journey_onboarding_done").notNull().default(false),
   journeyOrder: text("journey_order").array().notNull().default(sql`'{}'::text[]`),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerificationToken: text("email_verification_token"),
+  googleId: text("google_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

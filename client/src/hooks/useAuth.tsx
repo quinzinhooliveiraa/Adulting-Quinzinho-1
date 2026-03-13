@@ -12,6 +12,7 @@ interface AuthUser {
   trialEndsAt: string | null;
   premiumUntil: string | null;
   isActive: boolean;
+  emailVerified: boolean;
   journeyOnboardingDone: boolean;
   journeyOrder: string[];
 }
@@ -21,6 +22,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
+  loginWithGoogle: (credential: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refetch: () => void;
 }
@@ -64,6 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const googleLoginMutation = useMutation({
+    mutationFn: async ({ credential }: { credential: string }) => {
+      const res = await apiRequest("POST", "/api/auth/google", { credential });
+      return res.json() as Promise<AuthUser>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/auth/me"], data);
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/logout");
@@ -82,6 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return registerMutation.mutateAsync({ name, email, password });
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    return googleLoginMutation.mutateAsync({ credential });
+  };
+
   const logout = async () => {
     await logoutMutation.mutateAsync();
   };
@@ -91,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, logout, refetch: refetchUser }}>
+    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, loginWithGoogle, logout, refetch: refetchUser }}>
       {children}
     </AuthContext.Provider>
   );
