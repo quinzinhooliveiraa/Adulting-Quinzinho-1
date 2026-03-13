@@ -130,6 +130,26 @@ export const insertScheduledNotificationSchema = createInsertSchema(scheduledNot
 export type InsertScheduledNotification = z.infer<typeof insertScheduledNotificationSchema>;
 export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
 
+export const journeyReports = pgTable("journey_reports", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  journeyId: text("journey_id").notNull(),
+  journeyTitle: text("journey_title").notNull(),
+  reportData: text("report_data").notNull(),
+  entriesCount: integer("entries_count").notNull().default(0),
+  completedDays: integer("completed_days").notNull(),
+  totalDays: integer("total_days").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertJourneyReportSchema = createInsertSchema(journeyReports).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertJourneyReport = z.infer<typeof insertJourneyReportSchema>;
+export type JourneyReport = typeof journeyReports.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;

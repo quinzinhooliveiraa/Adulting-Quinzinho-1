@@ -1377,17 +1377,65 @@ REGRAS:
         return res.status(500).json({ message: "Erro ao processar relatório" });
       }
 
+      const saved = await storage.saveJourneyReport({
+        userId: req.session.userId!,
+        journeyId,
+        journeyTitle,
+        reportData: JSON.stringify(report),
+        entriesCount: relevantEntries.length,
+        completedDays: completedDays || totalDays,
+        totalDays,
+      });
+
       res.json({
+        id: saved.id,
         report,
         journeyTitle,
         completedDays: completedDays || totalDays,
         totalDays,
         entriesCount: relevantEntries.length,
-        generatedAt: new Date().toISOString(),
+        generatedAt: saved.createdAt,
       });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
       res.status(500).json({ message: "Erro ao gerar relatório da jornada" });
+    }
+  });
+
+  app.get("/api/journey/reports", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const reports = await storage.getJourneyReports(req.session.userId!);
+      res.json(reports.map(r => ({
+        id: r.id,
+        journeyId: r.journeyId,
+        journeyTitle: r.journeyTitle,
+        report: JSON.parse(r.reportData),
+        entriesCount: r.entriesCount,
+        completedDays: r.completedDays,
+        totalDays: r.totalDays,
+        createdAt: r.createdAt,
+      })));
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar relatórios" });
+    }
+  });
+
+  app.get("/api/journey/reports/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const report = await storage.getJourneyReport(parseInt(req.params.id), req.session.userId!);
+      if (!report) return res.status(404).json({ message: "Relatório não encontrado" });
+      res.json({
+        id: report.id,
+        journeyId: report.journeyId,
+        journeyTitle: report.journeyTitle,
+        report: JSON.parse(report.reportData),
+        entriesCount: report.entriesCount,
+        completedDays: report.completedDays,
+        totalDays: report.totalDays,
+        createdAt: report.createdAt,
+      });
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar relatório" });
     }
   });
 

@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -354,6 +354,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             {pushLoading ? "Processando..." : pushEnabled ? "Desativar Notificações" : "Ativar Notificações"}
           </button>
         )}
+        <Link
+          href="/reports"
+          onClick={() => setShowMenu(false)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          data-testid="link-reports"
+        >
+          <FileText size={15} />
+          Meus Relatórios
+        </Link>
         <button
           onClick={() => { setShowMenu(false); setShowFeedback(true); }}
           className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"

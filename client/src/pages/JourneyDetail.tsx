@@ -149,6 +149,17 @@ function JourneyReportView({ report, journeyTitle, onClose, gradientFrom, gradie
               "{report.fraseMotivacional}"
             </p>
           </div>
+
+          <div className="flex justify-center pt-2 pb-4">
+            <a
+              href="/reports"
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+              data-testid="link-view-reports"
+            >
+              <FileText size={14} />
+              Ver todos os relatórios salvos
+            </a>
+          </div>
         </div>
       </div>
     </div>

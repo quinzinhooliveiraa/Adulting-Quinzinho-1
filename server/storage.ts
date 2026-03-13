@@ -8,6 +8,7 @@ import {
   journeyProgress,
   pushSubscriptions,
   scheduledNotifications,
+  journeyReports,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -22,6 +23,8 @@ import {
   type InsertPushSubscription,
   type ScheduledNotification,
   type InsertScheduledNotification,
+  type JourneyReport as JourneyReportType,
+  type InsertJourneyReport,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -70,6 +73,10 @@ export interface IStorage {
   deleteScheduledNotification(id: number): Promise<boolean>;
   getDueNotifications(): Promise<ScheduledNotification[]>;
   markNotificationSent(id: number): Promise<void>;
+
+  saveJourneyReport(data: InsertJourneyReport): Promise<JourneyReportType>;
+  getJourneyReports(userId: string): Promise<JourneyReportType[]>;
+  getJourneyReport(id: number, userId: string): Promise<JourneyReportType | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -327,6 +334,23 @@ export class DatabaseStorage implements IStorage {
 
   async markNotificationSent(id: number): Promise<void> {
     await db.update(scheduledNotifications).set({ lastSentAt: new Date() }).where(eq(scheduledNotifications.id, id));
+  }
+
+  async saveJourneyReport(data: InsertJourneyReport): Promise<JourneyReportType> {
+    const [report] = await db.insert(journeyReports).values(data).returning();
+    return report;
+  }
+
+  async getJourneyReports(userId: string): Promise<JourneyReportType[]> {
+    return db.select().from(journeyReports)
+      .where(eq(journeyReports.userId, userId))
+      .orderBy(desc(journeyReports.createdAt));
+  }
+
+  async getJourneyReport(id: number, userId: string): Promise<JourneyReportType | undefined> {
+    const [report] = await db.select().from(journeyReports)
+      .where(and(eq(journeyReports.id, id), eq(journeyReports.userId, userId)));
+    return report;
   }
 }
 
