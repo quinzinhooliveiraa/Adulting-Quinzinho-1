@@ -18,6 +18,7 @@ import Journey from "@/pages/Journey";
 import JourneyDetail from "@/pages/JourneyDetail";
 import Book from "@/pages/Book";
 import Admin from "@/pages/Admin";
+import Premium from "@/pages/Premium";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -67,6 +68,7 @@ function AuthGate() {
         <Route path="/journey" component={Journey} />
         <Route path="/journey/:id" component={JourneyDetail} />
         <Route path="/book" component={Book} />
+        <Route path="/premium" component={Premium} />
         {user?.role === "admin" && <Route path="/admin" component={Admin} />}
         <Route component={NotFound} />
       </Switch>

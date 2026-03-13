@@ -110,7 +110,7 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
 }
 
 export function MobileLayout({ children }: MobileLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { logout, user, refetch } = useAuth();
   const { theme, setTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
@@ -195,37 +195,22 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   const handleManagePlan = async () => {
     setShowMenu(false);
-    try {
-      const portalRes = await fetch("/api/stripe/portal", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (portalRes.ok) {
-        const portalData = await portalRes.json();
-        if (portalData.url) {
-          window.location.href = portalData.url;
-          return;
-        }
-      }
-    } catch {}
-    try {
-      const productsRes = await fetch("/api/stripe/products");
-      const products = await productsRes.json();
-      const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
-      if (monthlyPrice?.price_id) {
-        const checkoutRes = await fetch("/api/stripe/checkout", {
+    if (user?.premiumReason === "paid" || user?.premiumReason === "granted") {
+      try {
+        const portalRes = await fetch("/api/stripe/portal", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ priceId: monthlyPrice.price_id, trialDays: 14 }),
         });
-        const checkoutData = await checkoutRes.json();
-        if (checkoutData.url) {
-          window.location.href = checkoutData.url;
-          return;
+        if (portalRes.ok) {
+          const portalData = await portalRes.json();
+          if (portalData.url) {
+            window.location.href = portalData.url;
+            return;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
+    setLocation("/premium");
   };
 
   const getPlanLabel = () => {

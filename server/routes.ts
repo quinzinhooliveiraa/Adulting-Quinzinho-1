@@ -164,7 +164,7 @@ function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEnd
     return { hasPremium: true, reason: "paid" as const };
   }
   if (user.trialEndsAt && user.trialEndsAt > new Date()) {
-    return { hasPremium: true, reason: "trial" as const };
+    return { hasPremium: false, reason: "trial" as const };
   }
   return { hasPremium: false, reason: "expired" as const };
 }
@@ -558,15 +558,25 @@ export async function registerRoutes(
       const { priceId } = req.body;
 
       let customerId = user.stripeCustomerId;
-      if (!customerId) {
+
+      async function ensureValidCustomer() {
+        if (customerId) {
+          try {
+            await stripe.customers.retrieve(customerId);
+            return customerId;
+          } catch {
+            // Customer doesn't exist in this Stripe account, create new one
+          }
+        }
         const customer = await stripe.customers.create({
           email: user.email,
           name: user.name,
           metadata: { userId: user.id },
         });
         await storage.updateUser(user.id, { stripeCustomerId: customer.id });
-        customerId = customer.id;
+        return customer.id;
       }
+      customerId = await ensureValidCustomer();
 
       const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const sessionParams: any = {
@@ -631,6 +641,14 @@ export async function registerRoutes(
       }
 
       const stripe = await getUncachableStripeClient();
+
+      try {
+        await stripe.customers.retrieve(user.stripeCustomerId);
+      } catch {
+        await storage.updateUser(user.id, { stripeCustomerId: null, stripeSubscriptionId: null });
+        return res.status(400).json({ message: "Nenhuma assinatura encontrada" });
+      }
+
       const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
