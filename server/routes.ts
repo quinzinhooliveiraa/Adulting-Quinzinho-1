@@ -1263,6 +1263,23 @@ export async function registerRoutes(
           completedDays: [],
         });
       }
+
+      const user = await storage.getUser(req.session.userId!);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin && progress.completedDays.length > 0) {
+        const timestamps: Record<string, string> = JSON.parse(progress.completedTimestamps || "{}");
+        const lastCompletedDayId = progress.completedDays[progress.completedDays.length - 1];
+        const lastTs = timestamps[lastCompletedDayId];
+        if (lastTs) {
+          const completedDate = new Date(lastTs);
+          const now = new Date();
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (completedDate >= todayStart) {
+            return res.status(429).json({ message: "Você já completou um desafio hoje. Volte amanhã!" });
+          }
+        }
+      }
+
       const updated = await storage.completeJourneyDay(req.session.userId!, journeyId, dayId);
       res.json(updated);
     } catch (error) {

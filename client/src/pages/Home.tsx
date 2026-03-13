@@ -16,7 +16,7 @@ import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
 import { useQuery } from "@tanstack/react-query";
 import { JOURNEYS } from "./Journey";
-import { Flame, Target, ArrowUpRight } from "lucide-react";
+import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
 import { useLocation } from "wouter";
 
 
@@ -336,24 +336,38 @@ export default function Home() {
 
   const todayActivity = useMemo(() => {
     if (!isPremium || !journeyProgressData) return null;
-    const progressMap: Record<string, string[]> = {};
+    const progressMap: Record<string, { completedDays: string[]; timestamps: Record<string, string> }> = {};
     (journeyProgressData as any[]).forEach((p: any) => {
-      progressMap[p.journeyId] = p.completedDays;
+      let ts: Record<string, string> = {};
+      try { ts = JSON.parse(p.completedTimestamps || "{}"); } catch {}
+      progressMap[p.journeyId] = { completedDays: p.completedDays, timestamps: ts };
     });
     for (const journey of JOURNEYS) {
-      const completed = progressMap[journey.id];
-      if (!completed || completed.length === 0) continue;
-      if (completed.length >= journey.totalDays) continue;
-      const nextDay = journey.days.find((d) => !completed.includes(d.id));
+      const progress = progressMap[journey.id];
+      if (!progress || progress.completedDays.length === 0) continue;
+      if (progress.completedDays.length >= journey.totalDays) continue;
+      const nextDay = journey.days.find((d) => !progress.completedDays.includes(d.id));
       if (nextDay) {
-        return { journey, day: nextDay, completedCount: completed.length };
+        const dayIdx = journey.days.findIndex((d) => d.id === nextDay.id);
+        let lockedUntilTomorrow = false;
+        if (dayIdx > 0) {
+          const prevDay = journey.days[dayIdx - 1];
+          const prevCompletedAt = progress.timestamps[prevDay.id];
+          if (prevCompletedAt) {
+            const completedDate = new Date(prevCompletedAt);
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            lockedUntilTomorrow = completedDate >= todayStart;
+          }
+        }
+        return { journey, day: nextDay, completedCount: progress.completedDays.length, lockedUntilTomorrow };
       }
     }
     return null;
   }, [isPremium, journeyProgressData]);
 
   const handleCompleteJourneyDay = async () => {
-    if (!todayActivity) return;
+    if (!todayActivity || todayActivity.lockedUntilTomorrow) return;
     try {
       await fetch("/api/journey/complete-day", {
         method: "POST",
@@ -654,18 +668,25 @@ export default function Home() {
                     <h4 className="text-sm font-semibold text-foreground">{todayActivity.day.title}</h4>
                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{todayActivity.day.description}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleCompleteJourneyDay();
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold active:scale-95 transition-all"
-                        data-testid="button-home-complete-day"
-                      >
-                        <Check size={11} />
-                        Feito
-                      </button>
+                      {todayActivity.lockedUntilTomorrow ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-semibold">
+                          <Lock size={11} />
+                          Disponível amanhã
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCompleteJourneyDay();
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold active:scale-95 transition-all"
+                          data-testid="button-home-complete-day"
+                        >
+                          <Check size={11} />
+                          Feito
+                        </button>
+                      )}
                       {todayActivity.day.appLink && (
                         <button
                           onClick={(e) => {
