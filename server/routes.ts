@@ -243,9 +243,6 @@ export async function registerRoutes(
         return res.status(409).json({ message: "Email já cadastrado" });
       }
 
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
       const isAdminEmail = data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       const verificationToken = randomBytes(32).toString("hex");
       const user = await storage.createUser({
@@ -256,7 +253,7 @@ export async function registerRoutes(
         role: isAdminEmail ? "admin" : "user",
         isPremium: isAdminEmail,
         isActive: true,
-        trialEndsAt,
+        trialEndsAt: null,
         premiumUntil: null,
         invitedBy: data.inviteCode || null,
         emailVerified: isAdminEmail,
@@ -504,8 +501,6 @@ export async function registerRoutes(
       }
 
       if (!user) {
-        const trialEndsAt = new Date();
-        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
         const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
         user = await storage.createUser({
@@ -516,7 +511,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt,
+          trialEndsAt: null,
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -799,8 +794,6 @@ export async function registerRoutes(
       }
 
       const tempPassword = randomBytes(4).toString("hex");
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
       const user = await storage.createUser({
         username: email,
@@ -810,7 +803,7 @@ export async function registerRoutes(
         role: "user",
         isPremium: grantPremium || false,
         isActive: true,
-        trialEndsAt,
+        trialEndsAt: null,
         premiumUntil: null,
         invitedBy: "admin",
       });
