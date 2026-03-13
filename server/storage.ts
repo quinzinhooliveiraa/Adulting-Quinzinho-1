@@ -167,6 +167,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<boolean> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, id));
+    await db.delete(journeyProgress).where(eq(journeyProgress.userId, id));
     await db.delete(feedbackTickets).where(eq(feedbackTickets.userId, id));
     await db.delete(moodCheckins).where(eq(moodCheckins.userId, id));
     await db.delete(journalEntries).where(eq(journalEntries.userId, id));
