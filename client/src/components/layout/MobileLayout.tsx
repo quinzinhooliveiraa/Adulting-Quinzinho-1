@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -193,6 +193,35 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     window.location.reload();
   };
 
+  const handleManagePlan = async () => {
+    setShowMenu(false);
+    if (user?.premiumReason === "paid") {
+      try {
+        const res = await fetch("/api/stripe/portal", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+      } catch {}
+    } else {
+      window.location.href = "/";
+    }
+  };
+
+  const getPlanLabel = () => {
+    if (!user) return "";
+    switch (user.premiumReason) {
+      case "admin": return "Admin";
+      case "paid": return "Premium";
+      case "granted": return "Premium";
+      case "trial": return "Período de teste";
+      case "expired": return "Plano gratuito";
+      case "blocked": return "Bloqueado";
+      default: return "Plano gratuito";
+    }
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -292,6 +321,24 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       </div>
 
       <div className="border-t border-border">
+        <button
+          onClick={handleManagePlan}
+          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          data-testid="button-manage-plan"
+        >
+          {user?.hasPremium ? <Crown size={15} className="text-amber-500" /> : <CreditCard size={15} />}
+          <span className="flex-1 text-left">Gerenciar Plano</span>
+          <span className={cn(
+            "text-[11px] px-2 py-0.5 rounded-full font-medium",
+            user?.premiumReason === "paid" || user?.premiumReason === "granted" || user?.premiumReason === "admin"
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+              : user?.premiumReason === "trial"
+                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                : "bg-muted text-muted-foreground"
+          )}>
+            {getPlanLabel()}
+          </span>
+        </button>
         {isPushSupported() && (
           <button
             onClick={handleTogglePush}
