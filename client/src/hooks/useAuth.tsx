@@ -69,9 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleLoginMutation = useMutation({
     mutationFn: async ({ credential }: { credential: string }) => {
       const res = await apiRequest("POST", "/api/auth/google", { credential });
-      return res.json() as Promise<AuthUser>;
+      return res.json() as Promise<AuthUser & { isNewUser?: boolean }>;
     },
     onSuccess: (data) => {
+      if (data.isNewUser) {
+        localStorage.setItem("casa-dos-20-needs-onboarding", "true");
+      }
       queryClient.setQueryData(["/api/auth/me"], data);
     },
   });

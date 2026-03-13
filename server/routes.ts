@@ -500,6 +500,7 @@ export async function registerRoutes(
         }
       }
 
+      let isNewUser = false;
       if (!user) {
         const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
@@ -517,6 +518,7 @@ export async function registerRoutes(
           googleId,
           emailVerified: true,
         });
+        isNewUser = true;
       }
 
       if (!user.isActive) {
@@ -537,6 +539,7 @@ export async function registerRoutes(
         emailVerified: user.emailVerified,
         journeyOnboardingDone: user.journeyOnboardingDone,
         journeyOrder: user.journeyOrder,
+        isNewUser,
       });
     } catch (error) {
       console.error("Google auth error:", error);

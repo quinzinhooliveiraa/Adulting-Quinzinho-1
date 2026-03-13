@@ -22,13 +22,14 @@ import Premium from "@/pages/Premium";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
+  const needsOnboarding = user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    if (user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true") {
+    if (needsOnboarding) {
       setShowOnboarding(true);
     }
-  }, [user]);
+  }, [needsOnboarding]);
 
   if (isLoading) {
     return (
