@@ -52,6 +52,30 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Progress persisted in DB via `/api/journey/progress`, `/api/journey/start`, `/api/journey/complete-day`, `/api/journey/uncomplete-day`, `/api/journey/onboarding`, `/api/journey/restart`
 - Journey content defined in `client/src/pages/Journey.tsx` (exported `JOURNEYS` array)
 
+## Email Verification
+- Email verification required before accessing the app (full-screen gate in `EmailVerificationGate.tsx`)
+- Verification email sent on registration via Resend (`sendVerificationEmail()` in routes.ts)
+- Routes: `GET /api/auth/verify-email?token=`, `POST /api/auth/resend-verification`
+- Admin users bypass the gate (can use app without verifying)
+- DB columns: `emailVerified` (boolean), `emailVerificationToken` (text)
+- Gate shows: email address, "Já confirmei" button (re-fetches user), resend button, logout option
+
+## Google OAuth
+- Google Sign-In via Google Identity Services library (GSI)
+- `GET /api/auth/google-client-id` returns client ID (from `GOOGLE_CLIENT_ID` env var)
+- `POST /api/auth/google` decodes Google ID token, creates/finds user by `googleId` or email
+- Google users auto-verified (`emailVerified: true`), skip verification gate
+- DB column: `googleId` (text) on users table
+
+## Stripe Integration
+- Connected via Replit Stripe integration (`server/stripeClient.ts`)
+- Products seeded via `scripts/seed-products.ts`: R$9,90/month and R$79,90/year
+- Checkout: `POST /api/stripe/checkout` with `{ priceId, trialDays }` → creates Stripe checkout session
+- Trial: 14-day free trial with card required (uses `subscription_data.trial_period_days`)
+- Products list: `GET /api/stripe/products` returns available plans from DB
+- Webhook: `/api/stripe/webhook` registered before express.json() for raw body parsing
+- DB columns: `stripeCustomerId`, `stripeSubscriptionId` on users
+
 ## Premium / Freemium Model
 - New users get 14-day free trial (trialEndsAt set on registration)
 - Card game mode requires premium access (trial, paid, or admin-granted)
@@ -60,6 +84,14 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Admin users always have full access
 - `getUserPremiumStatus()` in routes.ts determines access: admin > paid > granted > trial > expired > blocked
 - Frontend checks `user.hasPremium` from auth context
+
+## Onboarding
+- Shows ONLY for new registrations (localStorage flag `casa-dos-20-needs-onboarding`)
+- Never shows for returning/existing users
+- Steps: welcome → checkin → journal → questions → journeys → book → notifications → premium
+- Smooth slide animations with staggered fade-in effects
+- Premium step: "Começar Trial Grátis" → Stripe checkout with 14-day trial (card required)
+- "Continuar grátis por agora" skips premium and enters app
 
 ## Admin System
 - Admin role: full access to all features + admin panel at `/admin`

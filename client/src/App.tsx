@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,8 +7,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { EmailVerificationGate } from "@/components/EmailVerificationGate";
 import NotFound from "@/pages/not-found";
 import Auth from "@/pages/Auth";
+import Onboarding from "@/components/Onboarding";
 
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
@@ -20,7 +22,13 @@ import Admin from "@/pages/Admin";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
-  const [justRegistered, setJustRegistered] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true") {
+      setShowOnboarding(true);
+    }
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -35,7 +43,21 @@ function AuthGate() {
       <Auth
         onRegisterSuccess={() => {
           localStorage.setItem("casa-dos-20-needs-onboarding", "true");
-          setJustRegistered(true);
+        }}
+      />
+    );
+  }
+
+  if (!user.emailVerified && user.role !== "admin") {
+    return <EmailVerificationGate />;
+  }
+
+  if (showOnboarding) {
+    return (
+      <Onboarding
+        onComplete={() => {
+          localStorage.removeItem("casa-dos-20-needs-onboarding");
+          setShowOnboarding(false);
         }}
       />
     );

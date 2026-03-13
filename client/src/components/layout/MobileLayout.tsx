@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
-import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { useMutation } from "@tanstack/react-query";
@@ -463,7 +462,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
           {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
 
-          <EmailVerificationBanner />
           <main className={cn("flex-1 overflow-y-auto", isDesktop ? "pb-6" : "pb-24")}>
             {children}
           </main>

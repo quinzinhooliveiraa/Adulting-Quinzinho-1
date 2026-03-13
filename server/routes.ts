@@ -472,14 +472,22 @@ export async function registerRoutes(
       }
 
       const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
-      const session = await stripe.checkout.sessions.create({
+      const sessionParams: any = {
         customer: customerId,
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
         success_url: `${domain}/?checkout=success`,
         cancel_url: `${domain}/?checkout=cancel`,
-      });
+      };
+
+      if (req.body.trialDays) {
+        sessionParams.subscription_data = {
+          trial_period_days: Math.min(req.body.trialDays, 14),
+        };
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       res.json({ url: session.url });
     } catch (error: any) {
