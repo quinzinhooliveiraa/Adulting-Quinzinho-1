@@ -263,6 +263,7 @@ export default function JourneyDetail() {
   const [report, setReport] = useState<JourneyReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   useEffect(() => {
     if (!journeyId) return;
@@ -283,6 +284,23 @@ export default function JourneyDetail() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [journeyId]);
+
+  useEffect(() => {
+    if (!journeyId || loading || completedDays.length === 0) return;
+    if (journey && completedDays.length >= journey.totalDays) {
+      fetch("/api/journey/reports", { credentials: "include" })
+        .then(r => r.json())
+        .then((reports: any[]) => {
+          const existing = reports.find((r: any) => r.journeyId === journeyId);
+          if (existing) {
+            try {
+              setReport(JSON.parse(existing.reportData));
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    }
+  }, [journeyId, loading, completedDays.length]);
 
   useEffect(() => {
     if (!journey || loading) return;
@@ -686,6 +704,7 @@ export default function JourneyDetail() {
                     return;
                   }
                   setLoadingReport(true);
+                  setReportError("");
                   try {
                     const dayDescs = journey.days.map(d => `Dia ${d.day}: ${d.title} (${d.type})`).join("\n");
                     const res = await fetch("/api/journey/report", {
@@ -704,8 +723,13 @@ export default function JourneyDetail() {
                       const data = await res.json();
                       setReport(data.report);
                       setShowReport(true);
+                    } else {
+                      const err = await res.json().catch(() => ({}));
+                      setReportError(err.message || "Erro ao gerar relatório. Tente novamente.");
                     }
-                  } catch {}
+                  } catch {
+                    setReportError("Erro de conexão. Verifique sua internet e tente novamente.");
+                  }
                   setLoadingReport(false);
                 }}
                 disabled={loadingReport}
@@ -730,6 +754,9 @@ export default function JourneyDetail() {
                   </>
                 )}
               </button>
+              {reportError && (
+                <p className="text-xs text-red-500 text-center mt-2" data-testid="text-report-error">{reportError}</p>
+              )}
             </div>
           )}
 
