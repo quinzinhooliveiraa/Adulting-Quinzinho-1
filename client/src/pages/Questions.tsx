@@ -10,6 +10,35 @@ import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } fr
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
+import { useQuery } from "@tanstack/react-query";
+
+function useStripeCheckout() {
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["/api/stripe/products"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/products");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+  const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
+  const yearlyPrice = products.find((p: any) => p.recurring?.interval === "year");
+
+  const checkout = async (priceId: string) => {
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {}
+  };
+
+  return { monthlyPrice, yearlyPrice, checkout };
+}
 
 const SOLO_THEMES = {
   identity: {
@@ -1688,62 +1717,12 @@ function CardGame({
     : currentIndex + 1;
 
   if (showCompleted && isFreeLimit) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
-          <Crown size={32} className="text-white" />
-        </div>
-        <h2 className="text-2xl font-serif text-foreground text-center mb-2">Suas cartas grátis acabaram!</h2>
-        <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed mb-6">
-          Você explorou {questions.length} perguntas gratuitas de {title}.
-          {savedCards.length > 0 && ` ${savedCards.length} foram salvas.`}
-        </p>
-
-        <div className="w-full max-w-xs bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
-          <div className="flex items-baseline justify-center gap-1 mb-3">
-            <span className="text-3xl font-bold text-foreground">R$9,90</span>
-            <span className="text-sm text-muted-foreground">/mês</span>
-          </div>
-          <ul className="space-y-2 text-sm text-foreground">
-            <li className="flex items-center gap-2">
-              <Check size={16} className="text-amber-600 shrink-0" />
-              <span>Todas as perguntas desbloqueadas</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check size={16} className="text-amber-600 shrink-0" />
-              <span>Modo Sozinho e Conversa completos</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check size={16} className="text-amber-600 shrink-0" />
-              <span>Modo Sorteio ilimitado</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check size={16} className="text-amber-600 shrink-0" />
-              <span>Novas perguntas toda semana</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <button
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform"
-            data-testid="button-subscribe-end"
-          >
-            Assinar por R$9,90/mês
-          </button>
-          <button
-            onClick={onBack}
-            className="w-full p-4 bg-muted text-foreground rounded-2xl font-medium text-sm"
-            data-testid="button-back-categories"
-          >
-            Voltar
-          </button>
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-4 text-center">
-          Cancele quando quiser.
-        </p>
-      </div>
-    );
+    return <CardGamePaywall
+      title={title}
+      questionsCount={questions.length}
+      savedCount={savedCards.length}
+      onBack={onBack}
+    />;
   }
 
   if (showCompleted) {
@@ -2083,52 +2062,102 @@ function RelationSelect({
   );
 }
 
-function PremiumGate({ onBack }: { onBack: () => void }) {
+function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; context: "gate" | "cards" }) {
+  const { monthlyPrice, yearlyPrice, checkout } = useStripeCheckout();
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    const price = selectedPlan === "yearly" ? yearlyPrice : monthlyPrice;
+    if (!price) return;
+    setLoading(true);
+    await checkout(price.price_id);
+    setLoading(false);
+  };
+
+  const yearlyMonthly = yearlyPrice ? (parseFloat(yearlyPrice.unit_amount) / 100 / 12).toFixed(2).replace(".", ",") : "6,66";
+  const yearlySavings = monthlyPrice && yearlyPrice
+    ? Math.round(100 - (parseFloat(yearlyPrice.unit_amount) / (parseFloat(monthlyPrice.unit_amount) * 12)) * 100)
+    : 33;
+
   return (
-    <div className="px-6 pt-12 pb-8 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in duration-500">
+    <div className={`${context === "gate" ? "px-6 pt-12 pb-8 min-h-[70vh]" : "p-8 min-h-screen"} flex flex-col items-center justify-center animate-in fade-in duration-500`}>
       <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
         <Crown size={32} className="text-white" />
       </div>
-      <h1 className="text-2xl font-serif text-foreground text-center mb-2">Desbloqueie Tudo</h1>
+      <h1 className="text-2xl font-serif text-foreground text-center mb-2">
+        {context === "cards" ? "Suas cartas grátis acabaram!" : "Desbloqueie Tudo"}
+      </h1>
       <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed mb-6">
-        Você usou suas perguntas gratuitas. Assine para desbloquear todas as perguntas de todos os temas e modos.
+        {context === "cards"
+          ? "Assine para desbloquear todas as perguntas, modos e funcionalidades."
+          : "Assine para desbloquear todas as perguntas de todos os temas e modos."}
       </p>
 
-      <div className="w-full max-w-xs bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
-        <div className="flex items-baseline justify-center gap-1 mb-3">
-          <span className="text-3xl font-bold text-foreground">R$9,90</span>
-          <span className="text-sm text-muted-foreground">/mês</span>
-        </div>
-        <ul className="space-y-2 text-sm text-foreground">
-          <li className="flex items-center gap-2">
-            <Check size={16} className="text-amber-600 shrink-0" />
-            <span>Todas as perguntas de todos os temas</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check size={16} className="text-amber-600 shrink-0" />
-            <span>Modo Sozinho completo</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check size={16} className="text-amber-600 shrink-0" />
-            <span>Modo Conversa completo</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check size={16} className="text-amber-600 shrink-0" />
-            <span>Modo Sorteio ilimitado</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <Check size={16} className="text-amber-600 shrink-0" />
-            <span>Novas perguntas toda semana</span>
-          </li>
-        </ul>
+      <div className="w-full max-w-xs space-y-3 mb-6">
+        <button
+          onClick={() => setSelectedPlan("yearly")}
+          className={`w-full p-4 rounded-2xl border-2 transition-all text-left relative ${
+            selectedPlan === "yearly"
+              ? "border-amber-500 bg-amber-500/5"
+              : "border-border hover:border-amber-500/40"
+          }`}
+          data-testid="plan-yearly"
+        >
+          <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold">
+            ECONOMIZE {yearlySavings}%
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold text-foreground">R$79,90</span>
+            <span className="text-sm text-muted-foreground">/ano</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">R${yearlyMonthly}/mês — melhor custo-benefício</p>
+        </button>
+
+        <button
+          onClick={() => setSelectedPlan("monthly")}
+          className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${
+            selectedPlan === "monthly"
+              ? "border-amber-500 bg-amber-500/5"
+              : "border-border hover:border-amber-500/40"
+          }`}
+          data-testid="plan-monthly"
+        >
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold text-foreground">R$9,90</span>
+            <span className="text-sm text-muted-foreground">/mês</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">Flexível, cancele quando quiser</p>
+        </button>
       </div>
 
-      <div className="w-full max-w-xs space-y-3">
+      <ul className="w-full max-w-xs space-y-2 text-sm text-foreground mb-6">
+        <li className="flex items-center gap-2">
+          <Check size={16} className="text-amber-600 shrink-0" />
+          <span>Todas as perguntas de todos os temas</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Check size={16} className="text-amber-600 shrink-0" />
+          <span>Modos Sozinho, Conversa e Sorteio completos</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Check size={16} className="text-amber-600 shrink-0" />
+          <span>Jornadas de 30 dias e diário ilimitado</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Check size={16} className="text-amber-600 shrink-0" />
+          <span>Criar salas online e novas perguntas toda semana</span>
+        </li>
+      </ul>
+
+      <div className="flex flex-col gap-3 w-full max-w-xs">
         <button
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform"
+          onClick={handleSubscribe}
+          disabled={loading || (!monthlyPrice && !yearlyPrice)}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           data-testid="button-subscribe"
         >
-          Assinar por R$9,90/mês
+          {loading ? "Redirecionando..." : selectedPlan === "yearly" ? "Assinar Anual — R$79,90/ano" : "Assinar Mensal — R$9,90/mês"}
         </button>
         <button
           onClick={onBack}
@@ -2138,11 +2167,19 @@ function PremiumGate({ onBack }: { onBack: () => void }) {
           Voltar
         </button>
       </div>
-      <p className="text-[10px] text-muted-foreground mt-6 text-center max-w-[240px]">
-        Cancele quando quiser. Se alguém premium te convidou, entre pelo link que recebeu.
+      <p className="text-[10px] text-muted-foreground mt-4 text-center">
+        Cancele quando quiser.
       </p>
     </div>
   );
+}
+
+function CardGamePaywall({ title, questionsCount, savedCount, onBack }: { title: string; questionsCount: number; savedCount: number; onBack: () => void }) {
+  return <SubscriptionPlanSelector onBack={onBack} context="cards" />;
+}
+
+function PremiumGate({ onBack }: { onBack: () => void }) {
+  return <SubscriptionPlanSelector onBack={onBack} context="gate" />;
 }
 
 function useWebSocket() {

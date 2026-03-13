@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye } from "lucide-react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown } from "lucide-react";
 import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,108 @@ import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import NotebookEditor from "@/components/NotebookEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useJournalEntries, useCreateEntry, useUpdateEntry, useDeleteEntry } from "@/hooks/useJournal";
+import { useQuery } from "@tanstack/react-query";
 import type { JournalEntry } from "@shared/schema";
+
+function JournalUpgradePopup({ limit, onClose }: { limit: number; onClose: () => void }) {
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["/api/stripe/products"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/products");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+  const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
+  const yearlyPrice = products.find((p: any) => p.recurring?.interval === "year");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    const price = selectedPlan === "yearly" ? yearlyPrice : monthlyPrice;
+    if (!price) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ priceId: price.price_id }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {}
+    setLoading(false);
+  };
+
+  const yearlyMonthly = yearlyPrice ? (parseFloat(yearlyPrice.unit_amount) / 100 / 12).toFixed(2).replace(".", ",") : "6,66";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+      <div className="bg-card rounded-2xl p-6 max-w-sm w-full space-y-4 border border-border shadow-xl">
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+            <Crown size={24} className="text-amber-600" />
+          </div>
+          <h3 className="text-lg font-serif text-foreground">Limite Mensal Atingido</h3>
+          <p className="text-sm text-muted-foreground">
+            Você usou todas as suas {limit} reflexões gratuitas deste mês.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <button
+            onClick={() => setSelectedPlan("yearly")}
+            className={`w-full p-3 rounded-xl border-2 transition-all text-left relative ${
+              selectedPlan === "yearly" ? "border-amber-500 bg-amber-500/5" : "border-border"
+            }`}
+            data-testid="plan-yearly-journal"
+          >
+            <div className="absolute -top-2 right-3 px-2 py-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold">
+              MELHOR VALOR
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-foreground">R$79,90</span>
+              <span className="text-xs text-muted-foreground">/ano</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">R${yearlyMonthly}/mês</p>
+          </button>
+
+          <button
+            onClick={() => setSelectedPlan("monthly")}
+            className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
+              selectedPlan === "monthly" ? "border-amber-500 bg-amber-500/5" : "border-border"
+            }`}
+            data-testid="plan-monthly-journal"
+          >
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-foreground">R$9,90</span>
+              <span className="text-xs text-muted-foreground">/mês</span>
+            </div>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={handleSubscribe}
+            disabled={loading || (!monthlyPrice && !yearlyPrice)}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-sm font-semibold text-center active:scale-[0.98] transition-transform disabled:opacity-50"
+            data-testid="button-upgrade-journal"
+          >
+            {loading ? "Redirecionando..." : "Assinar Premium"}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-2 text-sm text-muted-foreground"
+            data-testid="button-close-upgrade"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function extractCleanText(raw: string): string {
   try {
@@ -724,36 +825,10 @@ export default function Journal() {
       )}
 
       {showUpgradePopup && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-card rounded-2xl p-6 max-w-sm w-full space-y-4 border border-border shadow-xl">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
-                <PenLine size={24} className="text-amber-600" />
-              </div>
-              <h3 className="text-lg font-serif text-foreground">Limite Mensal Atingido</h3>
-              <p className="text-sm text-muted-foreground">
-                Você usou todas as suas {journalLimit?.limit || 15} reflexões gratuitas deste mês. 
-                Assine o premium para escrever sem limites!
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <a
-                href="/subscribe"
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold text-center"
-                data-testid="button-upgrade-journal"
-              >
-                Assinar Premium — R$9,90/mês
-              </a>
-              <button
-                onClick={() => setShowUpgradePopup(false)}
-                className="w-full py-2 text-sm text-muted-foreground"
-                data-testid="button-close-upgrade"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
+        <JournalUpgradePopup
+          limit={journalLimit?.limit || 15}
+          onClose={() => setShowUpgradePopup(false)}
+        />
       )}
 
       {!isWriting && !viewingEntry && (
