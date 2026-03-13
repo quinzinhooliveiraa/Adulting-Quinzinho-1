@@ -3,7 +3,7 @@ import {
   ArrowRight, ArrowLeft, Bell, Check,
   Map, BookOpen, PenLine, MessageCircle, Smile,
   BellRing, Crown, Loader2, CheckCircle2, Clock,
-  CreditCard, ShieldCheck, Sparkles
+  CreditCard, ShieldCheck, Sparkles, FileText, Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import bookCover from "@/assets/images/book-cover-oficial.png";
@@ -267,11 +267,22 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     </div>
                   ))}
                 </div>
+                <div className="pt-2 border-t border-border/50">
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/15 text-left" style={{ animation: `staggerFade 0.4s ease-out 0.7s both` }}>
+                    <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                      <Brain size={14} className="text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Relatório com IA</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Ao completar, receba uma análise personalizada</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Jornadas de 30 Dias</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Trilhe caminhos temáticos com exercícios diários. Cada dia é desbloqueado ao completar o anterior — um passo de cada vez.
+                  Trilhe caminhos temáticos com exercícios diários. Ao completar uma jornada, receba um relatório personalizado feito por IA com seus pontos fortes e dicas práticas.
                 </p>
               </div>
             </div>
@@ -420,6 +431,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       "Tudo do plano gratuito",
                       "Todas as cartas de reflexão ilimitadas",
                       "Jornadas completas de 30 dias",
+                      "Relatórios personalizados com IA",
                       "Diário com fotos, desenhos e banners",
                       "Todos os capítulos do livro",
                       "Notificações personalizadas"
