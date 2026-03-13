@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Crown, Check, Sparkles, BookOpen, PenLine, Map } from "lucide-react";
+import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function Premium() {
@@ -40,10 +40,9 @@ export default function Premium() {
   };
 
   const features = [
-    { icon: Sparkles, text: "Cartas de reflexão ilimitadas" },
+    { icon: Sparkles, text: "Todas as cartas de reflexão desbloqueadas" },
     { icon: Map, text: "Jornadas de 30 dias completas" },
-    { icon: PenLine, text: "Diário sem limites" },
-    { icon: BookOpen, text: "Todos os capítulos do livro" },
+    { icon: PenLine, text: "Diário ilimitado com todas as funcionalidades" },
   ];
 
   const trialDaysLeft = user?.trialEndsAt
