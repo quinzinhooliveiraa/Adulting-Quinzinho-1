@@ -83,6 +83,7 @@ export const journeyProgress = pgTable("journey_progress", {
   userId: varchar("user_id").notNull().references(() => users.id),
   journeyId: text("journey_id").notNull(),
   completedDays: text("completed_days").array().notNull().default(sql`'{}'::text[]`),
+  completedTimestamps: text("completed_timestamps").default("{}"),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
 });

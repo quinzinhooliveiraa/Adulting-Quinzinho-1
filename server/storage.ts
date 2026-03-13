@@ -245,9 +245,12 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getJourneyProgressByJourney(userId, journeyId);
     if (!existing) return undefined;
     if (existing.completedDays.includes(dayId)) return existing;
+    const timestamps: Record<string, string> = JSON.parse(existing.completedTimestamps || "{}");
+    timestamps[dayId] = new Date().toISOString();
     const [updated] = await db.update(journeyProgress)
       .set({
         completedDays: [...existing.completedDays, dayId],
+        completedTimestamps: JSON.stringify(timestamps),
         lastActivityAt: new Date(),
       })
       .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
@@ -258,9 +261,12 @@ export class DatabaseStorage implements IStorage {
   async uncompleteJourneyDay(userId: string, journeyId: string, dayId: string): Promise<JourneyProgress | undefined> {
     const existing = await this.getJourneyProgressByJourney(userId, journeyId);
     if (!existing) return undefined;
+    const timestamps: Record<string, string> = JSON.parse(existing.completedTimestamps || "{}");
+    delete timestamps[dayId];
     const [updated] = await db.update(journeyProgress)
       .set({
         completedDays: existing.completedDays.filter(d => d !== dayId),
+        completedTimestamps: JSON.stringify(timestamps),
         lastActivityAt: new Date(),
       })
       .where(and(eq(journeyProgress.userId, userId), eq(journeyProgress.journeyId, journeyId)))
@@ -272,6 +278,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(journeyProgress)
       .set({
         completedDays: [],
+        completedTimestamps: "{}",
         startedAt: new Date(),
         lastActivityAt: new Date(),
       })

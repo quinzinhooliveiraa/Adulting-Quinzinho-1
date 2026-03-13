@@ -1264,7 +1264,7 @@ export async function registerRoutes(
         });
       }
       const updated = await storage.completeJourneyDay(req.session.userId!, journeyId, dayId);
-      res.json({ ...updated, lastCompletedAt: new Date().toISOString() });
+      res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Erro ao completar dia" });
     }

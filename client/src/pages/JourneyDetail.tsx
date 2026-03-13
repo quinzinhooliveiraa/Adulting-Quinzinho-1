@@ -272,6 +272,10 @@ export default function JourneyDetail() {
         const p = data.find((d) => d.journeyId === journeyId);
         if (p) {
           setCompletedDays(p.completedDays);
+          try {
+            const ts = JSON.parse(p.completedTimestamps || "{}");
+            setCompletedTimestamps(ts);
+          } catch {}
         } else {
           setShowStartConfirm(true);
         }
@@ -359,9 +363,10 @@ export default function JourneyDetail() {
       if (res.ok) {
         const data = await res.json();
         setCompletedDays(data.completedDays);
-        if (isCompleting) {
-          setCompletedTimestamps(prev => ({ ...prev, [dayId]: data.lastCompletedAt || new Date().toISOString() }));
-        }
+        try {
+          const ts = JSON.parse(data.completedTimestamps || "{}");
+          setCompletedTimestamps(ts);
+        } catch {}
       }
     } catch {}
     setTimeout(() => setAnimatingDay(null), 300);
