@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound } from "lucide-react";
+import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import iconLight from "@/assets/images/icon-light.png";
 import iconDark from "@/assets/images/icon-dark.png";
 import { useTheme } from "next-themes";
@@ -31,6 +31,8 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [emailValidation, setEmailValidation] = useState<{ status: "idle" | "checking" | "valid" | "invalid"; message?: string; suggestion?: string }>({ status: "idle" });
+  const emailValidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { login, register, loginWithGoogle } = useAuth();
   const { resolvedTheme } = useTheme();
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,52 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
     });
   }, [googleClientId, resolvedTheme, handleGoogleCallback]);
 
+  const validateEmail = useCallback((emailValue: string) => {
+    if (emailValidationTimer.current) {
+      clearTimeout(emailValidationTimer.current);
+    }
+
+    if (!emailValue || !emailValue.includes("@") || !emailValue.includes(".")) {
+      setEmailValidation({ status: "idle" });
+      return;
+    }
+
+    setEmailValidation({ status: "checking" });
+
+    emailValidationTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/auth/validate-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailValue }),
+        });
+        const data = await res.json();
+        if (data.valid) {
+          setEmailValidation({ status: "valid", message: "Email válido" });
+        } else {
+          setEmailValidation({ status: "invalid", message: data.reason, suggestion: data.suggestion });
+        }
+      } catch {
+        setEmailValidation({ status: "idle" });
+      }
+    }, 600);
+  }, []);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEmail(val);
+    if (mode === "register") {
+      validateEmail(val);
+    }
+  };
+
+  const applySuggestion = () => {
+    if (emailValidation.suggestion) {
+      setEmail(emailValidation.suggestion);
+      setEmailValidation({ status: "valid", message: "Email válido" });
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError("");
@@ -94,6 +142,16 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
         setError("Este email já está cadastrado.");
       } else if (msg.includes("401")) {
         setError("Email ou senha incorretos.");
+      } else if (msg.includes("400")) {
+        try {
+          const body = JSON.parse(msg);
+          if (body.suggestion) {
+            setEmailValidation({ status: "invalid", message: body.message, suggestion: body.suggestion });
+          }
+          setError(body.message || "Email inválido.");
+        } catch {
+          setError("Email inválido ou domínio não reconhecido.");
+        }
       } else {
         setError(mode === "login" ? "Erro ao fazer login. Tente novamente." : "Erro ao criar conta. Tente novamente.");
       }
@@ -142,7 +200,7 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   };
 
   const isLoginValid = email.includes("@") && password.length >= 1;
-  const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0;
+  const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0 && emailValidation.status !== "invalid";
   const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
   const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isResetValid;
 
@@ -217,14 +275,55 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
             />
           )}
 
-          <Input
-            type="email"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans focus-visible:ring-primary/20"
-            data-testid="input-email"
-          />
+          <div className="relative">
+            <Input
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={handleEmailChange}
+              className={`h-12 rounded-xl bg-white/50 text-center font-sans focus-visible:ring-primary/20 pr-10 ${
+                mode === "register" && emailValidation.status === "valid"
+                  ? "border-green-400/70"
+                  : mode === "register" && emailValidation.status === "invalid"
+                  ? "border-red-400/70"
+                  : "border-border/50"
+              }`}
+              data-testid="input-email"
+            />
+            {mode === "register" && emailValidation.status === "checking" && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="animate-spin text-muted-foreground" size={16} />
+              </div>
+            )}
+            {mode === "register" && emailValidation.status === "valid" && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <CheckCircle2 className="text-green-500" size={16} />
+              </div>
+            )}
+            {mode === "register" && emailValidation.status === "invalid" && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <XCircle className="text-red-500" size={16} />
+              </div>
+            )}
+          </div>
+
+          {mode === "register" && emailValidation.status === "invalid" && emailValidation.message && (
+            <div className="space-y-1">
+              <p className="text-xs text-red-500 text-center flex items-center justify-center gap-1" data-testid="text-email-validation-error">
+                <AlertCircle size={12} />
+                {emailValidation.message}
+              </p>
+              {emailValidation.suggestion && (
+                <button
+                  onClick={applySuggestion}
+                  className="w-full text-xs text-primary font-medium hover:underline text-center"
+                  data-testid="button-email-suggestion"
+                >
+                  Usar {emailValidation.suggestion}
+                </button>
+              )}
+            </div>
+          )}
 
           <Input
             type="password"
@@ -292,7 +391,7 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
             </button>
           ) : (
             <button
-              onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
+              onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setEmailValidation({ status: "idle" }); }}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               data-testid="button-toggle-auth-mode"
             >

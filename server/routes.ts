@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
+import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema } from "@shared/schema";
@@ -80,6 +81,74 @@ async function sendVerificationEmail(email: string, token: string, name: string)
   }
 }
 
+const COMMON_DOMAIN_TYPOS: Record<string, string> = {
+  "gmial.com": "gmail.com",
+  "gmaill.com": "gmail.com",
+  "gmal.com": "gmail.com",
+  "gamil.com": "gmail.com",
+  "gnail.com": "gmail.com",
+  "gmsil.com": "gmail.com",
+  "gmil.com": "gmail.com",
+  "gmail.co": "gmail.com",
+  "gmail.con": "gmail.com",
+  "gmail.cm": "gmail.com",
+  "gmail.om": "gmail.com",
+  "gmai.com": "gmail.com",
+  "hotmal.com": "hotmail.com",
+  "hotmial.com": "hotmail.com",
+  "hotmai.com": "hotmail.com",
+  "hotmail.co": "hotmail.com",
+  "hotmail.con": "hotmail.com",
+  "hotamil.com": "hotmail.com",
+  "outlok.com": "outlook.com",
+  "outllook.com": "outlook.com",
+  "outlook.co": "outlook.com",
+  "outlook.con": "outlook.com",
+  "yaho.com": "yahoo.com",
+  "yahooo.com": "yahoo.com",
+  "yahoo.co": "yahoo.com",
+  "yahoo.con": "yahoo.com",
+  "yhoo.com": "yahoo.com",
+  "iclod.com": "icloud.com",
+  "icloud.co": "icloud.com",
+  "icloud.con": "icloud.com",
+  "protonmal.com": "protonmail.com",
+  "protonmail.co": "protonmail.com",
+};
+
+const DISPOSABLE_DOMAINS = new Set([
+  "tempmail.com", "throwaway.email", "guerrillamail.com", "mailinator.com",
+  "yopmail.com", "10minutemail.com", "trashmail.com", "fakeinbox.com",
+  "sharklasers.com", "guerrillamailblock.com", "grr.la", "dispostable.com",
+  "maildrop.cc", "temp-mail.org", "getnada.com", "mohmal.com",
+]);
+
+async function validateEmailDomain(email: string): Promise<{ valid: boolean; suggestion?: string; reason?: string }> {
+  const parts = email.split("@");
+  if (parts.length !== 2) return { valid: false, reason: "Formato de email inválido" };
+
+  const domain = parts[1].toLowerCase();
+
+  if (DISPOSABLE_DOMAINS.has(domain)) {
+    return { valid: false, reason: "Emails temporários não são permitidos. Use seu email pessoal." };
+  }
+
+  const typoCorrection = COMMON_DOMAIN_TYPOS[domain];
+  if (typoCorrection) {
+    return { valid: false, suggestion: `${parts[0]}@${typoCorrection}`, reason: `Você quis dizer ${parts[0]}@${typoCorrection}?` };
+  }
+
+  try {
+    const mxRecords = await dns.resolveMx(domain);
+    if (!mxRecords || mxRecords.length === 0) {
+      return { valid: false, reason: "Este domínio de email não existe ou não pode receber emails." };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, reason: "Este domínio de email não existe ou não pode receber emails." };
+  }
+}
+
 function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEndsAt: Date | null; premiumUntil: Date | null; isActive: boolean }) {
   if (user.role === "admin") return { hasPremium: true, reason: "admin" as const };
   if (!user.isActive) return { hasPremium: false, reason: "blocked" as const };
@@ -130,6 +199,23 @@ export async function registerRoutes(
     }
   })();
 
+  app.post("/api/auth/validate-email", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ valid: false, reason: "Email é obrigatório" });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(200).json({ valid: false, reason: "Formato de email inválido" });
+      }
+      const result = await validateEmailDomain(email);
+      res.json(result);
+    } catch {
+      res.status(500).json({ valid: false, reason: "Erro ao validar email" });
+    }
+  });
+
   const registerSchema = z.object({
     name: z.string().min(1),
     email: z.string().email(),
@@ -140,6 +226,14 @@ export async function registerRoutes(
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const data = registerSchema.parse(req.body);
+
+      const emailValidation = await validateEmailDomain(data.email);
+      if (!emailValidation.valid) {
+        return res.status(400).json({ 
+          message: emailValidation.reason || "Email inválido",
+          suggestion: emailValidation.suggestion 
+        });
+      }
 
       const existing = await storage.getUserByEmail(data.email);
       if (existing) {
