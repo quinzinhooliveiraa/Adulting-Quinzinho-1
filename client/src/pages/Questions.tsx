@@ -2600,7 +2600,7 @@ function LobbyScreen({
         <button
           onClick={() => {
             if (!isPremium) {
-              setError("Crie salas com o plano premium! Você pode entrar em salas criadas por amigos premium.");
+              setError("Criar salas é exclusivo do plano premium. Peça o código de um amigo premium e entre na sala dele!");
               return;
             }
             handleCreate();
@@ -2627,7 +2627,7 @@ function LobbyScreen({
         </div>
 
         <div className="p-4 rounded-2xl bg-muted/50 border border-border space-y-3">
-          <p className="text-sm font-medium text-foreground">Entrar numa Sala</p>
+          <p className="text-sm font-medium text-foreground">Entrar numa Sala {!isPremium && <span className="text-[10px] text-green-600 ml-1">GRÁTIS</span>}</p>
           <div className="flex gap-2">
             <input
               value={joinCode}
