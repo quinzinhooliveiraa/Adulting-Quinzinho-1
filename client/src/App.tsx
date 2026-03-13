@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { EmailVerificationGate } from "@/components/EmailVerificationGate";
 import NotFound from "@/pages/not-found";
 import Auth from "@/pages/Auth";
 import Onboarding from "@/components/Onboarding";
@@ -46,10 +45,6 @@ function AuthGate() {
         }}
       />
     );
-  }
-
-  if (!user.emailVerified && user.role !== "admin") {
-    return <EmailVerificationGate />;
   }
 
   if (showOnboarding) {
