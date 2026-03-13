@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,7 +111,7 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
 
 export function MobileLayout({ children }: MobileLayoutProps) {
   const [location] = useLocation();
-  const { logout, user } = useAuth();
+  const { logout, user, refetch } = useAuth();
   const { theme, setTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -155,6 +155,27 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
     return localStorage.getItem("casa-dos-20-profile-photo");
   });
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim() || nameInput.trim().length < 2) return;
+    setNameSaving(true);
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: nameInput.trim() }),
+      });
+      if (res.ok) {
+        await refetch();
+        setEditingName(false);
+      }
+    } catch {}
+    setNameSaving(false);
+  };
 
   const navItems = [
     { href: "/", icon: Home, label: "Hoje" },
@@ -211,7 +232,39 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           </button>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+          {editingName ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                autoFocus
+                className="flex-1 text-sm font-medium text-foreground bg-muted/50 border border-border rounded-lg px-2 py-1 min-w-0"
+                placeholder="Seu nome"
+                data-testid="input-edit-name"
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={nameSaving || nameInput.trim().length < 2}
+                className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0 disabled:opacity-40"
+                data-testid="button-save-name"
+              >
+                <Check size={14} className="text-primary-foreground" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+              <button
+                onClick={() => { setNameInput(user?.name || ""); setEditingName(true); }}
+                className="shrink-0 w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                data-testid="button-edit-name"
+              >
+                <Pencil size={11} />
+              </button>
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
         </div>
       </div>
@@ -258,7 +311,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           <MessageSquare size={15} />
           Feedback / Suporte
         </button>
-        {user?.role === "admin" && user?.email === "quinzinhooliveiraa@gmail.com" && (
+        {user?.role === "admin" && (
           <Link
             href="/admin"
             onClick={() => setShowMenu(false)}

@@ -200,6 +200,33 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/auth/profile", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { name } = req.body;
+      if (!name || typeof name !== "string" || name.trim().length < 2) {
+        return res.status(400).json({ message: "O nome deve ter pelo menos 2 caracteres" });
+      }
+      const updated = await storage.updateUser(req.session.userId!, { name: name.trim() });
+      if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+      const premiumStatus = getUserPremiumStatus(updated);
+      res.json({
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: updated.trialEndsAt,
+        premiumUntil: updated.premiumUntil,
+        isActive: updated.isActive,
+        journeyOnboardingDone: updated.journeyOnboardingDone,
+        journeyOrder: updated.journeyOrder,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao atualizar perfil" });
+    }
+  });
+
   app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
     try {
       const { currentPassword, newPassword } = req.body;
