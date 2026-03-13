@@ -595,22 +595,28 @@ export async function registerRoutes(
 
   app.get("/api/stripe/products", async (_req: Request, res: Response) => {
     try {
-      const result = await db.execute(sql`
-        SELECT
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency,
-          pr.recurring
-        FROM stripe.products p
-        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        WHERE p.active = true
-        ORDER BY p.id, pr.unit_amount
-      `);
-      res.json(result.rows);
+      const stripe = await getUncachableStripeClient();
+      const products = await stripe.products.list({ active: true, limit: 10 });
+      const prices = await stripe.prices.list({ active: true, limit: 50 });
+
+      const rows = [];
+      for (const product of products.data) {
+        const productPrices = prices.data.filter(p => p.product === product.id);
+        for (const price of productPrices) {
+          rows.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_description: product.description,
+            product_metadata: product.metadata,
+            price_id: price.id,
+            unit_amount: price.unit_amount,
+            currency: price.currency,
+            recurring: price.recurring,
+          });
+        }
+      }
+      rows.sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+      res.json(rows);
     } catch (error: any) {
       console.error("Products error:", error);
       res.json([]);
