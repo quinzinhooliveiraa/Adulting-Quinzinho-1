@@ -195,18 +195,37 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   const handleManagePlan = async () => {
     setShowMenu(false);
-    if (user?.premiumReason === "paid") {
-      try {
-        const res = await fetch("/api/stripe/portal", {
+    try {
+      const portalRes = await fetch("/api/stripe/portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (portalRes.ok) {
+        const portalData = await portalRes.json();
+        if (portalData.url) {
+          window.location.href = portalData.url;
+          return;
+        }
+      }
+    } catch {}
+    try {
+      const productsRes = await fetch("/api/stripe/products");
+      const products = await productsRes.json();
+      const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
+      if (monthlyPrice?.price_id) {
+        const checkoutRes = await fetch("/api/stripe/checkout", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
+          body: JSON.stringify({ priceId: monthlyPrice.price_id, trialDays: 14 }),
         });
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-      } catch {}
-    } else {
-      window.location.href = "/";
-    }
+        const checkoutData = await checkoutRes.json();
+        if (checkoutData.url) {
+          window.location.href = checkoutData.url;
+          return;
+        }
+      }
+    } catch {}
   };
 
   const getPlanLabel = () => {

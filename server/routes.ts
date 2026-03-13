@@ -685,6 +685,7 @@ export async function registerRoutes(
     isActive: z.boolean().optional(),
     role: z.enum(["user", "admin"]).optional(),
     premiumUntil: z.string().nullable().optional(),
+    trialEndsAt: z.string().nullable().optional(),
   });
 
   app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
@@ -728,6 +729,9 @@ export async function registerRoutes(
       if (data.role !== undefined) updateData.role = data.role;
       if (data.premiumUntil !== undefined) {
         updateData.premiumUntil = data.premiumUntil ? new Date(data.premiumUntil) : null;
+      }
+      if (data.trialEndsAt !== undefined) {
+        updateData.trialEndsAt = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
       }
 
       const updated = await storage.updateUser(userId, updateData);
