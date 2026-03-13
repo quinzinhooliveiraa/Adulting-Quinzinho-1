@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "jbph1k-nNUh-59ihjHoFv"
+uri = "file://GUIA_PUBLICACAO_STORES.md"
+type = "text"
+title = "Guia Completo - Publicação nas Stores"

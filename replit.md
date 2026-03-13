@@ -202,6 +202,17 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `casa-dos-20-seen-{title}` — weighted card seen tracking per category
 - `casa-dos-20-archived-entries` — array of archived journal entry IDs
 
+## Mobile Apps (Capacitor)
+- **Capacitor** configured with `capacitor.config.ts` for native iOS + Android builds
+- App ID: `com.casados20.app`
+- `android/` — Android Studio project (portrait-locked, Splash Screen configured)
+- `ios/` — Xcode project (portrait-locked)
+- Plugins: SplashScreen, StatusBar, Keyboard, Browser, App
+- Build: `npx vite build --outDir dist/public && npx cap sync`
+- Open: `npx cap open android` / `npx cap open ios`
+- Guide: `GUIA_PUBLICACAO_STORES.md` — full step-by-step for Google Play and App Store
+- Before publishing to stores, update `capacitor.config.ts` server.url to production URL
+
 ## Amazon Link
 https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/
 
