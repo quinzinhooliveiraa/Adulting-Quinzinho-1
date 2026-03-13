@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map } from "lucide-react";
+import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift } from "lucide-react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Premium() {
-  const { user } = useAuth();
+  const { user, refetch } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/stripe/products"],
@@ -39,6 +41,28 @@ export default function Premium() {
     }
   };
 
+  const handleActivateTrial = async () => {
+    setLoading("trial");
+    try {
+      const res = await fetch("/api/trial/activate", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Trial ativado!", description: "Você tem 14 dias de acesso completo." });
+        await refetch();
+        setLocation("/");
+      } else {
+        toast({ title: "Erro", description: data.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro", description: "Não foi possível ativar o trial.", variant: "destructive" });
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const features = [
     { icon: Sparkles, text: "Todas as cartas de reflexão desbloqueadas" },
     { icon: Map, text: "Jornadas de 30 dias completas" },
@@ -48,6 +72,9 @@ export default function Premium() {
   const trialDaysLeft = user?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
+
+  const canActivateTrial = !user?.trialEndsAt && !user?.hasPremium && user?.role !== "admin";
+  const isOnTrial = user?.premiumReason === "trial" && trialDaysLeft > 0;
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="page-premium">
@@ -73,13 +100,13 @@ export default function Premium() {
           </p>
         </div>
 
-        {user?.premiumReason === "trial" && trialDaysLeft > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center" data-testid="trial-banner">
-            <p className="text-amber-600 dark:text-amber-400 font-medium">
-              Seu período de teste expira em {trialDaysLeft} {trialDaysLeft === 1 ? "dia" : "dias"}
+        {isOnTrial && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-center" data-testid="trial-active-banner">
+            <p className="text-green-600 dark:text-green-400 font-medium">
+              Seu trial está ativo! {trialDaysLeft} {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Assine agora para não perder acesso
+              Assine agora para garantir acesso contínuo após o trial
             </p>
           </div>
         )}
@@ -97,6 +124,29 @@ export default function Premium() {
         </div>
 
         <div className="space-y-4">
+          {canActivateTrial && (
+            <button
+              onClick={handleActivateTrial}
+              disabled={!!loading}
+              className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-500/5 hover:bg-green-500/10 transition-colors text-left"
+              data-testid="button-activate-trial"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Gift className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="font-bold text-lg">Experimentar Grátis</p>
+                    <p className="text-muted-foreground text-sm">14 dias de acesso completo, sem cartão</p>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-green-600">Grátis</p>
+              </div>
+              {loading === "trial" && (
+                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Ativando...</p>
+              )}
+            </button>
+          )}
+
           {monthlyPrice && (
             <button
               onClick={() => handleCheckout(monthlyPrice.price_id)}

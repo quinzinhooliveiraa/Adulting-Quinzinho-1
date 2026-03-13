@@ -164,7 +164,7 @@ function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEnd
     return { hasPremium: true, reason: "paid" as const };
   }
   if (user.trialEndsAt && user.trialEndsAt > new Date()) {
-    return { hasPremium: false, reason: "trial" as const };
+    return { hasPremium: true, reason: "trial" as const };
   }
   return { hasPremium: false, reason: "expired" as const };
 }
@@ -541,6 +541,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Google auth error:", error);
       res.status(500).json({ message: "Erro ao fazer login com Google" });
+    }
+  });
+
+  app.post("/api/trial/activate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      if (user.trialEndsAt) {
+        return res.status(400).json({ message: "Você já usou seu período de teste gratuito." });
+      }
+      if (user.isPremium) {
+        return res.status(400).json({ message: "Você já tem acesso premium." });
+      }
+
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+      const updated = await storage.updateUser(user.id, { trialEndsAt });
+
+      const premiumStatus = getUserPremiumStatus(updated!);
+      res.json({
+        message: "Trial ativado! Você tem 14 dias de acesso completo.",
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: updated!.trialEndsAt,
+      });
+    } catch (error: any) {
+      console.error("Trial activation error:", error);
+      res.status(500).json({ message: "Erro ao ativar período de teste" });
     }
   });
 
