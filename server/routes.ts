@@ -160,6 +160,9 @@ function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEnd
       return { hasPremium: true, reason: "granted" as const };
     }
   }
+  if (!user.isPremium && user.premiumUntil && user.premiumUntil > new Date()) {
+    return { hasPremium: true, reason: "paid" as const };
+  }
   if (user.trialEndsAt && user.trialEndsAt > new Date()) {
     return { hasPremium: true, reason: "trial" as const };
   }
