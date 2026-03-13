@@ -23,6 +23,7 @@ interface AdminUser {
   premiumUntil: string | null;
   invitedBy: string | null;
   createdAt: string;
+  stripeSubscriptionId: string | null;
   isMasterAdmin?: boolean;
 }
 
@@ -91,12 +92,22 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const [selectedNewMaster, setSelectedNewMaster] = useState("");
   const [transferConfirmText, setTransferConfirmText] = useState("");
   const [transferError, setTransferError] = useState("");
+  const [showGrantPremium, setShowGrantPremium] = useState(false);
+  const [grantDays, setGrantDays] = useState(30);
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
   const createdAt = new Date(user.createdAt);
   const isMainAdmin = user.email === MASTER_EMAIL;
   const iAmMaster = currentUserEmail === MASTER_EMAIL;
+
+  const getPlanLabel = () => {
+    if (user.premiumReason === "paid" && user.stripeSubscriptionId) return "Assinatura Stripe";
+    if (user.premiumReason === "granted") return "Liberado pelo Admin";
+    if (user.premiumReason === "trial") return "Trial Grátis";
+    if (user.premiumReason === "admin") return "Admin";
+    return "Sem plano";
+  };
 
   return (
     <div className="border border-border rounded-xl overflow-hidden bg-background">
@@ -122,16 +133,18 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
         <div className="px-3 pb-3 space-y-3 border-t border-border pt-3 animate-in fade-in duration-200">
           <div className="grid grid-cols-2 gap-2 text-[11px]">
             <div>
+              <span className="text-muted-foreground">Plano:</span>
+              <p className="text-foreground font-medium">{getPlanLabel()}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Vencimento:</span>
+              <p className="text-foreground font-medium">
+                {premiumEnd ? premiumEnd.toLocaleDateString("pt-BR") : trialEnd ? trialEnd.toLocaleDateString("pt-BR") + " (trial)" : user.isPremium ? "Ilimitado" : "—"}
+              </p>
+            </div>
+            <div>
               <span className="text-muted-foreground">Cadastro:</span>
               <p className="text-foreground">{createdAt.toLocaleDateString("pt-BR")}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Trial até:</span>
-              <p className="text-foreground">{trialEnd ? trialEnd.toLocaleDateString("pt-BR") : "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Premium até:</span>
-              <p className="text-foreground">{premiumEnd ? premiumEnd.toLocaleDateString("pt-BR") : "—"}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Convite:</span>
@@ -142,7 +155,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
           <div className="flex flex-wrap gap-2">
             {!isMainAdmin && (
               <>
-                {user.isPremium ? (
+                {user.isPremium || user.premiumReason === "paid" ? (
                   <button
                     onClick={() => onUpdate(user.id, { isPremium: false, premiumUntil: null })}
                     className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
@@ -152,12 +165,48 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                   </button>
                 ) : (
                   <button
-                    onClick={() => onUpdate(user.id, { isPremium: true })}
+                    onClick={() => setShowGrantPremium(!showGrantPremium)}
                     className="text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 hover:bg-yellow-500/20 transition-colors flex items-center gap-1"
                     data-testid={`button-grant-premium-${user.id}`}
                   >
                     <Star size={12} /> Liberar Premium
                   </button>
+                )}
+
+                {showGrantPremium && (
+                  <div className="w-full bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3 space-y-2">
+                    <p className="text-[11px] text-muted-foreground">Por quantos dias?</p>
+                    <div className="flex gap-2">
+                      {[30, 90, 180, 365].map(d => (
+                        <button
+                          key={d}
+                          onClick={() => setGrantDays(d)}
+                          className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === d ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                          data-testid={`button-grant-days-${d}`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setGrantDays(0)}
+                        className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === 0 ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                        data-testid="button-grant-unlimited"
+                      >
+                        Ilimitado
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const premiumUntil = grantDays > 0 ? new Date(Date.now() + grantDays * 86400000).toISOString() : null;
+                        onUpdate(user.id, { isPremium: true, premiumUntil });
+                        setShowGrantPremium(false);
+                      }}
+                      className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500 text-white font-medium"
+                      data-testid={`button-confirm-grant-${user.id}`}
+                    >
+                      Confirmar — {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
+                    </button>
+                  </div>
                 )}
 
                 {user.isActive ? (

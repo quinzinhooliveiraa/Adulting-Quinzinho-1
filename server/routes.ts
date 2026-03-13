@@ -690,6 +690,7 @@ export async function registerRoutes(
           premiumUntil: u.premiumUntil,
           invitedBy: u.invitedBy,
           createdAt: u.createdAt,
+          stripeSubscriptionId: u.stripeSubscriptionId,
           isMasterAdmin: u.email === ADMIN_EMAIL,
         };
       });
