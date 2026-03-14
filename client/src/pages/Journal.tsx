@@ -242,6 +242,23 @@ export default function Journal() {
   const [activeTag, setActiveTag] = useState("Todas");
   const [isWriting, setIsWriting] = useState(false);
   const [isEditing, setIsEditing] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isWriting) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      document.body.style.top = `-${scrollY}px`;
+      return () => {
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isWriting]);
   const [entryText, setEntryText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showBlogEditor, setShowBlogEditor] = useState(false);
