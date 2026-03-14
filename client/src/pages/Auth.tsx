@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, XCircle, Shield, X } from "lucide-react";
 import iconLight from "@/assets/images/icon-light.png";
 import iconDark from "@/assets/images/icon-dark.png";
 import { useTheme } from "next-themes";
@@ -39,6 +39,8 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const [success, setSuccess] = useState("");
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [emailValidation, setEmailValidation] = useState<{ status: "idle" | "checking" | "valid" | "invalid"; message?: string; suggestion?: string }>({ status: "idle" });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const emailValidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { login, register, loginWithGoogle, loginWithApple } = useAuth();
   const isNative = Capacitor.isNativePlatform();
@@ -258,7 +260,7 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   }, [isNative, isIOS, loginWithApple, loadAppleSDK]);
 
   const isLoginValid = email.includes("@") && password.length >= 1;
-  const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0 && emailValidation.status !== "invalid";
+  const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0 && emailValidation.status !== "invalid" && acceptedTerms;
   const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
   const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isResetValid;
 
@@ -312,6 +314,18 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
                 </svg>
                 Continuar com Apple
               </button>
+
+              <p className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
+                Ao continuar, você concorda com os{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="underline hover:text-primary"
+                  data-testid="button-social-terms"
+                >
+                  Termos de Uso e Política de Privacidade
+                </button>
+              </p>
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-border" />
@@ -414,6 +428,29 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
             />
           )}
 
+          {mode === "register" && (
+            <label className="flex items-start gap-3 cursor-pointer group" data-testid="label-accept-terms">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                data-testid="checkbox-accept-terms"
+              />
+              <span className="text-xs text-muted-foreground leading-relaxed">
+                Li e aceito os{" "}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setShowTerms(true); }}
+                  className="text-primary underline hover:text-primary/80"
+                  data-testid="button-view-terms"
+                >
+                  Termos de Uso e Política de Privacidade
+                </button>
+              </span>
+            </label>
+          )}
+
           {error && (
             <p className="text-xs text-red-500 text-center" data-testid="text-auth-error">{error}</p>
           )}
@@ -473,10 +510,92 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
           )}
         </div>
 
-        <p className="text-[10px] text-muted-foreground text-center px-4">
-          Ao continuar, você concorda com nossos Termos de Uso e Política de Privacidade.
-        </p>
+        <button
+          onClick={() => setShowTerms(true)}
+          className="text-[10px] text-muted-foreground text-center px-4 underline hover:text-primary transition-colors"
+          data-testid="button-footer-terms"
+        >
+          Termos de Uso e Política de Privacidade
+        </button>
       </div>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-[200] bg-black/60 flex items-end sm:items-center justify-center" onClick={() => setShowTerms(false)}>
+          <div
+            className="bg-background w-full max-w-lg max-h-[85vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Shield className="text-primary" size={18} />
+                <h2 className="text-base font-serif font-semibold">Termos de Uso e Privacidade</h2>
+              </div>
+              <button onClick={() => setShowTerms(false)} className="p-1 rounded-full hover:bg-muted" data-testid="button-close-terms">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-5 space-y-5 text-sm text-foreground/90 leading-relaxed" data-testid="terms-content">
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">1. Sobre o Casa dos 20</h3>
+                <p>O Casa dos 20 é um aplicativo de autorreflexão e crescimento pessoal, criado para jovens entre 17 e 30 anos. Ele oferece ferramentas como diário pessoal, perguntas reflexivas, jornadas temáticas e conteúdo do livro de Quinzinho Oliveira.</p>
+              </div>
+
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                  <Shield size={16} />
+                  2. Privacidade das suas respostas
+                </h3>
+                <p className="font-medium">Suas respostas no diário, nas perguntas reflexivas e nas jornadas são completamente privadas.</p>
+                <ul className="mt-2 space-y-1.5 text-foreground/80">
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">•</span>Nenhum administrador, moderador ou criador do app tem acesso ao conteúdo que você escreve.</li>
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">•</span>Suas reflexões pessoais não são lidas, compartilhadas, vendidas ou usadas para qualquer fim.</li>
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">•</span>O app é um espaço seguro e privado para o seu autoconhecimento.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">3. Dados coletados</h3>
+                <p>Coletamos apenas o mínimo necessário para o funcionamento do app:</p>
+                <ul className="mt-2 space-y-1 text-foreground/80">
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Nome e e-mail (para criar sua conta)</li>
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Dados de progresso (quais jornadas e capítulos você completou)</li>
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Preferências de notificação</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">4. Uso do aplicativo</h3>
+                <ul className="space-y-1 text-foreground/80">
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>O app é gratuito com recursos premium opcionais.</li>
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Você pode excluir sua conta e todos os seus dados a qualquer momento.</li>
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Não compartilhe conteúdo ofensivo ou ilegal dentro do app.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">5. Pagamentos</h3>
+                <p>Assinaturas premium são processadas pela Stripe de forma segura. Não armazenamos dados de cartão de crédito. Você pode cancelar sua assinatura a qualquer momento.</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">6. Contato</h3>
+                <p>Em caso de dúvidas, entre em contato pelo e-mail: <span className="text-primary font-medium">quinzinhooliveiraa@gmail.com</span></p>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center pt-2">Última atualização: Março de 2026</p>
+            </div>
+            <div className="p-4 border-t border-border">
+              <Button
+                onClick={() => { setAcceptedTerms(true); setShowTerms(false); }}
+                className="w-full h-12 rounded-full"
+                data-testid="button-accept-terms"
+              >
+                Li e aceito os termos
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
