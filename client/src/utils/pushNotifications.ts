@@ -2,7 +2,19 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-const VAPID_PUBLIC_KEY = "BALI2zeL7b-W9KsN73z0lGFlFUVI2OsbFkxKClAvjKPemyPeB5KNilS_V6xefhQCeaRnhCJb-eASQPNqFkLleck";
+let cachedVapidKey: string | null = null;
+
+async function getVapidPublicKey(): Promise<string> {
+  if (cachedVapidKey) return cachedVapidKey;
+  try {
+    const res = await fetch("/api/push/vapid-key");
+    const data = await res.json();
+    cachedVapidKey = data.publicKey || "";
+    return cachedVapidKey;
+  } catch {
+    return "";
+  }
+}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -126,6 +138,12 @@ async function subscribeWebPush(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
+    const vapidKey = await getVapidPublicKey();
+    if (!vapidKey) {
+      console.error("Push: VAPID key not available");
+      return false;
+    }
+
     const registration = await registerServiceWorker();
     if (!registration) return false;
 
@@ -135,24 +153,27 @@ async function subscribeWebPush(): Promise<boolean> {
     const sw = registration.active || registration.waiting || registration.installing;
     if (!sw) return false;
     if (sw.state !== "activated") {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("SW activation timeout")), 10000);
         sw.addEventListener("statechange", () => {
-          if (sw.state === "activated") resolve();
+          if (sw.state === "activated") { clearTimeout(timeout); resolve(); }
         });
-        if (sw.state === "activated") resolve();
+        if (sw.state === "activated") { clearTimeout(timeout); resolve(); }
       });
     }
 
-    let subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      await existingSub.unsubscribe();
     }
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
 
     const keys = subscription.toJSON().keys;
-    await fetch("/api/push/subscribe", {
+    const res = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -163,11 +184,28 @@ async function subscribeWebPush(): Promise<boolean> {
       }),
     });
 
+    if (!res.ok) {
+      console.error("Push: subscribe API failed", res.status);
+      return false;
+    }
+
     localStorage.setItem("casa-push-subscribed", "true");
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Push: subscribe failed", err);
     return false;
   }
+}
+
+export async function refreshPushSubscription(): Promise<void> {
+  if (Capacitor.isNativePlatform()) return;
+  if (!isPushSupported()) return;
+  if (Notification.permission !== "granted") return;
+  if (!localStorage.getItem("casa-push-subscribed")) return;
+
+  try {
+    await subscribeWebPush();
+  } catch {}
 }
 
 export async function unsubscribeFromPush(): Promise<boolean> {

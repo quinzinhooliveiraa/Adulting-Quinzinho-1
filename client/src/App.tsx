@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Auth from "@/pages/Auth";
 import Onboarding from "@/components/Onboarding";
+import { refreshPushSubscription } from "@/utils/pushNotifications";
 
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
@@ -31,6 +32,12 @@ function AuthGate() {
       setShowOnboarding(true);
     }
   }, [needsOnboarding]);
+
+  useEffect(() => {
+    if (user) {
+      refreshPushSubscription();
+    }
+  }, [user]);
 
   if (isLoading) {
     return (
