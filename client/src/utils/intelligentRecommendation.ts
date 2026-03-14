@@ -39,11 +39,30 @@ const ENTRY_KEYWORDS = {
   força: ["forte", "consegui", "superei", "venci", "resiliente"],
 };
 
+function getDaySeed(): number {
+  const today = new Date().toISOString().split('T')[0];
+  let seed = 0;
+  for (let i = 0; i < today.length; i++) {
+    seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
+  }
+  return Math.abs(seed);
+}
+
+function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
+  const shuffled = [...arr];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = ((s * 1103515245 + 12345) & 0x7fffffff);
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export function analyzeCheckIn(mood: string, entry: string): string[] {
   const detectedTags = new Set<string>();
   const lowerEntry = entry.toLowerCase();
 
-  // Analisar por mood
   const moodKeywords = MOOD_TO_KEYWORDS[mood.toLowerCase()] || [];
   moodKeywords.forEach(keyword => {
     if (lowerEntry.includes(keyword)) {
@@ -51,14 +70,12 @@ export function analyzeCheckIn(mood: string, entry: string): string[] {
     }
   });
 
-  // Analisar entry por keywords
   Object.entries(ENTRY_KEYWORDS).forEach(([tag, keywords]) => {
     if (keywords.some(keyword => lowerEntry.includes(keyword))) {
       detectedTags.add(tag);
     }
   });
 
-  // Se nenhuma tag detectada, usar o mood como tag
   if (detectedTags.size === 0) {
     detectedTags.add(mood.toLowerCase());
   }
@@ -93,12 +110,8 @@ function findRelevantReflection(
     ...(MOOD_TO_KEYWORDS[mood.toLowerCase()] || []),
   ];
 
-  let bestMatch = DAILY_REFLECTIONS[0];
-  let bestScore = 0;
-
-  for (const reflection of DAILY_REFLECTIONS) {
-    if (reflection.type !== "reflection") continue;
-
+  const reflections = DAILY_REFLECTIONS.filter(r => r.type === "reflection");
+  const scored = reflections.map(reflection => {
     let score = 0;
     const textLower = reflection.text.toLowerCase();
 
@@ -106,18 +119,31 @@ function findRelevantReflection(
       if (textLower.includes(keyword)) score += 2;
     });
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = reflection;
-    }
+    return { reflection, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const topScore = scored[0]?.score || 0;
+  const topCandidates = scored.filter(s => s.score >= topScore - 1 && s.score > 0);
+
+  if (topCandidates.length > 0) {
+    const daySeed = getDaySeed();
+    const shuffled = shuffleWithSeed(topCandidates, daySeed);
+    return shuffled[0].reflection;
   }
 
-  return bestMatch;
+  const daySeed = getDaySeed();
+  const index = daySeed % reflections.length;
+  return reflections[index];
 }
 
 function findRelevantTips(tags: string[], mood: string): typeof DAILY_REFLECTIONS[0][] {
   const keywords = [...tags, mood.toLowerCase()];
-  const scored = DAILY_REFLECTIONS.filter((item) => item.type === "tip").map((tip) => {
+  const tips = DAILY_REFLECTIONS.filter((item) => item.type === "tip");
+  const daySeed = getDaySeed();
+
+  const scored = tips.map((tip) => {
     let score = 0;
     const textLower = tip.text.toLowerCase();
 
@@ -125,7 +151,6 @@ function findRelevantTips(tags: string[], mood: string): typeof DAILY_REFLECTION
       if (textLower.includes(keyword)) score += 2;
     });
 
-    // Bonus para dicas universais que sempre ajudam
     if (
       textLower.includes("respir") ||
       textLower.includes("medit") ||
@@ -139,10 +164,17 @@ function findRelevantTips(tags: string[], mood: string): typeof DAILY_REFLECTION
     return { ...tip, score };
   });
 
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map(({ score, ...rest }) => rest);
+  scored.sort((a, b) => b.score - a.score);
+
+  const topScore = scored[0]?.score || 0;
+  const topCandidates = scored.filter(s => s.score >= topScore - 2 && s.score > 0);
+
+  if (topCandidates.length > 2) {
+    const shuffled = shuffleWithSeed(topCandidates, daySeed);
+    return shuffled.slice(0, 5).map(({ score, ...rest }) => rest);
+  }
+
+  return scored.slice(0, 5).map(({ score, ...rest }) => rest);
 }
 
 function findRelevantReminders(
@@ -150,17 +182,17 @@ function findRelevantReminders(
   mood: string
 ): typeof DAILY_REFLECTIONS[0][] {
   const keywords = [...tags, mood.toLowerCase()];
+  const daySeed = getDaySeed();
+
   const scored = DAILY_REFLECTIONS.filter((item) => item.type === "reminder").map(
     (reminder) => {
       let score = 0;
       const textLower = reminder.text.toLowerCase();
 
-      // Match com tags/mood
       keywords.forEach((keyword) => {
         if (textLower.includes(keyword)) score += 2;
       });
 
-      // Bonus para lembretes sobre merecer/permissão
       if (
         textLower.includes("merec") ||
         textLower.includes("permiss") ||
@@ -170,7 +202,6 @@ function findRelevantReminders(
         score += 1;
       }
 
-      // Bonus para lembretes motivacionais universais
       if (
         textLower.includes("sobreviveu") ||
         textLower.includes("mais forte") ||
@@ -183,20 +214,33 @@ function findRelevantReminders(
     }
   );
 
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map(({ score, ...rest }) => rest);
+  scored.sort((a, b) => b.score - a.score);
+
+  const topScore = scored[0]?.score || 0;
+  const topCandidates = scored.filter(s => s.score >= topScore - 2 && s.score > 0);
+
+  if (topCandidates.length > 3) {
+    const shuffled = shuffleWithSeed(topCandidates, daySeed);
+    return shuffled.slice(0, 5).map(({ score, ...rest }) => rest);
+  }
+
+  return scored.slice(0, 5).map(({ score, ...rest }) => rest);
 }
 
 function getDefaultRecommendations(): RecommendedContent {
-  // Fallback para primeira vez
+  const daySeed = getDaySeed();
+  const reflections = DAILY_REFLECTIONS.filter((r) => r.type === "reflection" && r.fromBook);
+  const tips = DAILY_REFLECTIONS.filter((r) => r.type === "tip");
+  const reminders = DAILY_REFLECTIONS.filter((r) => r.type === "reminder");
+
+  const reflectionIndex = daySeed % reflections.length;
+  const shuffledTips = shuffleWithSeed(tips, daySeed);
+  const shuffledReminders = shuffleWithSeed(reminders, daySeed);
+
   return {
-    reflection:
-      DAILY_REFLECTIONS.find((r) => r.type === "reflection" && r.fromBook) ||
-      DAILY_REFLECTIONS[0],
-    tips: DAILY_REFLECTIONS.filter((r) => r.type === "tip").slice(0, 2),
-    reminders: DAILY_REFLECTIONS.filter((r) => r.type === "reminder").slice(0, 3),
+    reflection: reflections[reflectionIndex] || DAILY_REFLECTIONS[0],
+    tips: shuffledTips.slice(0, 2),
+    reminders: shuffledReminders.slice(0, 3),
   };
 }
 
@@ -207,7 +251,6 @@ export function getLastCheckIn(): CheckIn | null {
   try {
     const parsed = JSON.parse(stored);
     
-    // Se o check-in é de hoje, retorna
     const checkInDate = new Date(parsed.timestamp);
     const today = new Date();
     
