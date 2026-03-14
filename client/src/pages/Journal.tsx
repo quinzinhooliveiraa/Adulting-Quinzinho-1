@@ -626,7 +626,7 @@ export default function Journal() {
             </div>
           </div>
         ) : isWriting && !showNotebook ? (
-          <div className="fixed inset-0 z-40 bg-background flex flex-col animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[55] bg-background flex flex-col animate-in fade-in duration-300">
             <div className="flex justify-between items-center px-6 pt-12 pb-4 border-b border-border/40">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
                 {isEditing ? "Editar" : "Nova"} Reflexão
@@ -645,7 +645,7 @@ export default function Journal() {
                 <X size={18} />
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-5">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-5 overscroll-contain">
               <div className="relative">
                 <Textarea 
                   value={entryText}
