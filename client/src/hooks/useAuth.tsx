@@ -23,6 +23,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   loginWithGoogle: (credential: string) => Promise<AuthUser>;
+  loginWithApple: (identityToken: string, user?: string, fullName?: { givenName?: string; familyName?: string }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refetch: () => void;
 }
@@ -79,6 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const appleLoginMutation = useMutation({
+    mutationFn: async ({ identityToken, user, fullName }: { identityToken: string; user?: string; fullName?: { givenName?: string; familyName?: string } }) => {
+      const res = await apiRequest("POST", "/api/auth/apple", { identityToken, user, fullName });
+      return res.json() as Promise<AuthUser & { isNewUser?: boolean }>;
+    },
+    onSuccess: (data) => {
+      if (data.isNewUser) {
+        localStorage.setItem("casa-dos-20-needs-onboarding", "true");
+      }
+      queryClient.setQueryData(["/api/auth/me"], data);
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/logout");
@@ -101,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return googleLoginMutation.mutateAsync({ credential });
   };
 
+  const loginWithApple = async (identityToken: string, user?: string, fullName?: { givenName?: string; familyName?: string }) => {
+    return appleLoginMutation.mutateAsync({ identityToken, user, fullName });
+  };
+
   const logout = async () => {
     await logoutMutation.mutateAsync();
   };
@@ -110,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, loginWithGoogle, logout, refetch: refetchUser }}>
+    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, loginWithGoogle, loginWithApple, logout, refetch: refetchUser }}>
       {children}
     </AuthContext.Provider>
   );

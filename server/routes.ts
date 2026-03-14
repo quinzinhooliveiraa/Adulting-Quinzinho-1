@@ -548,6 +548,86 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/auth/apple", async (req: Request, res: Response) => {
+    try {
+      const { identityToken, user: appleUser, fullName } = req.body;
+      if (!identityToken) {
+        return res.status(400).json({ message: "Token da Apple não fornecido" });
+      }
+
+      const parts = identityToken.split(".");
+      if (parts.length !== 3) {
+        return res.status(400).json({ message: "Token inválido" });
+      }
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+
+      if (!payload.sub) {
+        return res.status(400).json({ message: "Token da Apple inválido" });
+      }
+
+      const appleId = payload.sub;
+      const email = payload.email || (appleUser ? `${appleUser}@privaterelay.appleid.com` : `${appleId}@privaterelay.appleid.com`);
+      const name = fullName?.givenName
+        ? `${fullName.givenName}${fullName.familyName ? ` ${fullName.familyName}` : ""}`
+        : email.split("@")[0];
+
+      let user = await storage.getUserByAppleId(appleId);
+
+      if (!user) {
+        user = await storage.getUserByEmail(email);
+        if (user) {
+          await storage.updateUser(user.id, { appleId, emailVerified: true });
+          user = (await storage.getUser(user.id))!;
+        }
+      }
+
+      let isNewUser = false;
+      if (!user) {
+        const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+        user = await storage.createUser({
+          username: email,
+          password: hashPassword(randomBytes(32).toString("hex")),
+          name,
+          email,
+          role: isAdminEmail ? "admin" : "user",
+          isPremium: isAdminEmail,
+          isActive: true,
+          trialEndsAt: null,
+          premiumUntil: null,
+          invitedBy: null,
+          appleId,
+          emailVerified: true,
+        });
+        isNewUser = true;
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
+
+      req.session.userId = user.id;
+      const premiumStatus = getUserPremiumStatus(user);
+      res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        trialEndsAt: user.trialEndsAt,
+        premiumUntil: user.premiumUntil,
+        emailVerified: user.emailVerified,
+        journeyOnboardingDone: user.journeyOnboardingDone,
+        journeyOrder: user.journeyOrder,
+        isNewUser,
+      });
+    } catch (error) {
+      console.error("Apple auth error:", error);
+      res.status(500).json({ message: "Erro ao fazer login com Apple" });
+    }
+  });
+
   app.post("/api/stripe/checkout", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);

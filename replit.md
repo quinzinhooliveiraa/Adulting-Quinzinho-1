@@ -7,7 +7,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - **Frontend**: React + Vite + TypeScript, TailwindCSS, shadcn/ui, wouter routing, TanStack Query
 - **Backend**: Express.js + TypeScript, express-session with connect-pg-simple
 - **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: Session-based with scrypt password hashing (Node crypto)
+- **Auth**: Session-based with scrypt password hashing (Node crypto), Google Sign-In, Apple Sign-In (native iOS via @capacitor-community/apple-sign-in)
 - **WebSocket**: ws library, lobby system at `/ws/lobby` (noServer mode, manual upgrade handling)
 
 ## Design System
@@ -17,7 +17,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - All UI text in Brazilian Portuguese
 
 ## Database Schema (`shared/schema.ts`)
-- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), createdAt
+- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, journeyOnboardingDone, journeyOrder (text[]), createdAt
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt

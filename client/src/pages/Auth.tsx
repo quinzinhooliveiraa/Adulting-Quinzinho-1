@@ -6,6 +6,7 @@ import { Loader2, Mail, ArrowRight, ArrowLeft, KeyRound, CheckCircle2, AlertCirc
 import iconLight from "@/assets/images/icon-light.png";
 import iconDark from "@/assets/images/icon-dark.png";
 import { useTheme } from "next-themes";
+import { Capacitor } from "@capacitor/core";
 
 declare global {
   interface Window {
@@ -33,7 +34,9 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [emailValidation, setEmailValidation] = useState<{ status: "idle" | "checking" | "valid" | "invalid"; message?: string; suggestion?: string }>({ status: "idle" });
   const emailValidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, register, loginWithGoogle, loginWithApple } = useAuth();
+  const isNative = Capacitor.isNativePlatform();
+  const isIOS = Capacitor.getPlatform() === "ios";
   const { resolvedTheme } = useTheme();
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
@@ -199,6 +202,35 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
     }
   };
 
+  const handleAppleSignIn = useCallback(async () => {
+    if (!isNative || !isIOS) return;
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const { SignInWithApple } = await import("@capacitor-community/apple-sign-in");
+      const result = await SignInWithApple.authorize({
+        clientId: "com.casados20.app",
+        redirectURI: "https://casados20.replit.app",
+        scopes: "email name",
+      });
+      if (result.response?.identityToken) {
+        await loginWithApple(
+          result.response.identityToken,
+          result.response.user,
+          result.response.givenName || result.response.familyName
+            ? { givenName: result.response.givenName, familyName: result.response.familyName }
+            : undefined
+        );
+      }
+    } catch (err: any) {
+      if (err?.message !== "The user canceled the sign-in flow.") {
+        setError("Erro ao fazer login com Apple. Tente novamente.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isNative, isIOS, loginWithApple]);
+
   const isLoginValid = email.includes("@") && password.length >= 1;
   const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0 && emailValidation.status !== "invalid";
   const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
@@ -241,6 +273,20 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
                   Continuar com Google
+                </button>
+              )}
+
+              {isIOS && (
+                <button
+                  onClick={handleAppleSignIn}
+                  disabled={isSubmitting}
+                  className="w-full h-12 rounded-xl border border-border bg-black dark:bg-white flex items-center justify-center gap-3 text-sm font-medium text-white dark:text-black hover:opacity-90 transition-all"
+                  data-testid="button-apple-login"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                  Continuar com Apple
                 </button>
               )}
 
