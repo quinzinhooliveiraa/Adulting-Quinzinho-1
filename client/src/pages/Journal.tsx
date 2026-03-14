@@ -609,8 +609,8 @@ export default function Journal() {
             </div>
           </div>
         ) : isWriting && !showNotebook ? (
-          <div className="animate-in slide-in-from-top-4 duration-500 space-y-6 overflow-x-hidden">
-            <div className="flex justify-between items-center mb-2">
+          <div className="fixed inset-0 z-40 bg-background flex flex-col animate-in fade-in duration-300">
+            <div className="flex justify-between items-center px-6 pt-12 pb-4 border-b border-border/40">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
                 {isEditing ? "Editar" : "Nova"} Reflexão
               </h2>
@@ -625,61 +625,63 @@ export default function Journal() {
                 size="sm"
                 className="text-muted-foreground hover:text-foreground"
               >
-                Cancelar
+                <X size={18} />
               </Button>
             </div>
-            <div className="relative">
-              <Textarea 
-                value={entryText}
-                onChange={(e) => setEntryText(e.target.value)}
-                placeholder="Como você está se sentindo agora?"
-                className="min-h-[300px] bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 pr-12 text-lg font-serif leading-relaxed resize-none shadow-inner"
-                autoFocus
-              />
-              <div className="absolute top-4 right-4">
-                <AudioButton 
-                  onText={(text) => setEntryText(prev => prev ? prev.trimEnd() + " " + text : text)}
-                  size={20}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-5">
+              <div className="relative">
+                <Textarea 
+                  value={entryText}
+                  onChange={(e) => setEntryText(e.target.value)}
+                  placeholder="Como você está se sentindo agora?"
+                  className="min-h-[250px] bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 pr-12 text-lg font-serif leading-relaxed resize-none shadow-inner"
+                  autoFocus
                 />
+                <div className="absolute top-4 right-4">
+                  <AudioButton 
+                    onText={(text) => setEntryText(prev => prev ? prev.trimEnd() + " " + text : text)}
+                    size={20}
+                  />
+                </div>
+                {isSaved && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-3xl z-10 animate-in fade-in">
+                    <div className="bg-primary text-primary-foreground p-4 rounded-full shadow-xl scale-110">
+                      <Check size={32} />
+                    </div>
+                  </div>
+                )}
               </div>
-              {isSaved && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-3xl z-10 animate-in fade-in">
-                  <div className="bg-primary text-primary-foreground p-4 rounded-full shadow-xl scale-110">
-                    <Check size={32} />
+
+              {(suggestedTags.length > 0 || selectedTags.length > 0) && (
+                <div className="space-y-3 overflow-hidden">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Hash size={12} /> Temas Identificados
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map(tag => (
+                      <button 
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className="text-xs px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2 transition-all max-w-full"
+                      >
+                        <span className="truncate">{tag}</span> <X size={12} className="opacity-70 shrink-0" />
+                      </button>
+                    ))}
+                    {suggestedTags.map(tag => (
+                      <button 
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className="text-xs px-4 py-2 rounded-full bg-secondary text-secondary-foreground border border-dashed border-primary/30 font-medium hover:bg-primary/10 transition-all animate-in zoom-in max-w-full"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
 
-            {(suggestedTags.length > 0 || selectedTags.length > 0) && (
-              <div className="space-y-3 overflow-hidden">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-2">
-                  <Hash size={12} /> Temas Identificados
-                </p>
-                <div className="flex flex-wrap gap-2 px-2">
-                  {selectedTags.map(tag => (
-                    <button 
-                      key={tag}
-                      onClick={() => toggleTag(tag)}
-                      className="text-xs px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2 transition-all max-w-full truncate"
-                    >
-                      <span className="truncate">{tag}</span> <X size={12} className="opacity-70 shrink-0" />
-                    </button>
-                  ))}
-                  {suggestedTags.map(tag => (
-                    <button 
-                      key={tag}
-                      onClick={() => toggleTag(tag)}
-                      className="text-xs px-4 py-2 rounded-full bg-secondary text-secondary-foreground border border-dashed border-primary/30 font-medium hover:bg-primary/10 transition-all animate-in zoom-in max-w-full truncate"
-                    >
-                      + {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 px-6 py-4 border-t border-border/40 bg-background">
               <Button 
                 onClick={() => {
                   if (entryText.trim()) {
