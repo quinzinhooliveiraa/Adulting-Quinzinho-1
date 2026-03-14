@@ -397,6 +397,13 @@ export default function Journal() {
     try {
       const parsed = JSON.parse(text);
       if (parsed && parsed.text !== undefined) {
+        const allImages: any[] = parsed.images || [];
+        const wrappedImages = allImages.filter((img: any) => img.textWrap);
+        const freeImages = allImages.filter((img: any) => !img.textWrap);
+        const contentMinHeight = allImages.length > 0
+          ? Math.max(200, ...allImages.map((img: any) => (img.y || 0) + (img.height || 200) + 24))
+          : undefined;
+
         return (
           <div className="space-y-5">
             {parsed.banner && (
@@ -405,27 +412,58 @@ export default function Journal() {
             {parsed.title && (
               <h2 className="text-2xl font-serif font-semibold text-foreground leading-tight">{parsed.title}</h2>
             )}
-            <div className="relative">
-              <div className="text-foreground text-base sm:text-lg leading-relaxed font-serif whitespace-pre-wrap break-words">
+            <div className="relative overflow-hidden" style={{ minHeight: contentMinHeight }}>
+              {wrappedImages.map((img: any, i: number) => {
+                const side = (img.x || 0) < 150 ? 'left' : 'right';
+                return (
+                  <img
+                    key={`wrap-${i}`}
+                    src={img.src}
+                    alt=""
+                    className="rounded-xl"
+                    style={{
+                      float: side,
+                      width: `${img.width || 200}px`,
+                      height: `${img.height || 200}px`,
+                      objectFit: (img.fit as any) || 'cover',
+                      margin: side === 'left' ? '0 16px 12px 0' : '0 0 12px 16px',
+                      marginTop: `${Math.max(0, (img.y || 0))}px`,
+                      transform: img.rotation ? `rotate(${img.rotation}deg)` : undefined,
+                      maxWidth: '60%',
+                    }}
+                  />
+                );
+              })}
+              <div className="text-foreground text-[17px] leading-relaxed font-serif whitespace-pre-wrap break-words" style={{ position: 'relative', zIndex: 1 }}>
                 {parsed.text}
               </div>
+              {freeImages.map((img: any, i: number) => (
+                <img
+                  key={`free-${i}`}
+                  src={img.src}
+                  alt=""
+                  className="absolute rounded-xl"
+                  style={{
+                    left: `${img.x || 0}px`,
+                    top: `${img.y || 0}px`,
+                    width: `${img.width || 200}px`,
+                    height: `${img.height || 200}px`,
+                    objectFit: (img.fit as any) || 'cover',
+                    transform: img.rotation ? `rotate(${img.rotation}deg)` : undefined,
+                    zIndex: img.zIndex || 10,
+                  }}
+                />
+              ))}
               {parsed.drawing && (
-                <img src={parsed.drawing} alt="" className="absolute inset-0 w-full h-full pointer-events-none" style={{ objectFit: 'fill' }} />
+                <img src={parsed.drawing} alt="" className="absolute inset-0 w-full h-full pointer-events-none" style={{ objectFit: 'fill', zIndex: 2 }} />
               )}
             </div>
-            {parsed.images && parsed.images.length > 0 && (
-              <div className="space-y-3">
-                {parsed.images.map((img: any, i: number) => (
-                  <img key={i} src={img.src} alt="" className="rounded-2xl w-full object-contain" style={{ maxHeight: 400 }} />
-                ))}
-              </div>
-            )}
           </div>
         );
       }
     } catch {}
     return (
-      <div className="text-foreground text-base sm:text-lg leading-relaxed font-serif whitespace-pre-wrap break-words">
+      <div className="text-foreground text-[17px] leading-relaxed font-serif whitespace-pre-wrap break-words">
         {text}
       </div>
     );
