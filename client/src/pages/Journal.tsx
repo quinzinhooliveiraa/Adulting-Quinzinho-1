@@ -626,8 +626,8 @@ export default function Journal() {
             </div>
           </div>
         ) : isWriting && !showNotebook ? (
-          <div className="fixed inset-0 z-[55] bg-background flex flex-col animate-in fade-in duration-300">
-            <div className="flex justify-between items-center px-6 pt-12 pb-4 border-b border-border/40">
+          <div className="fixed inset-0 z-[55] bg-background flex flex-col animate-in fade-in duration-300 overflow-hidden">
+            <div className="shrink-0 flex justify-between items-center px-6 pt-12 pb-4 border-b border-border/40">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
                 {isEditing ? "Editar" : "Nova"} Reflexão
               </h2>
@@ -645,13 +645,14 @@ export default function Journal() {
                 <X size={18} />
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-5 overscroll-contain">
-              <div className="relative">
+
+            <div className="flex-1 flex flex-col min-h-0 px-6 py-4 space-y-4">
+              <div className="relative flex-1 min-h-0">
                 <Textarea 
                   value={entryText}
                   onChange={(e) => setEntryText(e.target.value)}
                   placeholder="Como você está se sentindo agora?"
-                  className="min-h-[250px] bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 pr-12 text-lg font-serif leading-relaxed resize-none shadow-inner"
+                  className="h-full w-full bg-card/50 border-border/80 focus:border-primary/50 focus:ring-primary/20 rounded-3xl p-6 pr-12 text-lg font-serif leading-relaxed resize-none shadow-inner"
                   autoFocus
                 />
                 <div className="absolute top-4 right-4">
@@ -670,7 +671,7 @@ export default function Journal() {
               </div>
 
               {(suggestedTags.length > 0 || selectedTags.length > 0) && (
-                <div className="space-y-3 overflow-hidden">
+                <div className="shrink-0 space-y-2 overflow-hidden">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Hash size={12} /> Temas Identificados
                   </p>
@@ -698,7 +699,7 @@ export default function Journal() {
               )}
             </div>
 
-            <div className="flex gap-3 px-6 py-4 border-t border-border/40 bg-background">
+            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-border/40 bg-background">
               <Button 
                 onClick={() => {
                   if (entryText.trim()) {
