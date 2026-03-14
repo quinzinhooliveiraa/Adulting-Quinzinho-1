@@ -430,7 +430,7 @@ export default function Journal() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden">
-      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
+      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20 overflow-x-hidden">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
             journalLimit.remaining <= 3
@@ -465,7 +465,7 @@ export default function Journal() {
         </div>
 
         {!isWriting && !viewingEntry && (
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
+          <div className="flex flex-wrap gap-2 pb-2">
             {SOURCE_CATEGORIES.map(cat => {
               const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
               return (
@@ -489,7 +489,7 @@ export default function Journal() {
         )}
       </div>
 
-      <div className="px-6 md:px-10 space-y-4">
+      <div className="px-6 md:px-10 space-y-4 overflow-x-hidden">
         {viewingEntry ? (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center">
