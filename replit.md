@@ -229,7 +229,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - App ID: `com.casados20.app`
 - `android/` — Android Studio project (portrait-locked, Splash Screen configured)
 - `ios/` — Xcode project (portrait-locked)
-- Plugins: SplashScreen, StatusBar, Keyboard, Browser, App
+- Plugins: SplashScreen, StatusBar, Keyboard, Browser, App, PushNotifications, LocalNotifications
 - Build: `npx vite build --outDir dist/public && npx cap sync`
 - Open: `npx cap open android` / `npx cap open ios`
 - Guide: `GUIA_PUBLICACAO_STORES.md` — full step-by-step for Google Play and App Store

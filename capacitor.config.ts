@@ -25,6 +25,13 @@ const config: CapacitorConfig = {
       resize: "body",
       style: "DARK",
     },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+    LocalNotifications: {
+      smallIcon: "ic_stat_icon",
+      iconColor: "#7c3aed",
+    },
   },
 };
 
