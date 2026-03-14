@@ -525,7 +525,7 @@ export default function Home() {
   }
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+    <div className="px-6 md:px-10 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative overflow-x-hidden">
       
       <header className="space-y-2">
         <div className="flex justify-between items-start">

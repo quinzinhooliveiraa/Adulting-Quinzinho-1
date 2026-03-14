@@ -519,7 +519,7 @@ export default function JourneyDetail() {
   })();
 
   return (
-    <div className="min-h-screen bg-background pb-24 animate-in slide-in-from-right duration-500" data-testid="page-journey-detail">
+    <div className="min-h-screen bg-background pb-24 animate-in slide-in-from-right duration-500 overflow-x-hidden" data-testid="page-journey-detail">
       {showRestartDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowRestartDialog(false); setRestartInput(""); }} />

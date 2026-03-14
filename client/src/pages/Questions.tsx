@@ -1760,7 +1760,7 @@ function CardGame({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500 overflow-x-hidden">
       <div className="px-6 pt-14 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2378,7 +2378,7 @@ function LobbyScreen({
     const cardIndex = Math.max(0, Math.min(currentCard, questions.length - 1));
 
     return (
-      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500">
+      <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500 overflow-x-hidden">
         {joinAlert && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
             {joinAlert}

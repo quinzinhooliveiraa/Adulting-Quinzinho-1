@@ -413,7 +413,7 @@ export default function Journal() {
             {parsed.images && parsed.images.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {parsed.images.map((img: any, i: number) => (
-                  <img key={i} src={img.src} alt="" className="rounded-xl max-h-48 object-cover" style={{ width: img.width || 200 }} />
+                  <img key={i} src={img.src} alt="" className="rounded-xl max-h-48 object-cover" style={{ width: Math.min(img.width || 200, 300), maxWidth: "100%" }} />
                 ))}
               </div>
             )}
@@ -429,7 +429,7 @@ export default function Journal() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24">
+    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden">
       <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
