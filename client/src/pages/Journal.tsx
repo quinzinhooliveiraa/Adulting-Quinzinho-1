@@ -398,22 +398,25 @@ export default function Journal() {
       const parsed = JSON.parse(text);
       if (parsed && parsed.text !== undefined) {
         return (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {parsed.banner && (
-              <img src={parsed.banner} alt="" className="w-full h-48 object-cover rounded-2xl" />
+              <img src={parsed.banner} alt="" className="w-full rounded-2xl object-cover" style={{ maxHeight: 320 }} />
+            )}
+            {parsed.title && (
+              <h2 className="text-2xl font-serif font-semibold text-foreground leading-tight">{parsed.title}</h2>
             )}
             <div className="relative">
-              <p className="text-foreground text-lg leading-relaxed font-serif whitespace-pre-wrap">
+              <div className="text-foreground text-base sm:text-lg leading-relaxed font-serif whitespace-pre-wrap break-words">
                 {parsed.text}
-              </p>
+              </div>
               {parsed.drawing && (
                 <img src={parsed.drawing} alt="" className="absolute inset-0 w-full h-full pointer-events-none" style={{ objectFit: 'fill' }} />
               )}
             </div>
             {parsed.images && parsed.images.length > 0 && (
-              <div className="flex flex-wrap gap-3">
+              <div className="space-y-3">
                 {parsed.images.map((img: any, i: number) => (
-                  <img key={i} src={img.src} alt="" className="rounded-xl max-h-48 object-cover" style={{ width: Math.min(img.width || 200, 300), maxWidth: "100%" }} />
+                  <img key={i} src={img.src} alt="" className="rounded-2xl w-full object-contain" style={{ maxHeight: 400 }} />
                 ))}
               </div>
             )}
@@ -422,9 +425,9 @@ export default function Journal() {
       }
     } catch {}
     return (
-      <p className="text-foreground text-lg leading-relaxed font-serif italic whitespace-pre-wrap">
-        "{text}"
-      </p>
+      <div className="text-foreground text-base sm:text-lg leading-relaxed font-serif whitespace-pre-wrap break-words">
+        {text}
+      </div>
     );
   };
 
@@ -465,26 +468,28 @@ export default function Journal() {
         </div>
 
         {!isWriting && !viewingEntry && (
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
-            {SOURCE_CATEGORIES.map(cat => {
-              const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
-              return (
-                <button
-                  key={cat.key}
-                  onClick={() => setActiveTag(cat.key)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-300 flex items-center gap-1.5 ${
-                    activeTag === cat.key
-                      ? "bg-primary text-primary-foreground font-medium" 
-                      : "bg-card border border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                  data-testid={`filter-${cat.key}`}
-                >
-                  {cat.icon && <span className="text-xs">{cat.icon}</span>}
-                  <span>{cat.label}</span>
-                  <span className={`text-[10px] ${activeTag === cat.key ? "opacity-80" : "opacity-50"}`}>({count})</span>
-                </button>
-              );
-            })}
+          <div className="overflow-hidden">
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+              {SOURCE_CATEGORIES.map(cat => {
+                const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => setActiveTag(cat.key)}
+                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-300 flex items-center gap-1.5 ${
+                      activeTag === cat.key
+                        ? "bg-primary text-primary-foreground font-medium" 
+                        : "bg-card border border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                    data-testid={`filter-${cat.key}`}
+                  >
+                    {cat.icon && <span className="text-xs">{cat.icon}</span>}
+                    <span>{cat.label}</span>
+                    <span className={`text-[10px] ${activeTag === cat.key ? "opacity-80" : "opacity-50"}`}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

@@ -410,9 +410,14 @@ export default function BlogReflectionEditor({
 
   const freeImages = images.filter(img => !img.textWrap);
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-background rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300 overscroll-none touch-none" onTouchMove={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain touch-auto" onTouchMove={(e) => e.stopPropagation()}>
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
           <h2 className="font-serif text-xl sm:text-[28px] text-foreground">Guardar Pensamento</h2>

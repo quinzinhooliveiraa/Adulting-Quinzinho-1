@@ -262,9 +262,14 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
     );
   }
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300">
-      <div className="bg-background rounded-t-3xl max-h-[95vh] overflow-hidden w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300 overscroll-none touch-none" onTouchMove={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-t-3xl max-h-[95vh] overflow-hidden w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col overscroll-contain touch-auto" onTouchMove={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border z-10">
           <h2 className="font-serif text-xl">Caderno de Anotações</h2>
           <div className="flex gap-2">
