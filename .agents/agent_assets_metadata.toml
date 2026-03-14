@@ -6,3 +6,9 @@ id = "jbph1k-nNUh-59ihjHoFv"
 uri = "file://GUIA_PUBLICACAO_STORES.md"
 type = "text"
 title = "Guia Completo - Publicação nas Stores"
+
+[[outputs]]
+id = "ZrOF0q1UhPHjj32ng-1gR"
+uri = "file://GUIA_CASA_DOS_20.md"
+type = "text"
+title = "Guia Completo - Casa dos 20"
