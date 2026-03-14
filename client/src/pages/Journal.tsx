@@ -709,7 +709,6 @@ export default function Journal() {
                       date: "", 
                       timestamp: Date.now() 
                     });
-                    setShowBlogEditor(true);
                   } else {
                     setEditingEntry({ 
                       id: 0, 
@@ -718,8 +717,9 @@ export default function Journal() {
                       date: "", 
                       timestamp: Date.now() 
                     });
-                    setShowBlogEditor(true);
                   }
+                  setIsWriting(false);
+                  setShowBlogEditor(true);
                 }}
                 className="flex-1 bg-primary text-primary-foreground rounded-full h-14 font-medium shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
               >
