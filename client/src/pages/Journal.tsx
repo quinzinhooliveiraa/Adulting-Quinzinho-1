@@ -609,7 +609,7 @@ export default function Journal() {
             </div>
           </div>
         ) : isWriting && !showNotebook ? (
-          <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
+          <div className="animate-in slide-in-from-top-4 duration-500 space-y-6 overflow-x-hidden">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
                 {isEditing ? "Editar" : "Nova"} Reflexão
@@ -652,25 +652,25 @@ export default function Journal() {
             </div>
 
             {(suggestedTags.length > 0 || selectedTags.length > 0) && (
-              <div className="space-y-3 px-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <div className="space-y-3 overflow-hidden">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-2">
                   <Hash size={12} /> Temas Identificados
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 px-2">
                   {selectedTags.map(tag => (
                     <button 
                       key={tag}
                       onClick={() => toggleTag(tag)}
-                      className="text-xs px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2 transition-all"
+                      className="text-xs px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2 transition-all max-w-full truncate"
                     >
-                      {tag} <X size={12} className="opacity-70" />
+                      <span className="truncate">{tag}</span> <X size={12} className="opacity-70 shrink-0" />
                     </button>
                   ))}
                   {suggestedTags.map(tag => (
                     <button 
                       key={tag}
                       onClick={() => toggleTag(tag)}
-                      className="text-xs px-4 py-2 rounded-full bg-secondary text-secondary-foreground border border-dashed border-primary/30 font-medium hover:bg-primary/10 transition-all animate-in zoom-in"
+                      className="text-xs px-4 py-2 rounded-full bg-secondary text-secondary-foreground border border-dashed border-primary/30 font-medium hover:bg-primary/10 transition-all animate-in zoom-in max-w-full truncate"
                     >
                       + {tag}
                     </button>
