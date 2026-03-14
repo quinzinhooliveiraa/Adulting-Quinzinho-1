@@ -465,7 +465,7 @@ export default function Journal() {
         </div>
 
         {!isWriting && !viewingEntry && (
-          <div className="flex flex-wrap gap-2 pb-2">
+          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
             {SOURCE_CATEGORIES.map(cat => {
               const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
               return (
