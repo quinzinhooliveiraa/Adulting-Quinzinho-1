@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: "Casa dos 20",
   webDir: "dist/public",
   server: {
+    url: "https://casados20.replit.app",
     androidScheme: "https",
     iosScheme: "https",
   },

@@ -43,5 +43,13 @@
         </array>
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <true/>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>Casa dos 20 usa o microfone para converter sua voz em texto no diário e check-ins.</string>
+        <key>NSSpeechRecognitionUsageDescription</key>
+        <string>Casa dos 20 usa o reconhecimento de fala para converter sua voz em texto.</string>
+        <key>NSCameraUsageDescription</key>
+        <string>Casa dos 20 usa a câmera para adicionar fotos ao seu diário.</string>
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>Casa dos 20 acessa suas fotos para adicionar imagens ao seu diário.</string>
 </dict>
 </plist>
