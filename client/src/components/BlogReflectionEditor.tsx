@@ -412,12 +412,22 @@ export default function BlogReflectionEditor({
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${window.scrollY}px`;
+    const scrollY = window.scrollY;
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300 overscroll-none touch-none" onTouchMove={(e) => e.stopPropagation()}>
-      <div className="bg-background rounded-xl max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain touch-auto" onTouchMove={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+      <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain">
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
           <h2 className="font-serif text-xl sm:text-[28px] text-foreground">Guardar Pensamento</h2>
