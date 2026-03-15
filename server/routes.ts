@@ -8,6 +8,7 @@ import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema } from "@shared/schema";
+import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
@@ -2033,6 +2034,22 @@ REGRAS:
 
 const AUTO_NOTIFICATION_DEFAULTS = [
   {
+    type: "morning_prompt",
+    title: "Bom dia! ☀️",
+    body: "O teu exercício de hoje: {day_title} — {day_description}",
+    url: "/journey/{journey_id}",
+    triggerHours: 22,
+    isActive: true,
+  },
+  {
+    type: "evening_reflection",
+    title: "Hora de refletir 🌙",
+    body: "Como foi o teu dia? Tira 5 minutos para escrever no diário antes de dormir.",
+    url: "/journal",
+    triggerHours: 22,
+    isActive: true,
+  },
+  {
     type: "daily_reflection",
     title: "Casa dos 20",
     body: "Ainda não escreveste hoje. Tira 5 minutos para refletir sobre o teu dia 📝",
@@ -2117,8 +2134,8 @@ export async function processAutoNotifications() {
       const shouldSend = await checkAutoNotificationCondition(config.type, user.id);
       if (!shouldSend) continue;
 
-      const body = await buildAutoNotificationBody(config, user.id);
-      const payload = JSON.stringify({ title: config.title, body, url: config.url });
+      const result = await buildAutoNotificationBody(config, user.id);
+      const payload = JSON.stringify({ title: config.title, body: result.body, url: result.url });
 
       for (const sub of subs) {
         try {
@@ -2136,11 +2153,42 @@ export async function processAutoNotifications() {
   }
 }
 
+function getNextJourneyDay(userId: string, progress: any[]): { journeyId: string; journeyTitle: string; dayTitle: string; dayDescription: string; dayNumber: number } | null {
+  for (const p of progress) {
+    const journeyData = JOURNEY_TITLES[p.journeyId];
+    if (!journeyData) continue;
+    const completedSet = new Set(p.completedDays || []);
+    const nextDay = journeyData.days.find(d => !completedSet.has(d.id));
+    if (nextDay) {
+      return {
+        journeyId: p.journeyId,
+        journeyTitle: journeyData.title,
+        dayTitle: nextDay.title,
+        dayDescription: nextDay.description,
+        dayNumber: nextDay.day,
+      };
+    }
+  }
+  return null;
+}
+
 async function checkAutoNotificationCondition(type: string, userId: string): Promise<boolean> {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (type) {
+    case "morning_prompt": {
+      const progress = await storage.getJourneyProgress(userId);
+      const activeJourneys = progress.filter(p => p.completedDays.length < 30);
+      if (activeJourneys.length === 0) return false;
+      const nextDay = getNextJourneyDay(userId, activeJourneys);
+      return nextDay !== null;
+    }
+    case "evening_reflection": {
+      const entries = await storage.getEntries(userId);
+      const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
+      return !todayEntry;
+    }
     case "daily_reflection": {
       const entries = await storage.getEntries(userId);
       const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
@@ -2189,9 +2237,20 @@ async function checkAutoNotificationCondition(type: string, userId: string): Pro
   }
 }
 
-async function buildAutoNotificationBody(config: { type: string; body: string }, userId: string): Promise<string> {
+async function buildAutoNotificationBody(config: { type: string; body: string; url: string }, userId: string): Promise<{ body: string; url: string }> {
   let body = config.body;
+  let url = config.url;
   const now = new Date();
+
+  if (config.type === "morning_prompt") {
+    const progress = await storage.getJourneyProgress(userId);
+    const activeJourneys = progress.filter(p => p.completedDays.length < 30);
+    const nextDay = getNextJourneyDay(userId, activeJourneys);
+    if (nextDay) {
+      body = `Dia ${nextDay.dayNumber} de "${nextDay.journeyTitle}": ${nextDay.dayTitle} — ${nextDay.dayDescription}`;
+      url = `/journey/${nextDay.journeyId}`;
+    }
+  }
 
   if (config.type === "streak_risk" || config.type === "reengagement") {
     const entries = await storage.getEntries(userId);
@@ -2212,5 +2271,5 @@ async function buildAutoNotificationBody(config: { type: string; body: string },
     body = body.replace("{count}", String(monthCount));
   }
 
-  return body;
+  return { body, url };
 }

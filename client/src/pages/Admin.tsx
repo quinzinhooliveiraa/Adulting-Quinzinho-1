@@ -887,6 +887,8 @@ interface AutoNotif {
 }
 
 const AUTO_TYPE_LABELS: Record<string, { label: string; description: string; icon: string }> = {
+  morning_prompt: { label: "Exercício do Dia", description: "De manhã, envia o próximo exercício da jornada ativa do utilizador", icon: "☀️" },
+  evening_reflection: { label: "Reflexão da Noite", description: "À noite, convida a escrever no diário se ainda não escreveu hoje", icon: "🌙" },
   daily_reflection: { label: "Lembrete Diário", description: "Enviado quando o utilizador não escreveu no diário hoje", icon: "📝" },
   mood_checkin: { label: "Check-in de Humor", description: "Enviado quando o utilizador não fez check-in hoje", icon: "🌟" },
   streak_risk: { label: "Streak em Risco", description: "Enviado após 2+ dias sem escrever", icon: "🔥" },
