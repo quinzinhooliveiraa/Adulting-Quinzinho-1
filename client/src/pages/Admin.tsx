@@ -895,6 +895,7 @@ const AUTO_TYPE_LABELS: Record<string, { label: string; description: string; ico
   streak_celebration: { label: "Celebração de Streak", description: "Enviado a cada 7 reflexões no mês", icon: "🎉" },
   journey_nudge: { label: "Progresso na Jornada", description: "Enviado após 3+ dias sem avançar na jornada", icon: "🚀" },
   reengagement: { label: "Reengajamento", description: "Enviado após 5+ dias completamente inativo", icon: "💛" },
+  daily_motivation: { label: "Reflexão do Dia", description: "Envia a frase motivacional do dia como notificação push", icon: "✨" },
 };
 
 const INTERVAL_OPTIONS = [

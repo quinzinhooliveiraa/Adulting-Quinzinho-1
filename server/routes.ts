@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema } from "@shared/schema";
 import { JOURNEY_TITLES } from "@shared/journeyTitles";
+import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
@@ -2097,6 +2098,14 @@ const AUTO_NOTIFICATION_DEFAULTS = [
     triggerHours: 120,
     isActive: true,
   },
+  {
+    type: "daily_motivation",
+    title: "Reflexão do Dia ✨",
+    body: "{reflection}",
+    url: "/",
+    triggerHours: 24,
+    isActive: true,
+  },
 ];
 
 export async function seedAutoNotifications() {
@@ -2189,6 +2198,9 @@ async function checkAutoNotificationCondition(type: string, userId: string): Pro
       const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
       return !todayEntry;
     }
+    case "daily_motivation": {
+      return true;
+    }
     case "daily_reflection": {
       const entries = await storage.getEntries(userId);
       const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
@@ -2241,6 +2253,15 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
   let body = config.body;
   let url = config.url;
   const now = new Date();
+
+  if (config.type === "daily_motivation") {
+    const today = new Date().toISOString().split('T')[0];
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
+    const index = Math.abs(seed) % DAILY_REFLECTIONS.length;
+    const reflection = DAILY_REFLECTIONS[index];
+    body = reflection.text;
+  }
 
   if (config.type === "morning_prompt") {
     const progress = await storage.getJourneyProgress(userId);
