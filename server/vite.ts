@@ -5,6 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { storage } from "./storage";
 
 const viteLogger = createLogger();
 
@@ -42,12 +43,32 @@ export async function setupVite(server: Server, app: Express) {
         "index.html",
       );
 
-      // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
+
+      const sharedMatch = url.match(/^\/shared\/([a-zA-Z0-9_-]+)/);
+      if (sharedMatch) {
+        try {
+          const entry = await storage.getEntryBySlug(sharedMatch[1]);
+          if (entry) {
+            const title = `Reflexão de ${entry.authorName} — Casa dos 20`;
+            const desc = entry.text.replace(/[#*>\[\]!()]/g, "").slice(0, 160).trim() + "…";
+            const safeTitle = title.replace(/"/g, "&quot;");
+            const safeDesc = desc.replace(/"/g, "&quot;");
+
+            template = template
+              .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${safeTitle}">`)
+              .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${safeDesc}">`)
+              .replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${safeTitle}">`)
+              .replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${safeDesc}">`)
+              .replace(/<title>[^<]*<\/title>/, `<title>${safeTitle}</title>`);
+          }
+        } catch {}
+      }
+
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

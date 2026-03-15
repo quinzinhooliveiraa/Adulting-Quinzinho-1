@@ -24,6 +24,25 @@ function renderMarkdown(text: string) {
   const elements: JSX.Element[] = [];
 
   lines.forEach((line, i) => {
+    const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imgMatch) {
+      elements.push(
+        <figure key={i} className="my-4">
+          <img
+            src={imgMatch[2]}
+            alt={imgMatch[1] || "Imagem da reflexão"}
+            className="w-full rounded-xl object-cover max-h-[500px]"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          {imgMatch[1] && (
+            <figcaption className="text-xs text-muted-foreground text-center mt-2">{imgMatch[1]}</figcaption>
+          )}
+        </figure>
+      );
+      return;
+    }
+
     if (line.startsWith("### ")) {
       elements.push(<h3 key={i} className="text-lg font-serif font-semibold text-foreground mt-6 mb-2">{line.slice(4)}</h3>);
     } else if (line.startsWith("## ")) {
@@ -44,6 +63,8 @@ function renderMarkdown(text: string) {
       elements.push(<div key={i} className="h-3" />);
     } else {
       const formatted = line
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="inline-block max-h-64 rounded-lg my-1" loading="lazy" />')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline underline-offset-2">$1</a>')
         .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>');
       elements.push(
