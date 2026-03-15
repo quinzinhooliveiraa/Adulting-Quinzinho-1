@@ -1987,5 +1987,230 @@ REGRAS:
     }
   });
 
+  app.get("/api/notifications/auto", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const configs = await storage.getAutoNotificationConfigs();
+      const stats = await storage.getAutoNotificationStats();
+      const merged = configs.map(c => ({
+        ...c,
+        ...stats.find(s => s.type === c.type),
+      }));
+      res.json(merged);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/notifications/auto/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateAutoNotificationConfig(id, req.body);
+      if (!updated) return res.status(404).json({ error: "Não encontrado" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/notifications/auto/seed", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+      await seedAutoNotifications();
+      const configs = await storage.getAutoNotificationConfigs();
+      res.json(configs);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
+}
+
+const AUTO_NOTIFICATION_DEFAULTS = [
+  {
+    type: "daily_reflection",
+    title: "Casa dos 20",
+    body: "Ainda não escreveste hoje. Tira 5 minutos para refletir sobre o teu dia 📝",
+    url: "/journal",
+    triggerHours: 20,
+    isActive: true,
+  },
+  {
+    type: "mood_checkin",
+    title: "Como te sentes hoje?",
+    body: "Faz o teu check-in de humor — é rápido e ajuda-te a conhecer-te melhor 🌟",
+    url: "/",
+    triggerHours: 24,
+    isActive: true,
+  },
+  {
+    type: "streak_risk",
+    title: "O teu streak está em risco! 🔥",
+    body: "Já passaram {days} dias sem escreveres. Não deixes a tua sequência quebrar!",
+    url: "/journal",
+    triggerHours: 48,
+    isActive: true,
+  },
+  {
+    type: "streak_celebration",
+    title: "Parabéns! 🎉",
+    body: "Já escreveste {count} vezes este mês. Continua assim, estás a construir um hábito incrível!",
+    url: "/journal",
+    triggerHours: 168,
+    isActive: true,
+  },
+  {
+    type: "journey_nudge",
+    title: "A tua jornada espera por ti 🚀",
+    body: "Tens uma jornada em progresso. Que tal avançar mais um dia hoje?",
+    url: "/journeys",
+    triggerHours: 72,
+    isActive: true,
+  },
+  {
+    type: "reengagement",
+    title: "Sentimos a tua falta! 💛",
+    body: "Já passaram {days} dias. A Casa dos 20 está aqui sempre que precisares de um momento para ti.",
+    url: "/",
+    triggerHours: 120,
+    isActive: true,
+  },
+];
+
+export async function seedAutoNotifications() {
+  for (const config of AUTO_NOTIFICATION_DEFAULTS) {
+    const existing = await storage.getAutoNotificationConfig(config.type);
+    if (!existing) {
+      await storage.upsertAutoNotificationConfig(config);
+    }
+  }
+}
+
+export async function processAutoNotifications() {
+  const configs = await storage.getAutoNotificationConfigs();
+  const activeConfigs = configs.filter(c => c.isActive);
+  if (activeConfigs.length === 0) return;
+
+  const webpush = await import("web-push");
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+    process.env.VAPID_PUBLIC_KEY || "",
+    process.env.VAPID_PRIVATE_KEY || ""
+  );
+
+  const allUsers = await storage.getAllUsers();
+  const activeUsers = allUsers.filter(u => u.isActive);
+
+  for (const user of activeUsers) {
+    const subs = await storage.getPushSubscriptions(user.id);
+    if (subs.length === 0) continue;
+
+    for (const config of activeConfigs) {
+      const alreadySent = await storage.getAutoNotificationLog(user.id, config.type, config.triggerHours);
+      if (alreadySent) continue;
+
+      const shouldSend = await checkAutoNotificationCondition(config.type, user.id);
+      if (!shouldSend) continue;
+
+      const body = await buildAutoNotificationBody(config, user.id);
+      const payload = JSON.stringify({ title: config.title, body, url: config.url });
+
+      for (const sub of subs) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            payload
+          );
+        } catch {
+          await storage.deletePushSubscription(user.id, sub.endpoint);
+        }
+      }
+
+      await storage.createAutoNotificationLog(user.id, config.type);
+    }
+  }
+}
+
+async function checkAutoNotificationCondition(type: string, userId: string): Promise<boolean> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (type) {
+    case "daily_reflection": {
+      const entries = await storage.getEntries(userId);
+      const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
+      return !todayEntry;
+    }
+    case "mood_checkin": {
+      const latest = await storage.getLatestCheckin(userId);
+      if (!latest) return true;
+      return new Date(latest.createdAt) < todayStart;
+    }
+    case "streak_risk": {
+      const entries = await storage.getEntries(userId);
+      if (entries.length === 0) return false;
+      const lastEntry = entries[0];
+      const daysSince = (now.getTime() - new Date(lastEntry.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince >= 2 && daysSince < 7;
+    }
+    case "streak_celebration": {
+      const monthCount = await storage.getMonthlyEntryCount(userId);
+      return monthCount >= 7 && monthCount % 7 === 0;
+    }
+    case "journey_nudge": {
+      const progress = await storage.getJourneyProgress(userId);
+      const activeJourneys = progress.filter(p => p.completedDays.length > 0 && p.completedDays.length < 30);
+      if (activeJourneys.length === 0) return false;
+      const mostRecent = activeJourneys.sort((a, b) =>
+        new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()
+      )[0];
+      const daysSince = (now.getTime() - new Date(mostRecent.lastActivityAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince >= 3;
+    }
+    case "reengagement": {
+      const entries = await storage.getEntries(userId);
+      const checkins = await storage.getCheckins(userId);
+      const lastEntryDate = entries.length > 0 ? new Date(entries[0].createdAt) : null;
+      const lastCheckinDate = checkins.length > 0 ? new Date(checkins[0].createdAt) : null;
+      const lastActivity = lastEntryDate && lastCheckinDate
+        ? new Date(Math.max(lastEntryDate.getTime(), lastCheckinDate.getTime()))
+        : lastEntryDate || lastCheckinDate;
+      if (!lastActivity) return false;
+      const daysSince = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince >= 5;
+    }
+    default:
+      return false;
+  }
+}
+
+async function buildAutoNotificationBody(config: { type: string; body: string }, userId: string): Promise<string> {
+  let body = config.body;
+  const now = new Date();
+
+  if (config.type === "streak_risk" || config.type === "reengagement") {
+    const entries = await storage.getEntries(userId);
+    const checkins = await storage.getCheckins(userId);
+    const lastEntryDate = entries.length > 0 ? new Date(entries[0].createdAt) : null;
+    const lastCheckinDate = checkins.length > 0 ? new Date(checkins[0].createdAt) : null;
+    const lastActivity = lastEntryDate && lastCheckinDate
+      ? new Date(Math.max(lastEntryDate.getTime(), lastCheckinDate.getTime()))
+      : lastEntryDate || lastCheckinDate;
+    if (lastActivity) {
+      const days = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+      body = body.replace("{days}", String(days));
+    }
+  }
+
+  if (config.type === "streak_celebration") {
+    const monthCount = await storage.getMonthlyEntryCount(userId);
+    body = body.replace("{count}", String(monthCount));
+  }
+
+  return body;
 }

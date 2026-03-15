@@ -874,6 +874,27 @@ interface ScheduledNotif {
   createdAt: string;
 }
 
+interface AutoNotif {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  url: string;
+  isActive: boolean;
+  triggerHours: number;
+  totalSent?: number;
+  lastSentAt?: string | null;
+}
+
+const AUTO_TYPE_LABELS: Record<string, { label: string; description: string; icon: string }> = {
+  daily_reflection: { label: "Lembrete Diário", description: "Enviado quando o utilizador não escreveu no diário hoje", icon: "📝" },
+  mood_checkin: { label: "Check-in de Humor", description: "Enviado quando o utilizador não fez check-in hoje", icon: "🌟" },
+  streak_risk: { label: "Streak em Risco", description: "Enviado após 2+ dias sem escrever", icon: "🔥" },
+  streak_celebration: { label: "Celebração de Streak", description: "Enviado a cada 7 reflexões no mês", icon: "🎉" },
+  journey_nudge: { label: "Progresso na Jornada", description: "Enviado após 3+ dias sem avançar na jornada", icon: "🚀" },
+  reengagement: { label: "Reengajamento", description: "Enviado após 5+ dias completamente inativo", icon: "💛" },
+};
+
 const INTERVAL_OPTIONS = [
   { value: 6, label: "A cada 6 horas" },
   { value: 12, label: "A cada 12 horas" },
@@ -964,6 +985,8 @@ function PushNotificationPanel() {
 
   return (
     <div className="space-y-6">
+      <AutoNotificationsPanel />
+
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Send size={16} className="text-foreground" />
@@ -1154,6 +1177,170 @@ function PushNotificationPanel() {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AutoNotificationsPanel() {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+
+  const { data: autoNotifs = [], refetch } = useQuery<AutoNotif[]>({
+    queryKey: ["/api/notifications/auto"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/auto", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const handleToggle = async (notif: AutoNotif) => {
+    await fetch(`/api/notifications/auto/${notif.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ isActive: !notif.isActive }),
+    });
+    refetch();
+  };
+
+  const handleSaveEdit = async (notif: AutoNotif) => {
+    await fetch(`/api/notifications/auto/${notif.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ title: editTitle, body: editBody }),
+    });
+    setEditingId(null);
+    refetch();
+  };
+
+  const startEdit = (notif: AutoNotif) => {
+    setEditingId(notif.id);
+    setEditTitle(notif.title);
+    setEditBody(notif.body);
+  };
+
+  if (autoNotifs.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Bell size={16} className="text-foreground" />
+          <h2 className="text-sm font-medium text-foreground">Notificações Inteligentes</h2>
+        </div>
+        <div className="py-6 text-center bg-card border border-border rounded-xl">
+          <Bell size={28} className="text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">A carregar notificações automáticas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Bell size={16} className="text-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Notificações Inteligentes</h2>
+      </div>
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        Enviadas automaticamente com base no comportamento de cada utilizador.
+      </p>
+
+      <div className="space-y-2">
+        {autoNotifs.map((notif) => {
+          const meta = AUTO_TYPE_LABELS[notif.type] || { label: notif.type, description: "", icon: "🔔" };
+          const isEditing = editingId === notif.id;
+          const lastSent = notif.lastSentAt
+            ? new Date(notif.lastSentAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+            : "Nunca";
+
+          return (
+            <div
+              key={notif.id}
+              className={`border rounded-xl p-3 space-y-2 transition-colors ${
+                notif.isActive ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-60"
+              }`}
+              data-testid={`auto-notif-${notif.type}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{meta.icon}</span>
+                    <p className="text-sm font-medium text-foreground">{meta.label}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{meta.description}</p>
+                </div>
+                <button
+                  onClick={() => handleToggle(notif)}
+                  className="shrink-0 mt-0.5"
+                  data-testid={`button-toggle-auto-${notif.type}`}
+                >
+                  {notif.isActive ? (
+                    <ToggleRight size={24} className="text-primary" />
+                  ) : (
+                    <ToggleLeft size={24} className="text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+
+              {isEditing ? (
+                <div className="space-y-2 pt-1">
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs"
+                    placeholder="Título"
+                    data-testid={`input-auto-title-${notif.type}`}
+                  />
+                  <textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs resize-none min-h-12"
+                    placeholder="Mensagem"
+                    data-testid={`input-auto-body-${notif.type}`}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveEdit(notif)}
+                      className="flex-1 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold"
+                      data-testid={`button-save-auto-${notif.type}`}
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-xs"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => startEdit(notif)}
+                  className="bg-muted/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <p className="text-[11px] font-medium text-muted-foreground">{notif.title}</p>
+                  <p className="text-[11px] text-muted-foreground/80 mt-0.5">{notif.body}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <Clock size={10} /> Min. {notif.triggerHours}h entre envios
+                  </span>
+                  <span>Último: {lastSent}</span>
+                </div>
+                <span className="bg-muted/50 px-2 py-0.5 rounded-full font-medium">
+                  {notif.totalSent || 0} enviada{(notif.totalSent || 0) !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes, seedAutoNotifications, processAutoNotifications } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
@@ -149,42 +149,52 @@ app.use((req, res, next) => {
     () => {
       log(`serving on port ${port}`);
 
+      seedAutoNotifications()
+        .then(() => log("Auto notifications seeded"))
+        .catch((err) => log(`Auto notification seed error: ${err}`));
+
       setInterval(async () => {
         try {
           const dueNotifs = await storage.getDueNotifications();
-          if (dueNotifs.length === 0) return;
+          if (dueNotifs.length > 0) {
+            const webpush = await import("web-push");
+            webpush.setVapidDetails(
+              process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+              process.env.VAPID_PUBLIC_KEY || "",
+              process.env.VAPID_PRIVATE_KEY || ""
+            );
 
-          const webpush = await import("web-push");
-          webpush.setVapidDetails(
-            process.env.VAPID_SUBJECT || "mailto:admin@example.com",
-            process.env.VAPID_PUBLIC_KEY || "",
-            process.env.VAPID_PRIVATE_KEY || ""
-          );
-
-          const allSubs = await storage.getAllPushSubscriptions();
-          if (allSubs.length === 0) return;
-
-          for (const notif of dueNotifs) {
-            const payload = JSON.stringify({
-              title: notif.title,
-              body: notif.body,
-              url: notif.url,
-            });
-            for (const sub of allSubs) {
-              try {
-                await webpush.sendNotification(
-                  { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                  payload
-                );
-              } catch {
-                await storage.deletePushSubscription(sub.userId, sub.endpoint);
+            const allSubs = await storage.getAllPushSubscriptions();
+            if (allSubs.length > 0) {
+              for (const notif of dueNotifs) {
+                const payload = JSON.stringify({
+                  title: notif.title,
+                  body: notif.body,
+                  url: notif.url,
+                });
+                for (const sub of allSubs) {
+                  try {
+                    await webpush.sendNotification(
+                      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                      payload
+                    );
+                  } catch {
+                    await storage.deletePushSubscription(sub.userId, sub.endpoint);
+                  }
+                }
+                await storage.markNotificationSent(notif.id);
               }
+              log(`Sent ${dueNotifs.length} scheduled notification(s) to ${allSubs.length} device(s)`);
             }
-            await storage.markNotificationSent(notif.id);
           }
-          log(`Sent ${dueNotifs.length} scheduled notification(s) to ${allSubs.length} device(s)`);
         } catch (err) {
           log(`Notification scheduler error: ${err}`);
+        }
+
+        try {
+          await processAutoNotifications();
+        } catch (err) {
+          log(`Auto notification error: ${err}`);
         }
       }, 5 * 60 * 1000);
     },

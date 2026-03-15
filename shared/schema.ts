@@ -133,6 +133,34 @@ export const insertScheduledNotificationSchema = createInsertSchema(scheduledNot
 export type InsertScheduledNotification = z.infer<typeof insertScheduledNotificationSchema>;
 export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
 
+export const autoNotificationConfigs = pgTable("auto_notification_configs", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().unique(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  url: text("url").notNull().default("/"),
+  isActive: boolean("is_active").notNull().default(true),
+  triggerHours: integer("trigger_hours").notNull().default(24),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAutoNotificationConfigSchema = createInsertSchema(autoNotificationConfigs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAutoNotificationConfig = z.infer<typeof insertAutoNotificationConfigSchema>;
+export type AutoNotificationConfig = typeof autoNotificationConfigs.$inferSelect;
+
+export const autoNotificationLogs = pgTable("auto_notification_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
+export type AutoNotificationLog = typeof autoNotificationLogs.$inferSelect;
+
 export const journeyReports = pgTable("journey_reports", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),

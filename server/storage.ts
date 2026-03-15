@@ -25,6 +25,11 @@ import {
   type InsertScheduledNotification,
   type JourneyReport as JourneyReportType,
   type InsertJourneyReport,
+  autoNotificationConfigs,
+  autoNotificationLogs,
+  type AutoNotificationConfig,
+  type InsertAutoNotificationConfig,
+  type AutoNotificationLog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -78,6 +83,14 @@ export interface IStorage {
   saveJourneyReport(data: InsertJourneyReport): Promise<JourneyReportType>;
   getJourneyReports(userId: string): Promise<JourneyReportType[]>;
   getJourneyReport(id: number, userId: string): Promise<JourneyReportType | undefined>;
+
+  getAutoNotificationConfigs(): Promise<AutoNotificationConfig[]>;
+  getAutoNotificationConfig(type: string): Promise<AutoNotificationConfig | undefined>;
+  upsertAutoNotificationConfig(data: InsertAutoNotificationConfig): Promise<AutoNotificationConfig>;
+  updateAutoNotificationConfig(id: number, data: Partial<AutoNotificationConfig>): Promise<AutoNotificationConfig | undefined>;
+  getAutoNotificationLog(userId: string, type: string, sinceHours: number): Promise<AutoNotificationLog | undefined>;
+  createAutoNotificationLog(userId: string, type: string): Promise<void>;
+  getAutoNotificationStats(): Promise<{ type: string; totalSent: number; lastSentAt: Date | null }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -364,6 +377,66 @@ export class DatabaseStorage implements IStorage {
     const [report] = await db.select().from(journeyReports)
       .where(and(eq(journeyReports.id, id), eq(journeyReports.userId, userId)));
     return report;
+  }
+
+  async getAutoNotificationConfigs(): Promise<AutoNotificationConfig[]> {
+    return db.select().from(autoNotificationConfigs).orderBy(autoNotificationConfigs.type);
+  }
+
+  async getAutoNotificationConfig(type: string): Promise<AutoNotificationConfig | undefined> {
+    const [config] = await db.select().from(autoNotificationConfigs).where(eq(autoNotificationConfigs.type, type));
+    return config;
+  }
+
+  async upsertAutoNotificationConfig(data: InsertAutoNotificationConfig): Promise<AutoNotificationConfig> {
+    const existing = await this.getAutoNotificationConfig(data.type);
+    if (existing) {
+      const [updated] = await db.update(autoNotificationConfigs).set(data).where(eq(autoNotificationConfigs.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(autoNotificationConfigs).values(data).returning();
+    return created;
+  }
+
+  async updateAutoNotificationConfig(id: number, data: Partial<AutoNotificationConfig>): Promise<AutoNotificationConfig | undefined> {
+    const [updated] = await db.update(autoNotificationConfigs).set(data).where(eq(autoNotificationConfigs.id, id)).returning();
+    return updated;
+  }
+
+  async getAutoNotificationLog(userId: string, type: string, sinceHours: number): Promise<AutoNotificationLog | undefined> {
+    const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000);
+    const [log] = await db.select().from(autoNotificationLogs)
+      .where(and(
+        eq(autoNotificationLogs.userId, userId),
+        eq(autoNotificationLogs.type, type),
+        gte(autoNotificationLogs.sentAt, since)
+      ))
+      .orderBy(desc(autoNotificationLogs.sentAt))
+      .limit(1);
+    return log;
+  }
+
+  async createAutoNotificationLog(userId: string, type: string): Promise<void> {
+    await db.insert(autoNotificationLogs).values({ userId, type });
+  }
+
+  async getAutoNotificationStats(): Promise<{ type: string; totalSent: number; lastSentAt: Date | null }[]> {
+    const allConfigs = await this.getAutoNotificationConfigs();
+    const stats = [];
+    for (const config of allConfigs) {
+      const [countResult] = await db.select({ value: count() }).from(autoNotificationLogs)
+        .where(eq(autoNotificationLogs.type, config.type));
+      const [lastLog] = await db.select().from(autoNotificationLogs)
+        .where(eq(autoNotificationLogs.type, config.type))
+        .orderBy(desc(autoNotificationLogs.sentAt))
+        .limit(1);
+      stats.push({
+        type: config.type,
+        totalSent: countResult?.value || 0,
+        lastSentAt: lastLog?.sentAt || null,
+      });
+    }
+    return stats;
   }
 }
 
