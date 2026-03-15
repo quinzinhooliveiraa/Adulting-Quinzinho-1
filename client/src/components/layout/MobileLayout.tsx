@@ -117,6 +117,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isPushSubscribed());
   const [pushLoading, setPushLoading] = useState(false);
+  const [showPushBanner, setShowPushBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem("casa-dos-20-sidebar-collapsed") === "true";
@@ -129,6 +130,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!isPushSubscribed() && isPushSupported() && Notification.permission !== "denied") {
+      const dismissed = localStorage.getItem("casa-push-banner-dismissed");
+      if (!dismissed) {
+        setShowPushBanner(true);
+      }
+    }
   }, []);
 
   const handleTogglePush = async () => {
@@ -550,6 +560,47 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           />
 
           {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
+
+          {showPushBanner && (
+            <div className="mx-4 mt-3 p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Bell size={16} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Ativar notificações neste dispositivo?</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Recebe lembretes e novidades diretamente aqui.</p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={async () => {
+                    setPushLoading(true);
+                    const ok = await subscribeToPush();
+                    setPushEnabled(ok);
+                    setPushLoading(false);
+                    setShowPushBanner(false);
+                    if (!ok) {
+                      localStorage.setItem("casa-push-banner-dismissed", "true");
+                    }
+                  }}
+                  disabled={pushLoading}
+                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  data-testid="button-push-banner-enable"
+                >
+                  {pushLoading ? "..." : "Ativar"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPushBanner(false);
+                    localStorage.setItem("casa-push-banner-dismissed", "true");
+                  }}
+                  className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-push-banner-dismiss"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
 
           <main className={cn("flex-1 overflow-y-auto overflow-x-hidden", isDesktop ? "pb-6" : "pb-24")}>
             {children}
