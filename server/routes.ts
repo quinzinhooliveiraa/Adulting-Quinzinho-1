@@ -1915,7 +1915,8 @@ REGRAS:
       if (!user || user.role !== "admin") {
         return res.status(403).json({ error: "Acesso negado" });
       }
-      const webpush = await import("web-push");
+      const webpushModule = await import("web-push");
+      const webpush = webpushModule.default || webpushModule;
       webpush.setVapidDetails(
         process.env.VAPID_SUBJECT || "mailto:admin@example.com",
         process.env.VAPID_PUBLIC_KEY || "",
@@ -2007,7 +2008,8 @@ REGRAS:
 
   app.post("/api/push/test", requireAuth, async (req, res) => {
     try {
-      const webpush = await import("web-push");
+      const webpushModule = await import("web-push");
+      const webpush = webpushModule.default || webpushModule;
       webpush.setVapidDetails(
         process.env.VAPID_SUBJECT || "mailto:admin@example.com",
         process.env.VAPID_PUBLIC_KEY || "",
@@ -2173,7 +2175,8 @@ export async function processAutoNotifications() {
   const activeConfigs = configs.filter(c => c.isActive);
   if (activeConfigs.length === 0) return;
 
-  const webpush = await import("web-push");
+  const webpushModule = await import("web-push");
+  const webpush = webpushModule.default || webpushModule;
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || "mailto:admin@example.com",
     process.env.VAPID_PUBLIC_KEY || "",

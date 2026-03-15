@@ -157,7 +157,8 @@ app.use((req, res, next) => {
         try {
           const dueNotifs = await storage.getDueNotifications();
           if (dueNotifs.length > 0) {
-            const webpush = await import("web-push");
+            const webpushModule = await import("web-push");
+            const webpush = webpushModule.default || webpushModule;
             webpush.setVapidDetails(
               process.env.VAPID_SUBJECT || "mailto:admin@example.com",
               process.env.VAPID_PUBLIC_KEY || "",
