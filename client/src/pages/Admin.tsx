@@ -622,6 +622,25 @@ export default function Admin() {
     queryKey: ["/api/admin/feedback"],
   });
 
+  const { data: notifyPrefs } = useQuery<{ notifyNewUser: boolean; notifyNewSub: boolean }>({
+    queryKey: ["/api/admin/notify-prefs"],
+  });
+
+  const notifyPrefsMutation = useMutation({
+    mutationFn: async (data: { notifyNewUser?: boolean; notifyNewSub?: boolean }) => {
+      const res = await fetch("/api/admin/notify-prefs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/notify-prefs"] });
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await fetch(`/api/admin/users/${id}`, {
@@ -858,7 +877,54 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === "push" && <PushNotificationPanel />}
+      {activeTab === "push" && (
+        <div className="space-y-4">
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Bell size={16} />
+              Alertas do Admin
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm text-foreground">Novo usuário</p>
+                  <p className="text-[11px] text-muted-foreground">Receber notificação quando alguém criar conta</p>
+                </div>
+                <button
+                  onClick={() => notifyPrefsMutation.mutate({ notifyNewUser: !notifyPrefs?.notifyNewUser })}
+                  className="transition-colors"
+                  data-testid="toggle-notify-new-user"
+                >
+                  {notifyPrefs?.notifyNewUser ? (
+                    <ToggleRight size={28} className="text-primary" />
+                  ) : (
+                    <ToggleLeft size={28} className="text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+              <div className="border-t border-border" />
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm text-foreground">Nova assinatura</p>
+                  <p className="text-[11px] text-muted-foreground">Receber notificação quando alguém assinar premium</p>
+                </div>
+                <button
+                  onClick={() => notifyPrefsMutation.mutate({ notifyNewSub: !notifyPrefs?.notifyNewSub })}
+                  className="transition-colors"
+                  data-testid="toggle-notify-new-sub"
+                >
+                  {notifyPrefs?.notifyNewSub ? (
+                    <ToggleRight size={28} className="text-primary" />
+                  ) : (
+                    <ToggleLeft size={28} className="text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+          <PushNotificationPanel />
+        </div>
+      )}
     </div>
   );
 }

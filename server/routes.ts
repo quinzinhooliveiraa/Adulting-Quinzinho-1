@@ -13,6 +13,7 @@ import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
+import { notifyAdminNewUser } from "./adminNotify";
 import { getUncachableResendClient } from "./resendClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -265,6 +266,7 @@ export async function registerRoutes(
 
       if (!isAdminEmail) {
         sendVerificationEmail(data.email, verificationToken, data.name);
+        notifyAdminNewUser(data.name, data.email).catch(() => {});
       }
 
       req.session.userId = user.id;
@@ -533,6 +535,7 @@ export async function registerRoutes(
           emailVerified: true,
         });
         isNewUser = true;
+        notifyAdminNewUser(name, email).catch(() => {});
       }
 
       if (!user.isActive) {
@@ -613,6 +616,7 @@ export async function registerRoutes(
           emailVerified: true,
         });
         isNewUser = true;
+        notifyAdminNewUser(name, email).catch(() => {});
       }
 
       if (!user.isActive) {
@@ -1030,6 +1034,32 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar estatísticas" });
+    }
+  });
+
+  app.get("/api/admin/notify-prefs", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+      res.json({
+        notifyNewUser: user.adminNotifyNewUser,
+        notifyNewSub: user.adminNotifyNewSub,
+      });
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar preferências" });
+    }
+  });
+
+  app.patch("/api/admin/notify-prefs", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { notifyNewUser, notifyNewSub } = req.body;
+      const updates: Record<string, boolean> = {};
+      if (typeof notifyNewUser === "boolean") updates.adminNotifyNewUser = notifyNewUser;
+      if (typeof notifyNewSub === "boolean") updates.adminNotifyNewSub = notifyNewSub;
+      await storage.updateUser(req.session.userId!, updates);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Erro ao atualizar preferências" });
     }
   });
 

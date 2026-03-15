@@ -1,6 +1,7 @@
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
 import { storage } from "./storage";
 import Stripe from "stripe";
+import { notifyAdminNewSubscription } from "./adminNotify";
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -50,6 +51,7 @@ export class WebhookHandlers {
           premiumUntil: periodEnd,
         });
         console.log(`[stripe] User ${user.email} activated premium until ${periodEnd.toISOString()}`);
+        notifyAdminNewSubscription(user.name, user.email).catch(() => {});
         break;
       }
 
