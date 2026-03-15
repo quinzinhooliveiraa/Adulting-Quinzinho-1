@@ -34,6 +34,7 @@ export const journalEntries = pgTable("journal_entries", {
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
   mood: text("mood"),
   date: text("date").notNull(),
+  shareSlug: text("share_slug").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

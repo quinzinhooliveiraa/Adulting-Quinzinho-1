@@ -21,6 +21,7 @@ import Book from "@/pages/Book";
 import Admin from "@/pages/Admin";
 import Premium from "@/pages/Premium";
 import Reports from "@/pages/Reports";
+import SharedEntry from "@/pages/SharedEntry";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -94,7 +95,12 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
-            <AuthGate />
+            <Switch>
+              <Route path="/shared/:slug" component={SharedEntry} />
+              <Route>
+                <AuthGate />
+              </Route>
+            </Switch>
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>

@@ -46,8 +46,10 @@ export interface IStorage {
 
   getEntries(userId: string): Promise<JournalEntry[]>;
   getEntry(id: number): Promise<JournalEntry | undefined>;
+  getEntryBySlug(slug: string): Promise<(JournalEntry & { authorName: string }) | undefined>;
   createEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
   updateEntry(id: number, userId: string, text: string, tags: string[]): Promise<JournalEntry | undefined>;
+  setEntryShareSlug(id: number, userId: string, slug: string | null): Promise<JournalEntry | undefined>;
   deleteEntry(id: number, userId: string): Promise<boolean>;
   getEntriesByTag(userId: string, tag: string): Promise<JournalEntry[]>;
   getMonthlyEntryCount(userId: string): Promise<number>;
@@ -152,6 +154,25 @@ export class DatabaseStorage implements IStorage {
   async createEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
     const [created] = await db.insert(journalEntries).values(entry).returning();
     return created;
+  }
+
+  async getEntryBySlug(slug: string): Promise<(JournalEntry & { authorName: string }) | undefined> {
+    const results = await db.select({
+      entry: journalEntries,
+      authorName: users.name,
+    }).from(journalEntries)
+      .innerJoin(users, eq(journalEntries.userId, users.id))
+      .where(eq(journalEntries.shareSlug, slug));
+    if (results.length === 0) return undefined;
+    return { ...results[0].entry, authorName: results[0].authorName };
+  }
+
+  async setEntryShareSlug(id: number, userId: string, slug: string | null): Promise<JournalEntry | undefined> {
+    const [updated] = await db.update(journalEntries)
+      .set({ shareSlug: slug, updatedAt: new Date() })
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.userId, userId)))
+      .returning();
+    return updated;
   }
 
   async updateEntry(id: number, userId: string, text: string, tags: string[]): Promise<JournalEntry | undefined> {

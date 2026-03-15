@@ -1175,6 +1175,57 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/journal/:id/share", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
+
+      const entry = await storage.getEntry(id);
+      if (!entry || entry.userId !== req.session.userId) {
+        return res.status(404).json({ message: "Entrada não encontrada" });
+      }
+
+      if (entry.shareSlug) {
+        return res.json({ slug: entry.shareSlug });
+      }
+
+      const slug = crypto.randomUUID().slice(0, 8) + "-" + Date.now().toString(36);
+      const updated = await storage.setEntryShareSlug(id, req.session.userId!, slug);
+      if (!updated) return res.status(500).json({ message: "Erro ao compartilhar" });
+      res.json({ slug: updated.shareSlug });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao compartilhar entrada" });
+    }
+  });
+
+  app.delete("/api/journal/:id/share", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
+
+      const updated = await storage.setEntryShareSlug(id, req.session.userId!, null);
+      if (!updated) return res.status(404).json({ message: "Entrada não encontrada" });
+      res.json({ message: "Link removido" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao remover compartilhamento" });
+    }
+  });
+
+  app.get("/api/shared/:slug", async (req: Request, res: Response) => {
+    try {
+      const entry = await storage.getEntryBySlug(req.params.slug as string);
+      if (!entry) return res.status(404).json({ message: "Reflexão não encontrada" });
+      res.json({
+        text: entry.text,
+        tags: entry.tags,
+        date: entry.date,
+        authorName: entry.authorName,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar reflexão" });
+    }
+  });
+
   app.get("/api/checkins", requireAuth, async (req: Request, res: Response) => {
     try {
       const checkins = await storage.getCheckins(req.session.userId!);

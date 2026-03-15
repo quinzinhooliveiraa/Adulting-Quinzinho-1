@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown, Share, Image as ImageIcon } from "lucide-react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown, Share, Image as ImageIcon, Link2, Copy, ExternalLink, Loader2 } from "lucide-react";
 import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -219,6 +219,94 @@ interface LocalJournalEntry {
   updatedAt?: Date | string;
   userId?: string;
   timestamp?: number;
+}
+
+function ShareLinkButton({ entryId, existingSlug }: { entryId: number; existingSlug?: string | null }) {
+  const [slug, setSlug] = useState<string | null>(existingSlug || null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = slug ? `${window.location.origin}/shared/${slug}` : null;
+
+  const handleGenerateLink = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/journal/${entryId}/share`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.slug) setSlug(data.slug);
+    } catch {}
+    setLoading(false);
+  };
+
+  const handleCopy = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement("input");
+      input.value = shareUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.share({ title: "Reflexão — Casa dos 20", url: shareUrl });
+    } catch {}
+  };
+
+  const handleRemoveLink = async () => {
+    try {
+      await fetch(`/api/journal/${entryId}/share`, { method: "DELETE", credentials: "include" });
+      setSlug(null);
+    } catch {}
+  };
+
+  if (!slug) {
+    return (
+      <Button
+        size="sm"
+        onClick={handleGenerateLink}
+        disabled={loading}
+        className="w-full bg-secondary text-secondary-foreground border border-border/50"
+        data-testid="button-generate-share-link"
+      >
+        {loading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Link2 size={14} className="mr-1" />}
+        Criar link público (blog)
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 bg-secondary/50 rounded-lg p-2 border border-border/30">
+        <Link2 size={14} className="text-primary flex-shrink-0" />
+        <span className="text-xs text-muted-foreground truncate flex-1">{shareUrl}</span>
+        <button onClick={handleCopy} className="p-1.5 hover:bg-muted rounded-md transition-colors" title="Copiar" data-testid="button-copy-share-link">
+          {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-muted-foreground" />}
+        </button>
+        {typeof navigator !== "undefined" && navigator.share && (
+          <button onClick={handleNativeShare} className="p-1.5 hover:bg-muted rounded-md transition-colors" title="Compartilhar" data-testid="button-native-share-link">
+            <ExternalLink size={14} className="text-muted-foreground" />
+          </button>
+        )}
+      </div>
+      <button onClick={handleRemoveLink} className="text-[10px] text-muted-foreground hover:text-red-500 transition-colors" data-testid="button-remove-share-link">
+        Remover link público
+      </button>
+    </div>
+  );
 }
 
 function ImageShareDrawer({ text, theme, onThemeChange, onClose }: { text: string; theme: ShareImageTheme; onThemeChange: (t: ShareImageTheme) => void; onClose: () => void }) {
@@ -661,23 +749,26 @@ export default function Journal() {
               </div>
 
               {showShare === viewingEntry.id && (
-                <div className="flex flex-wrap gap-2 animate-in slide-in-from-bottom">
-                  {typeof navigator !== "undefined" && navigator.share && (
-                    <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">
-                      <Share2 size={14} className="mr-1" />
-                      Texto
+                <div className="space-y-2 animate-in slide-in-from-bottom">
+                  <ShareLinkButton entryId={viewingEntry.id as number} existingSlug={(viewingEntry as any).shareSlug} />
+                  <div className="flex gap-2">
+                    {typeof navigator !== "undefined" && navigator.share && (
+                      <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">
+                        <Share2 size={14} className="mr-1" />
+                        Texto
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={() => {
+                      const plain = getEntrySummary(viewingEntry.text);
+                      const excerpt = plain.length > 200 ? plain.slice(0, 200) + "…" : plain;
+                      setImageShareText(excerpt);
+                      setShowImageShare(true);
+                      setShowShare(null);
+                    }} className="flex-1 bg-primary text-primary-foreground" data-testid="button-share-image">
+                      <ImageIcon size={14} className="mr-1" />
+                      Imagem
                     </Button>
-                  )}
-                  <Button size="sm" onClick={() => {
-                    const plain = getEntrySummary(viewingEntry.text);
-                    const excerpt = plain.length > 200 ? plain.slice(0, 200) + "…" : plain;
-                    setImageShareText(excerpt);
-                    setShowImageShare(true);
-                    setShowShare(null);
-                  }} className="flex-1 bg-primary text-primary-foreground" data-testid="button-share-image">
-                    <ImageIcon size={14} className="mr-1" />
-                    Imagem
-                  </Button>
+                  </div>
                 </div>
               )}
             </div>
