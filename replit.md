@@ -17,7 +17,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - All UI text in Brazilian Portuguese
 
 ## Database Schema (`shared/schema.ts`)
-- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, journeyOnboardingDone, journeyOrder (text[]), createdAt
+- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt
@@ -42,8 +42,12 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - PWA manifest at `client/public/manifest.json` enables "Add to Home Screen"
 - VAPID keys stored as env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 - Frontend utility: `client/src/utils/pushNotifications.ts` (subscribe, unsubscribe, permission)
-- API routes: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/send` (admin), `/api/push/test`
+- API routes: `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/send` (admin), `/api/push/test`, `/api/push/clicked`
 - Toggle in user menu (MobileLayout); admin can send to all from Admin > Push tab
+- **Push Campaign Analytics**: `push_campaigns` table tracks sent/failed/clicked counts per broadcast
+  - Service worker reports clicks to `/api/push/clicked` with `campaignId`
+  - Admin sees "Histórico de Envios" with delivery and click-through rates
+  - API: `/api/admin/push-campaigns` (GET, admin only)
 - Service worker registered on app load in `client/src/main.tsx`
 - **Scheduled Notifications**: `scheduled_notifications` table (id, title, body, url, intervalHours, isActive, lastSentAt)
   - Admin UI in Push tab: create/toggle/delete recurring notifications

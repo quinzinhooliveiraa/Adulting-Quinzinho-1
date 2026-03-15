@@ -1,4 +1,4 @@
-const CACHE_NAME = "casa-dos-20-v3";
+const CACHE_NAME = "casa-dos-20-v4";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
@@ -67,7 +67,7 @@ self.addEventListener("push", (event) => {
     icon: "/icon-192.png",
     badge: "/favicon.png",
     vibrate: [100, 50, 100],
-    data: { url: data.url || "/", sound: data.sound || null },
+    data: { url: data.url || "/", sound: data.sound || null, campaignId: data.campaignId || null },
     actions: data.actions || [],
     tag: data.tag || "default",
     renotify: true,
@@ -93,6 +93,15 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/";
+  const campaignId = event.notification.data?.campaignId;
+
+  if (campaignId) {
+    fetch("/api/push/clicked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId }),
+    }).catch(() => {});
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

@@ -166,6 +166,19 @@ export const autoNotificationLogs = pgTable("auto_notification_logs", {
 
 export type AutoNotificationLog = typeof autoNotificationLogs.$inferSelect;
 
+export const pushCampaigns = pgTable("push_campaigns", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  url: text("url").notNull().default("/"),
+  sentCount: integer("sent_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  clickedCount: integer("clicked_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PushCampaign = typeof pushCampaigns.$inferSelect;
+
 export const journeyReports = pgTable("journey_reports", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),

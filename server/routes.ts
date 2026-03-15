@@ -1914,6 +1914,27 @@ REGRAS:
     res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
   });
 
+  app.get("/api/admin/push-campaigns", requireAdmin, async (_req, res) => {
+    try {
+      const campaigns = await storage.getPushCampaigns();
+      res.json(campaigns);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/clicked", async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (campaignId && typeof campaignId === "number") {
+        await storage.incrementCampaignClicks(campaignId);
+      }
+      res.json({ ok: true });
+    } catch {
+      res.status(200).json({ ok: true });
+    }
+  });
+
   app.post("/api/pwa/installed", requireAuth, async (req, res) => {
     try {
       await storage.updateUser(req.session.userId!, { pwaInstalled: true });
@@ -1965,7 +1986,9 @@ REGRAS:
         process.env.VAPID_PRIVATE_KEY || ""
       );
       const { title, body, url, targetUserId } = req.body;
-      const payload = JSON.stringify({ title: title || "Casa dos 20", body: body || "", url: url || "/" });
+      const pushTitle = title || "Casa dos 20";
+      const pushBody = body || "";
+      const pushUrl = url || "/";
 
       let subscriptions;
       if (targetUserId) {
@@ -1976,6 +1999,17 @@ REGRAS:
 
       let sent = 0;
       let failed = 0;
+
+      const campaign = await storage.createPushCampaign({
+        title: pushTitle,
+        body: pushBody,
+        url: pushUrl,
+        sentCount: 0,
+        failedCount: 0,
+      });
+
+      const payload = JSON.stringify({ title: pushTitle, body: pushBody, url: pushUrl, campaignId: campaign.id });
+
       for (const sub of subscriptions) {
         try {
           await webpush.sendNotification(
@@ -1988,7 +2022,9 @@ REGRAS:
           failed++;
         }
       }
-      res.json({ sent, failed, total: subscriptions.length });
+
+      await storage.updatePushCampaignCounts(campaign.id, sent, failed);
+      res.json({ sent, failed, total: subscriptions.length, campaignId: campaign.id });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -27,9 +27,11 @@ import {
   type InsertJourneyReport,
   autoNotificationConfigs,
   autoNotificationLogs,
+  pushCampaigns,
   type AutoNotificationConfig,
   type InsertAutoNotificationConfig,
   type AutoNotificationLog,
+  type PushCampaign,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -40,7 +42,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByAppleId(appleId: string): Promise<User | undefined>;
-  updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled">>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
 
@@ -93,6 +95,11 @@ export interface IStorage {
   getAutoNotificationLog(userId: string, type: string, sinceHours: number): Promise<AutoNotificationLog | undefined>;
   createAutoNotificationLog(userId: string, type: string): Promise<void>;
   getAutoNotificationStats(): Promise<{ type: string; totalSent: number; lastSentAt: Date | null }[]>;
+
+  createPushCampaign(data: { title: string; body: string; url: string; sentCount: number; failedCount: number }): Promise<PushCampaign>;
+  getPushCampaigns(): Promise<PushCampaign[]>;
+  incrementCampaignClicks(id: number): Promise<void>;
+  updatePushCampaignCounts(id: number, sent: number, failed: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -458,6 +465,26 @@ export class DatabaseStorage implements IStorage {
       });
     }
     return stats;
+  }
+
+  async createPushCampaign(data: { title: string; body: string; url: string; sentCount: number; failedCount: number }): Promise<PushCampaign> {
+    const [campaign] = await db.insert(pushCampaigns).values(data).returning();
+    return campaign;
+  }
+
+  async getPushCampaigns(): Promise<PushCampaign[]> {
+    return db.select().from(pushCampaigns).orderBy(desc(pushCampaigns.createdAt)).limit(50);
+  }
+
+  async incrementCampaignClicks(id: number): Promise<void> {
+    const [campaign] = await db.select().from(pushCampaigns).where(eq(pushCampaigns.id, id));
+    if (campaign) {
+      await db.update(pushCampaigns).set({ clickedCount: campaign.clickedCount + 1 }).where(eq(pushCampaigns.id, id));
+    }
+  }
+
+  async updatePushCampaignCounts(id: number, sent: number, failed: number): Promise<void> {
+    await db.update(pushCampaigns).set({ sentCount: sent, failedCount: failed }).where(eq(pushCampaigns.id, id));
   }
 }
 

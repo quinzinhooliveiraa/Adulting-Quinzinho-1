@@ -1015,6 +1015,26 @@ function PushNotificationPanel() {
   const [newInterval, setNewInterval] = useState(24);
   const [showNewForm, setShowNewForm] = useState(false);
 
+  interface PushCampaignData {
+    id: number;
+    title: string;
+    body: string;
+    url: string;
+    sentCount: number;
+    failedCount: number;
+    clickedCount: number;
+    createdAt: string;
+  }
+
+  const { data: campaigns = [], refetch: refetchCampaigns } = useQuery<PushCampaignData[]>({
+    queryKey: ["/api/admin/push-campaigns"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/push-campaigns", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const { data: scheduled = [], refetch: refetchScheduled } = useQuery<ScheduledNotif[]>({
     queryKey: ["/api/notifications/scheduled"],
     queryFn: async () => {
@@ -1038,6 +1058,7 @@ function PushNotificationPanel() {
       const data = await res.json();
       setPushResult(`Enviado para ${data.sent} dispositivo(s). ${data.failed > 0 ? `${data.failed} falhou.` : ""}`);
       setPushBody("");
+      refetchCampaigns();
     } catch {
       setPushResult("Erro ao enviar.");
     } finally {
@@ -1134,6 +1155,52 @@ function PushNotificationPanel() {
           </button>
         </div>
       </div>
+
+      {campaigns.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={16} className="text-foreground" />
+            <h2 className="text-sm font-medium text-foreground">Histórico de Envios</h2>
+          </div>
+          <div className="space-y-2">
+            {campaigns.map((c) => {
+              const clickRate = c.sentCount > 0 ? Math.round((c.clickedCount / c.sentCount) * 100) : 0;
+              return (
+                <div key={c.id} className="bg-card border border-border rounded-xl p-3 space-y-2" data-testid={`campaign-${c.id}`}>
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{c.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{c.body}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+                      {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-[11px]">
+                    <div className="flex items-center gap-1">
+                      <Send size={10} className="text-green-500" />
+                      <span className="text-foreground font-medium">{c.sentCount}</span>
+                      <span className="text-muted-foreground">enviados</span>
+                    </div>
+                    {c.failedCount > 0 && (
+                      <div className="flex items-center gap-1">
+                        <XCircle size={10} className="text-red-500" />
+                        <span className="text-foreground font-medium">{c.failedCount}</span>
+                        <span className="text-muted-foreground">falharam</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <CheckCircle2 size={10} className="text-blue-500" />
+                      <span className="text-foreground font-medium">{c.clickedCount}</span>
+                      <span className="text-muted-foreground">cliques ({clickRate}%)</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
