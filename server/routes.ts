@@ -2200,10 +2200,28 @@ export async function seedAutoNotifications() {
   }
 }
 
+const AUTO_NOTIFICATION_PRIORITY: string[] = [
+  "streak_risk",
+  "reengagement",
+  "journey_nudge",
+  "morning_prompt",
+  "evening_reflection",
+  "daily_reflection",
+  "mood_checkin",
+  "streak_celebration",
+  "daily_motivation",
+];
+
 export async function processAutoNotifications() {
   const configs = await storage.getAutoNotificationConfigs();
   const activeConfigs = configs.filter(c => c.isActive);
   if (activeConfigs.length === 0) return;
+
+  const sortedConfigs = [...activeConfigs].sort((a, b) => {
+    const aIdx = AUTO_NOTIFICATION_PRIORITY.indexOf(a.type);
+    const bIdx = AUTO_NOTIFICATION_PRIORITY.indexOf(b.type);
+    return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+  });
 
   const webpushModule = await import("web-push");
   const webpush = webpushModule.default || webpushModule;
@@ -2220,7 +2238,10 @@ export async function processAutoNotifications() {
     const subs = await storage.getPushSubscriptions(user.id);
     if (subs.length === 0) continue;
 
-    for (const config of activeConfigs) {
+    const recentlySent = await storage.getAutoNotificationLog(user.id, "__any__cooldown__", 2);
+    if (recentlySent) continue;
+
+    for (const config of sortedConfigs) {
       const alreadySent = await storage.getAutoNotificationLog(user.id, config.type, config.triggerHours);
       if (alreadySent) continue;
 
@@ -2242,6 +2263,8 @@ export async function processAutoNotifications() {
       }
 
       await storage.createAutoNotificationLog(user.id, config.type);
+      await storage.createAutoNotificationLog(user.id, "__any__cooldown__");
+      break;
     }
   }
 }
