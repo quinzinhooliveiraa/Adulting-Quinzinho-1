@@ -569,7 +569,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
           </div>
         </div>
 
-        <div className="px-6 mt-4">
+        <div className="px-6 md:px-10 mt-4">
           <div className="flex gap-1.5 mb-8">
             {INTRO_STEPS.map((_, i) => (
               <div
@@ -777,7 +777,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
         </div>
       </div>
 
-      <div className="px-6 mt-2">
+      <div className="px-6 md:px-10 mt-2">
         <div className="flex gap-1 mb-6">
           {QUIZ_QUESTIONS.map((_, i) => (
             <div
@@ -908,7 +908,7 @@ export default function Journey() {
             <p className="text-sm text-muted-foreground mt-1">Seu caminho através da Casa dos 20</p>
           </div>
         </div>
-        <div className="px-6 mt-8">
+        <div className="px-6 md:px-10 mt-8">
           <div className="text-center py-12 space-y-4">
             <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
               <LockKeyhole size={32} className="text-amber-600" />
@@ -998,7 +998,7 @@ export default function Journey() {
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="px-6 mt-2">
+        <div className="px-6 md:px-10 mt-2">
           <div className="relative">
             <div className="absolute left-[19px] top-6 bottom-6 w-px bg-border" />
 

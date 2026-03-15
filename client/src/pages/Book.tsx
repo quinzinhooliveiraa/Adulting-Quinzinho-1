@@ -214,7 +214,7 @@ export default function Book() {
             <BookOpen size={16} className="text-primary/50" />
           </div>
 
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {CHAPTERS.map((chapter) => (
               <button
                 key={chapter.id}

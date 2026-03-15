@@ -245,7 +245,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="page-reports">
-      <div className="p-4">
+      <div className="px-6 md:px-10 pt-6">
         <button
           onClick={() => setLocation("/")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
