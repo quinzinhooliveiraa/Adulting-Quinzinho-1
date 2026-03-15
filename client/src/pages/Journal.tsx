@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown, Share, Image as ImageIcon } from "lucide-react";
 import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { shareEntry } from "@/utils/journalStorage";
 import { addNotification } from "@/utils/notificationService";
+import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import NotebookEditor from "@/components/NotebookEditor";
 import { useAuth } from "@/hooks/useAuth";
@@ -220,6 +221,48 @@ interface LocalJournalEntry {
   timestamp?: number;
 }
 
+function ImageShareDrawer({ text, theme, onThemeChange, onClose }: { text: string; theme: ShareImageTheme; onThemeChange: (t: ShareImageTheme) => void; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      renderShareImageToCanvas(canvasRef.current, { text, theme, type: "reflection" });
+    }
+  }, [text, theme]);
+
+  return (
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-full overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full">
+          <X size={18} />
+        </button>
+        <h3 className="text-xl font-serif text-foreground mb-4">Compartilhar Reflexão</h3>
+        <canvas ref={canvasRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-6" />
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-muted-foreground">Tema da imagem</span>
+          <div className="flex rounded-full border border-border overflow-hidden">
+            <button onClick={() => onThemeChange("dark")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${theme === "dark" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+              Escuro
+            </button>
+            <button onClick={() => onThemeChange("light")} className={`px-4 py-1.5 text-xs font-medium transition-colors ${theme === "light" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+              Claro
+            </button>
+          </div>
+        </div>
+        <Button
+          onClick={() => generateShareImage({ text, theme, type: "reflection" })}
+          className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all"
+          data-testid="button-share-journal-image"
+        >
+          <Share className="mr-2" size={20} />
+          Compartilhar Imagem
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Journal() {
   const { user } = useAuth();
   const isPremium = user?.hasPremium || user?.role === "admin";
@@ -267,6 +310,10 @@ export default function Journal() {
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [showShare, setShowShare] = useState<string | number | null>(null);
+  const [showImageShare, setShowImageShare] = useState(false);
+  const [imageShareText, setImageShareText] = useState("");
+  const [imageTheme, setImageTheme] = useState<ShareImageTheme>(() => document.documentElement.classList.contains("dark") ? "dark" : "light");
+  const imagePreviewRef = useRef<HTMLCanvasElement>(null);
   const [viewingEntry, setViewingEntry] = useState<LocalJournalEntry | null>(null);
   const [archivedIds, setArchivedIds] = useState<Set<number | string>>(() => {
     try {
@@ -616,8 +663,21 @@ export default function Journal() {
               {showShare === viewingEntry.id && (
                 <div className="flex flex-wrap gap-2 animate-in slide-in-from-bottom">
                   {typeof navigator !== "undefined" && navigator.share && (
-                    <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">Compartilhar</Button>
+                    <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">
+                      <Share2 size={14} className="mr-1" />
+                      Texto
+                    </Button>
                   )}
+                  <Button size="sm" onClick={() => {
+                    const plain = getEntrySummary(viewingEntry.text);
+                    const excerpt = plain.length > 200 ? plain.slice(0, 200) + "…" : plain;
+                    setImageShareText(excerpt);
+                    setShowImageShare(true);
+                    setShowShare(null);
+                  }} className="flex-1 bg-primary text-primary-foreground" data-testid="button-share-image">
+                    <ImageIcon size={14} className="mr-1" />
+                    Imagem
+                  </Button>
                 </div>
               )}
             </div>
@@ -934,6 +994,15 @@ export default function Journal() {
             <PenLine size={24} />
           </Button>
         </div>
+      )}
+
+      {showImageShare && (
+        <ImageShareDrawer
+          text={imageShareText}
+          theme={imageTheme}
+          onThemeChange={setImageTheme}
+          onClose={() => setShowImageShare(false)}
+        />
       )}
       </div>
     </div>
