@@ -15,9 +15,11 @@ type StepId = "welcome" | "pwa" | "checkin" | "journal" | "questions" | "journey
 const STEP_ORDER: StepId[] = ["welcome", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
-  const [stepIndex, setStepIndex] = useState(0);
+  const savedStep = parseInt(localStorage.getItem("casa-onboarding-step") || "0", 10);
+  const [stepIndex, setStepIndex] = useState(isNaN(savedStep) ? 0 : Math.min(savedStep, STEP_ORDER.length - 1));
   const [isAnimating, setIsAnimating] = useState(false);
-  const [notifStatus, setNotifStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle");
+  const savedPerm = typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("casa-push-subscribed") === "true";
+  const [notifStatus, setNotifStatus] = useState<"idle" | "loading" | "granted" | "denied">(savedPerm ? "granted" : "idle");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -45,6 +47,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
     setTimeout(() => {
       setStepIndex(newIndex);
+      localStorage.setItem("casa-onboarding-step", String(newIndex));
       setSlideDirection(dir === "right" ? "enter-right" : "enter-left");
       setTimeout(() => {
         setSlideDirection("idle");

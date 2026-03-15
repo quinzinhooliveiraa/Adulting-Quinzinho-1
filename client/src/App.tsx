@@ -62,6 +62,7 @@ function AuthGate() {
       <Onboarding
         onComplete={() => {
           localStorage.removeItem("casa-dos-20-needs-onboarding");
+          localStorage.removeItem("casa-onboarding-step");
           setShowOnboarding(false);
         }}
       />
