@@ -7,6 +7,7 @@ interface AuthUser {
   name: string;
   email: string;
   role: string;
+  profilePhoto: string | null;
   hasPremium: boolean;
   premiumReason: "admin" | "paid" | "granted" | "trial" | "expired" | "blocked";
   trialEndsAt: string | null;

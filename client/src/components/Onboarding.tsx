@@ -3,26 +3,38 @@ import {
   ArrowRight, ArrowLeft, Bell, Check,
   Map, BookOpen, PenLine, MessageCircle, Smile,
   BellRing, Crown, Loader2, CheckCircle2, Clock,
-  CreditCard, ShieldCheck, Sparkles, FileText, Brain
+  CreditCard, ShieldCheck, Sparkles, FileText, Brain,
+  Smartphone, Plus, Share
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import { subscribeToPush, isPushSupported } from "@/utils/pushNotifications";
 
-type StepId = "welcome" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
+type StepId = "welcome" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
 
-const STEP_ORDER: StepId[] = ["welcome", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
+const STEP_ORDER: StepId[] = ["welcome", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [notifStatus, setNotifStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle");
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [pwaInstalled, setPwaInstalled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [slideDirection, setSlideDirection] = useState<"enter-right" | "enter-left" | "exit-left" | "exit-right" | "idle">("idle");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
+    if (isStandalone) setPwaInstalled(true);
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   const goTo = (newIndex: number) => {
@@ -161,6 +173,75 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   Baseado no livro de Quinzinho Oliveira
                 </p>
               </div>
+            </div>
+          )}
+
+          {currentStep === "pwa" && (
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-full max-w-[280px] space-y-4 stagger-1">
+                <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center transition-all duration-700 ${
+                  pwaInstalled ? "bg-green-500/10 scale-110" : "bg-primary/10 animate-float"
+                }`}>
+                  {pwaInstalled ? (
+                    <CheckCircle2 size={36} className="text-green-500" />
+                  ) : (
+                    <Smartphone size={36} className="text-primary" />
+                  )}
+                </div>
+
+                {!pwaInstalled && (
+                  <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                    <div className="flex items-start gap-3 text-left stagger-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Share size={16} className="text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-foreground">No Safari / Chrome</p>
+                        <p className="text-[10px] text-muted-foreground">Toque em "Compartilhar" ou no menu do navegador</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 text-left stagger-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Plus size={16} className="text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-foreground">Adicionar à Tela Inicial</p>
+                        <p className="text-[10px] text-muted-foreground">Para acessar como um app nativo</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-2 stagger-2">
+                <h2 className="text-2xl font-serif text-foreground">
+                  {pwaInstalled ? "App Instalado!" : "Instale o App"}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed px-2">
+                  {pwaInstalled
+                    ? "O app já está na sua tela inicial. Você terá a melhor experiência possível."
+                    : "Adicione a Casa dos 20 à sua tela inicial para ter acesso rápido, notificações e uma experiência completa."
+                  }
+                </p>
+              </div>
+
+              {!pwaInstalled && deferredPrompt && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await deferredPrompt.prompt();
+                      const result = await deferredPrompt.userChoice;
+                      if (result.outcome === "accepted") setPwaInstalled(true);
+                      setDeferredPrompt(null);
+                    } catch {}
+                  }}
+                  className="w-full max-w-[280px] p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                  data-testid="button-install-pwa"
+                >
+                  <Plus size={18} />
+                  Instalar App
+                </button>
+              )}
             </div>
           )}
 

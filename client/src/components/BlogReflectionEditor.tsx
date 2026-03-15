@@ -66,6 +66,7 @@ export default function BlogReflectionEditor({
   const { isRecording, startRecording, stopRecording, supported: speechSupported } = useSpeechToText(handleSpeechText);
   
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -93,11 +94,12 @@ export default function BlogReflectionEditor({
   const drawingRestored = useRef(false);
 
   useEffect(() => {
-    if (canvasRef.current && contentAreaRef.current) {
+    const sizeSource = canvasContainerRef.current || contentAreaRef.current;
+    if (canvasRef.current && sizeSource) {
       const canvas = canvasRef.current;
       const prevData = ctxRef.current ? ctxRef.current.getImageData(0, 0, canvas.width, canvas.height) : null;
-      canvas.width = contentAreaRef.current.offsetWidth * 2;
-      canvas.height = Math.max(contentAreaRef.current.offsetHeight * 2, 800);
+      canvas.width = sizeSource.offsetWidth * 2;
+      canvas.height = Math.max(sizeSource.offsetHeight * 2, 800);
       
       const ctx = canvas.getContext("2d");
       if (ctx) {
@@ -426,7 +428,7 @@ export default function BlogReflectionEditor({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:inset-0 bg-black/50 z-[45] sm:z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
       <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain">
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
@@ -608,6 +610,7 @@ export default function BlogReflectionEditor({
               )}
               
               <div 
+                ref={canvasContainerRef}
                 className="relative overflow-hidden"
                 style={{ 
                   isolation: 'isolate',

@@ -153,8 +153,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   };
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
-    return localStorage.getItem("casa-dos-20-profile-photo");
+    return localStorage.getItem("casa-dos-20-profile-photo") || null;
   });
+
+  useEffect(() => {
+    if (user?.profilePhoto) {
+      setProfilePhoto(user.profilePhoto);
+      localStorage.setItem("casa-dos-20-profile-photo", user.profilePhoto);
+    }
+  }, [user?.profilePhoto]);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
@@ -229,13 +236,33 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const photo = event.target?.result as string;
-        setProfilePhoto(photo);
-        localStorage.setItem("casa-dos-20-profile-photo", photo);
+      const canvas = document.createElement("canvas");
+      const maxSize = 256;
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = (h / w) * maxSize; w = maxSize; }
+          else { w = (w / h) * maxSize; h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const photo = canvas.toDataURL("image/jpeg", 0.7);
+          setProfilePhoto(photo);
+          localStorage.setItem("casa-dos-20-profile-photo", photo);
+          fetch("/api/auth/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ profilePhoto: photo }),
+          }).catch(() => {});
+        }
       };
-      reader.readAsDataURL(file);
+      img.src = URL.createObjectURL(file);
     }
   };
 

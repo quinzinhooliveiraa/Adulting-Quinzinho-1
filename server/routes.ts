@@ -272,6 +272,7 @@ export async function registerRoutes(
         name: user.name,
         email: user.email,
         role: user.role,
+        profilePhoto: user.profilePhoto,
         hasPremium: premiumStatus.hasPremium,
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
@@ -317,6 +318,7 @@ export async function registerRoutes(
         name: user.name,
         email: user.email,
         role: user.role,
+        profilePhoto: user.profilePhoto,
         hasPremium: premiumStatus.hasPremium,
         premiumReason: premiumStatus.reason,
         trialEndsAt: user.trialEndsAt,
@@ -335,11 +337,18 @@ export async function registerRoutes(
 
   app.patch("/api/auth/profile", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { name } = req.body;
-      if (!name || typeof name !== "string" || name.trim().length < 2) {
-        return res.status(400).json({ message: "O nome deve ter pelo menos 2 caracteres" });
+      const { name, profilePhoto } = req.body;
+      const updateData: any = {};
+      if (name && typeof name === "string" && name.trim().length >= 2) {
+        updateData.name = name.trim();
       }
-      const updated = await storage.updateUser(req.session.userId!, { name: name.trim() });
+      if (profilePhoto !== undefined) {
+        updateData.profilePhoto = profilePhoto;
+      }
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "Nenhum dado válido para atualizar" });
+      }
+      const updated = await storage.updateUser(req.session.userId!, updateData);
       if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
       const premiumStatus = getUserPremiumStatus(updated);
       res.json({
@@ -347,6 +356,7 @@ export async function registerRoutes(
         name: updated.name,
         email: updated.email,
         role: updated.role,
+        profilePhoto: updated.profilePhoto,
         hasPremium: premiumStatus.hasPremium,
         premiumReason: premiumStatus.reason,
         trialEndsAt: updated.trialEndsAt,
@@ -396,6 +406,7 @@ export async function registerRoutes(
       name: user.name,
       email: user.email,
       role: user.role,
+      profilePhoto: user.profilePhoto,
       hasPremium: premiumStatus.hasPremium,
       premiumReason: premiumStatus.reason,
       trialEndsAt: user.trialEndsAt,

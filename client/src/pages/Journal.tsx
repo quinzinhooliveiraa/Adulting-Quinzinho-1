@@ -487,8 +487,8 @@ export default function Journal() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden">
-      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20 overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden overscroll-x-none" style={{ touchAction: 'pan-y' }}>
+      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20 overflow-x-hidden overflow-y-visible">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
             journalLimit.remaining <= 3
@@ -725,7 +725,7 @@ export default function Journal() {
         )}
 
       {isWriting && !showNotebook && (
-        <div className="fixed inset-0 z-[55] bg-background flex flex-col overflow-hidden" style={{ touchAction: 'none' }}
+        <div className="fixed inset-x-0 top-0 bottom-[64px] z-[45] bg-background flex flex-col overflow-hidden" style={{ touchAction: 'none' }}
           onTouchMove={(e) => {
             const target = e.target as HTMLElement;
             if (!target.closest('textarea')) e.preventDefault();
