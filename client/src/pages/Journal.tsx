@@ -487,8 +487,8 @@ export default function Journal() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden overscroll-x-none" style={{ touchAction: 'pan-y' }}>
-      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
+    <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 w-full max-w-[100vw] overflow-x-hidden overscroll-x-none" style={{ touchAction: 'pan-y' }}>
+      <div className="px-4 md:px-10 pt-12 pb-4 space-y-4 sticky top-0 bg-background/90 backdrop-blur-xl z-20 w-full max-w-[100vw] box-border">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
             journalLimit.remaining <= 3
@@ -501,37 +501,37 @@ export default function Journal() {
               : "Limite mensal atingido — assine o premium para continuar"}
           </div>
         )}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-serif text-foreground">Diário</h1>
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between items-center gap-2 min-w-0">
+          <h1 className="text-3xl font-serif text-foreground shrink-0">Diário</h1>
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setShowArchived(!showArchived)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+              className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
                 showArchived 
                   ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
                   : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               data-testid="button-toggle-archived"
             >
-              <Archive size={12} className="inline mr-1" />
+              <Archive size={11} className="inline mr-0.5" />
               {showArchived ? "Arquivadas" : "Arquivo"}
             </button>
-            <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
-              {visibleEntries.length} entradas
+            <span className="text-[11px] bg-primary/10 text-primary px-2.5 py-1 rounded-full font-bold whitespace-nowrap">
+              {visibleEntries.length} {visibleEntries.length === 1 ? "entrada" : "entradas"}
             </span>
           </div>
         </div>
 
         {!isWriting && !viewingEntry && (
-          <div>
-            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+          <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex space-x-2 pb-1 w-max">
               {SOURCE_CATEGORIES.map(cat => {
                 const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
                 return (
                   <button
                     key={cat.key}
                     onClick={() => setActiveTag(cat.key)}
-                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-300 flex items-center gap-1.5 ${
+                    className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-sm transition-all duration-300 flex items-center gap-1.5 ${
                       activeTag === cat.key
                         ? "bg-primary text-primary-foreground font-medium" 
                         : "bg-card border border-border text-muted-foreground hover:bg-muted"
@@ -549,7 +549,7 @@ export default function Journal() {
         )}
       </div>
 
-      <div className="px-6 md:px-10 space-y-4 overflow-x-hidden">
+      <div className="px-4 md:px-10 space-y-4 w-full max-w-[100vw] box-border">
         {viewingEntry ? (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
             <div className="flex justify-between items-center">
