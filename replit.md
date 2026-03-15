@@ -30,11 +30,12 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Also cached in localStorage for instant display; server is source of truth
 - Frontend: MobileLayout.tsx syncs photo from `user.profilePhoto` on login
 
-## Stripe (NOT CONFIGURED)
-- Stripe integration was dismissed by user; `STRIPE_SECRET_KEY` is NOT set
-- Premium/subscription features will not work until a Stripe secret key is provided
-- To configure: set `STRIPE_SECRET_KEY` env var with a valid Stripe secret key
-- Alternatively, re-attempt the Replit Stripe integration connector
+## Stripe (CONFIGURED - LIVE)
+- `STRIPE_SECRET_KEY` is set with a live key (sk_live_...)
+- Webhook auto-configured via stripe-replit-sync
+- Products/prices synced from Stripe dashboard
+- Routes: `/api/stripe/products`, `/api/stripe/checkout`, `/api/stripe/webhook`
+- Premium subscription with 14-day trial via Stripe Checkout
 
 ## Push Notifications (PWA)
 - Service worker at `client/public/sw.js` handles push events and notification clicks
