@@ -515,7 +515,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       )}
 
       <div className="flex-1 flex justify-center min-h-screen">
-        <div className="w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl md:mx-auto bg-background min-h-screen relative overflow-x-hidden overflow-y-hidden flex flex-col transition-all">
+        <div className="w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl md:mx-auto bg-background min-h-screen relative overflow-x-hidden flex flex-col transition-all">
           
           {!isDesktop && (
             <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
