@@ -24,6 +24,18 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - `journey_progress`: id (serial), userId (FK), journeyId (text), completedDays (text[]), startedAt (timestamp), lastActivityAt (timestamp)
 - `push_subscriptions`: id (serial), userId (FK), endpoint (text), p256dh (text), auth (text), createdAt (timestamp)
 
+## Profile Photo
+- Profile photo stored as base64 JPEG (resized to max 256px, quality 0.7) in `users.profilePhoto` column
+- Uploaded via PATCH `/api/auth/profile` with `{ profilePhoto: "data:image/jpeg;base64,..." }`
+- Also cached in localStorage for instant display; server is source of truth
+- Frontend: MobileLayout.tsx syncs photo from `user.profilePhoto` on login
+
+## Stripe (NOT CONFIGURED)
+- Stripe integration was dismissed by user; `STRIPE_SECRET_KEY` is NOT set
+- Premium/subscription features will not work until a Stripe secret key is provided
+- To configure: set `STRIPE_SECRET_KEY` env var with a valid Stripe secret key
+- Alternatively, re-attempt the Replit Stripe integration connector
+
 ## Push Notifications (PWA)
 - Service worker at `client/public/sw.js` handles push events and notification clicks
 - PWA manifest at `client/public/manifest.json` enables "Add to Home Screen"
