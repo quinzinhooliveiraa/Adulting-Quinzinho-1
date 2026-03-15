@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Auth from "@/pages/Auth";
 import Onboarding from "@/components/Onboarding";
 import { refreshPushSubscription } from "@/utils/pushNotifications";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
@@ -84,6 +85,7 @@ function AuthGate() {
         {user?.role === "admin" && <Route path="/admin" component={Admin} />}
         <Route component={NotFound} />
       </Switch>
+      <PwaInstallPrompt />
     </MobileLayout>
   );
 }

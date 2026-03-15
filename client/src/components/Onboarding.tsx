@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import { subscribeToPush, isPushSupported } from "@/utils/pushNotifications";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 
 type StepId = "welcome" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
 
@@ -20,23 +21,13 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const savedPerm = typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("casa-push-subscribed") === "true";
   const [notifStatus, setNotifStatus] = useState<"idle" | "loading" | "granted" | "denied">(savedPerm ? "granted" : "idle");
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [pwaInstalled, setPwaInstalled] = useState(false);
+  const { canInstall, installed: pwaInstalled, promptInstall } = usePwaInstall();
   const [mounted, setMounted] = useState(false);
   const [slideDirection, setSlideDirection] = useState<"enter-right" | "enter-left" | "exit-left" | "exit-right" | "idle">("idle");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
-    if (isStandalone) setPwaInstalled(true);
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   const goTo = (newIndex: number) => {
@@ -228,16 +219,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 </p>
               </div>
 
-              {!pwaInstalled && deferredPrompt && (
+              {canInstall && (
                 <button
-                  onClick={async () => {
-                    try {
-                      await deferredPrompt.prompt();
-                      const result = await deferredPrompt.userChoice;
-                      if (result.outcome === "accepted") setPwaInstalled(true);
-                      setDeferredPrompt(null);
-                    } catch {}
-                  }}
+                  onClick={promptInstall}
                   className="w-full max-w-[280px] p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                   data-testid="button-install-pwa"
                 >
