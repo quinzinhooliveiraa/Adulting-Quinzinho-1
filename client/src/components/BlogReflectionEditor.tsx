@@ -98,19 +98,24 @@ export default function BlogReflectionEditor({
     if (canvasRef.current && sizeSource) {
       const canvas = canvasRef.current;
       const prevData = ctxRef.current ? ctxRef.current.getImageData(0, 0, canvas.width, canvas.height) : null;
-      canvas.width = sizeSource.offsetWidth * 2;
-      canvas.height = Math.max(sizeSource.offsetHeight * 2, 800);
+      const dpr = window.devicePixelRatio || 1;
+      const cssW = sizeSource.offsetWidth;
+      const cssH = Math.max(sizeSource.offsetHeight, 400);
+      canvas.width = cssW * dpr;
+      canvas.height = cssH * dpr;
+      canvas.style.width = cssW + "px";
+      canvas.style.height = cssH + "px";
       
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.scale(2, 2);
+        ctx.scale(dpr, dpr);
         if (prevData) {
           ctx.putImageData(prevData, 0, 0);
         } else if (initialDrawing && !drawingRestored.current) {
           drawingRestored.current = true;
           const img = new Image();
           img.onload = () => {
-            ctx.drawImage(img, 0, 0, canvas.width / 2, canvas.height / 2);
+            ctx.drawImage(img, 0, 0, cssW, cssH);
           };
           img.src = initialDrawing;
         }

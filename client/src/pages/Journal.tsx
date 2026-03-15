@@ -488,7 +488,7 @@ export default function Journal() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 overflow-x-hidden overscroll-x-none" style={{ touchAction: 'pan-y' }}>
-      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20 overflow-x-hidden overflow-y-visible">
+      <div className="px-6 md:px-10 pt-12 pb-6 space-y-6 sticky top-0 bg-background/90 backdrop-blur-xl z-20">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
             journalLimit.remaining <= 3
@@ -523,8 +523,8 @@ export default function Journal() {
         </div>
 
         {!isWriting && !viewingEntry && (
-          <div className="overflow-hidden">
-            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div>
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
               {SOURCE_CATEGORIES.map(cat => {
                 const count = cat.key === "Todas" ? entries.length : entries.filter(e => getEntrySource(e) === cat.key).length;
                 return (
