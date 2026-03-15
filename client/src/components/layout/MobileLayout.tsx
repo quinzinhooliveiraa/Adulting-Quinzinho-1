@@ -6,7 +6,7 @@ import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed } from "@/utils/pushNotifications";
 
 interface MobileLayoutProps {
@@ -271,6 +271,12 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ profilePhoto: photo }),
+          }).then(res => {
+            if (res.ok) {
+              return res.json().then(data => {
+                queryClient.setQueryData(["/api/auth/me"], data);
+              });
+            }
           }).catch(() => {});
         }
       };

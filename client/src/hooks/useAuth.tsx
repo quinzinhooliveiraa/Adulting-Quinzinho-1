@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
     },
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
