@@ -434,11 +434,11 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground bg-noise flex">
+    <div className={cn("bg-background text-foreground bg-noise flex", isDesktop ? "h-screen overflow-hidden" : "min-h-screen")}>
       {isDesktop && (
         <aside
           className={cn(
-            "hidden md:flex flex-col h-screen sticky top-0 bg-background border-r border-border z-50 transition-all duration-300 shrink-0",
+            "hidden md:flex flex-col h-screen bg-background border-r border-border z-50 transition-all duration-300 shrink-0",
             sidebarCollapsed ? "w-[68px]" : "w-[220px]"
           )}
         >
@@ -514,8 +514,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         </aside>
       )}
 
-      <div className="flex-1 flex justify-center min-h-screen">
-        <div className="w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl md:mx-auto bg-background min-h-screen relative overflow-x-hidden flex flex-col transition-all">
+      <div className={cn("flex-1 flex justify-center", isDesktop ? "h-screen overflow-y-auto" : "min-h-screen")}>
+        <div className={cn("w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl md:mx-auto bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "min-h-screen")}>
           
           {!isDesktop && (
             <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
