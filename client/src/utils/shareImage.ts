@@ -86,11 +86,24 @@ export function renderShareImageToCanvas(canvas: HTMLCanvasElement, { text, them
   ctx.fillText(subtitle, cx, brandY + 30 * scale);
 }
 
-export function generateShareImage(options: ShareImageOptions) {
+export async function generateShareImage(options: ShareImageOptions) {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1080;
   renderShareImageToCanvas(canvas, options);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+
+  if (blob && navigator.share && navigator.canShare) {
+    const file = new File([blob], `casa-dos-20-${new Date().toISOString().split("T")[0]}.png`, { type: "image/png" });
+    const shareData = { files: [file], title: "Casa dos 20" };
+    if (navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {}
+    }
+  }
 
   const link = document.createElement("a");
   link.href = canvas.toDataURL("image/png");

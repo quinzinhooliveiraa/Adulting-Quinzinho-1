@@ -28,9 +28,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 export function isPushSupported(): boolean {
-  if (Capacitor.isNativePlatform()) {
-    return true;
-  }
+  try {
+    if (Capacitor.isNativePlatform()) {
+      return true;
+    }
+  } catch {}
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 

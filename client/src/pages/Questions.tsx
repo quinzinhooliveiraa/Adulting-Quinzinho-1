@@ -1528,7 +1528,7 @@ function AnswerSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end justify-center animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-background rounded-t-3xl border-t border-border shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[80vh] flex flex-col">
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -1906,9 +1906,9 @@ function CardGame({
       </div>
 
       {showImagePreview && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowImagePreview(false)} />
-          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-full overflow-y-auto">
             <button onClick={() => setShowImagePreview(false)} className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full">
               <X size={18} />
             </button>
@@ -1931,9 +1931,10 @@ function CardGame({
                 setShowImagePreview(false);
               }}
               className={`w-full py-3 rounded-xl font-medium transition-all bg-gradient-to-r ${color} text-white shadow-md`}
+              data-testid="button-share-question-image"
             >
-              <ImageIcon size={18} className="inline mr-2" />
-              Salvar Imagem
+              <Share2 size={18} className="inline mr-2" />
+              Compartilhar Imagem
             </button>
           </div>
         </div>

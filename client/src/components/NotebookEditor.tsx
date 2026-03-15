@@ -222,8 +222,8 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
 
   if (showText) {
     return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300">
-        <div className="bg-background rounded-t-3xl max-h-[95vh] overflow-y-auto w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col">
+      <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300">
+        <div className="bg-background rounded-t-3xl max-h-full overflow-y-auto w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col">
           <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border">
             <h2 className="font-serif text-xl">Visualização de Texto</h2>
             <button
@@ -278,8 +278,8 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
-      <div className="bg-background rounded-t-3xl max-h-[95vh] overflow-hidden w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col overscroll-contain">
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+      <div className="bg-background rounded-t-3xl max-h-full overflow-hidden w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col overscroll-contain">
         <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border z-10">
           <h2 className="font-serif text-xl">Caderno de Anotações</h2>
           <div className="flex gap-2">

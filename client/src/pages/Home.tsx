@@ -882,12 +882,12 @@ export default function Home() {
 
       {/* Reminder Share Drawer */}
       {isReminderShareOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsReminderShareOpen(false)}
           />
-          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-full overflow-y-auto">
             <button 
               onClick={() => setIsReminderShareOpen(false)}
               className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
@@ -910,9 +910,9 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <Button onClick={() => handleSocialShare('save')} className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all">
-              <ImageIcon className="mr-2" size={20} />
-              Salvar Imagem
+            <Button onClick={() => handleSocialShare('save')} className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all" data-testid="button-share-reminder-image">
+              <Share className="mr-2" size={20} />
+              Compartilhar Imagem
             </Button>
           </div>
         </div>
@@ -1068,12 +1068,12 @@ export default function Home() {
 
       {/* Share Drawer Overlay */}
       {isShareOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsShareOpen(false)}
           />
-          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-full overflow-y-auto">
             <button 
               onClick={() => setIsShareOpen(false)}
               className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
@@ -1103,10 +1103,11 @@ export default function Home() {
                   theme: shareImageTheme,
                   type: dailyReflection.type === "question" ? "question" : "reflection"
                 })}
-                className="w-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-xl h-14 font-medium transition-all"
+                className="w-full bg-primary text-primary-foreground rounded-xl h-14 font-medium shadow-md transition-all"
+                data-testid="button-share-reflection-image"
               >
-                <ImageIcon className="mr-2" size={20} />
-                Gerar Imagem de Citação
+                <Share className="mr-2" size={20} />
+                Compartilhar Imagem
               </Button>
             </div>
           </div>

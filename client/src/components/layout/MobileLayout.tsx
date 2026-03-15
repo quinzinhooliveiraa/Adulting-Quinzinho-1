@@ -135,12 +135,14 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     setPushLoading(true);
     try {
       if (pushEnabled) {
-        await unsubscribeFromPush();
-        setPushEnabled(false);
+        const ok = await unsubscribeFromPush();
+        if (ok) setPushEnabled(false);
       } else {
         const ok = await subscribeToPush();
         setPushEnabled(ok);
       }
+    } catch (err) {
+      console.error("Push toggle error:", err);
     } finally {
       setPushLoading(false);
     }
