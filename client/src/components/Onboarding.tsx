@@ -52,16 +52,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  useEffect(() => {
-    if (currentStep === "pwa" && canInstall && !pwaInstalled && !pwaAutoTriggered) {
-      setPwaAutoTriggered(true);
-      const timer = setTimeout(() => {
-        promptInstall();
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, canInstall, pwaInstalled, pwaAutoTriggered, promptInstall]);
-
   const goTo = (newIndex: number) => {
     if (isAnimating || newIndex === stepIndex) return;
     const dir = newIndex > stepIndex ? "right" : "left";
@@ -88,6 +78,16 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   };
 
   const currentStep = STEP_ORDER[stepIndex];
+
+  useEffect(() => {
+    if (currentStep === "pwa" && canInstall && !pwaInstalled && !pwaAutoTriggered) {
+      setPwaAutoTriggered(true);
+      const timer = setTimeout(() => {
+        promptInstall();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, canInstall, pwaInstalled, pwaAutoTriggered, promptInstall]);
 
   const handleNotificationActivate = async () => {
     setNotifStatus("loading");
