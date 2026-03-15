@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PenLine, Share, Heart, Meh, Frown, Smile, X, Instagram, Twitter, Copy, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp, Mic, Square } from "lucide-react";
+import { PenLine, Share, Heart, Meh, Frown, Smile, X, Image as ImageIcon, Check, Hash, Sparkles, Moon, ChevronRight, BookOpen, Brain, BarChart3, Calendar, FileText, TrendingUp, Mic, Square } from "lucide-react";
 import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -434,32 +434,8 @@ export default function Home() {
   }, [monthlyInsights]);
 
   const handleSocialShare = (platform: string) => {
-    const text = `"${dailyReminder}" - Casa dos 20`;
-    const url = window.location.href;
-    
-    switch(platform) {
-      case 'instagram':
-        // For web stories, we can only really open the app or a share intent
-        // Using a more standard share API if available, otherwise fallback
-        if (navigator.share) {
-          navigator.share({
-            title: 'Casa dos 20',
-            text: text,
-            url: url,
-          }).catch(console.error);
-        } else {
-          window.open(`https://www.instagram.com/reels/create/`, '_blank');
-        }
-        break;
-      case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'substack':
-        window.open(`https://substack.com/refer?link=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'save':
-        generateShareImage({ text: dailyReminder, theme: shareImageTheme, type: "reminder" });
-        break;
+    if (platform === 'save') {
+      generateShareImage({ text: dailyReminder, theme: shareImageTheme, type: "reminder" });
     }
   };
 
@@ -923,43 +899,6 @@ export default function Home() {
             
             <canvas ref={reminderPreviewRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-6" />
             
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <button onClick={() => handleSocialShare('instagram')} className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                  <Instagram size={24} />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground">Stories</span>
-              </button>
-              
-              <button onClick={() => handleSocialShare('twitter')} className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-sm group-hover:scale-105 transition-transform">
-                  <Twitter size={22} fill="currentColor" />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground">X (Twitter)</span>
-              </button>
-              
-              <button onClick={() => handleSocialShare('substack')} className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-[#FF6719] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM22.539 12.086H1.46v9.379l10.539-5.875 10.54 5.875v-9.379zM22.539 4.406H1.46V1.566h21.08v2.84z" fill="currentColor"/>
-                  </svg>
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground">Substack</span>
-              </button>
-
-              <button onClick={() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }} className="flex flex-col items-center space-y-3 group">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-secondary text-foreground'}`}>
-                  {copied ? <Check size={22} /> : <Copy size={22} />}
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  {copied ? 'Copiado!' : 'Copiar'}
-                </span>
-              </button>
-            </div>
-
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-muted-foreground">Tema da imagem</span>
               <div className="flex rounded-full border border-border overflow-hidden">
@@ -1146,44 +1085,7 @@ export default function Home() {
             
             <canvas ref={reflectionPreviewRef} width={540} height={540} className="w-full aspect-square rounded-2xl border border-border/30 shadow-inner mb-6" />
             
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <button className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                  <Instagram size={24} />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">Instagram</span>
-              </button>
-              
-              <button className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black shadow-sm group-hover:scale-105 transition-transform">
-                  <Twitter size={22} fill="currentColor" />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">X (Twitter)</span>
-              </button>
-              
-              <button className="flex flex-col items-center space-y-3 group">
-                <div className="w-14 h-14 rounded-full bg-[#FF6719] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM22.539 12.086H1.46v9.379l10.539-5.875 10.54 5.875v-9.379zM22.539 4.406H1.46V1.566h21.08v2.84z" fill="currentColor"/>
-                  </svg>
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">Substack</span>
-              </button>
-
-              <button onClick={() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }} className="flex flex-col items-center space-y-3 group">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-secondary text-foreground'}`}>
-                  {copied ? <Check size={22} /> : <Copy size={22} />}
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
-                  {copied ? 'Copiado!' : 'Copiar'}
-                </span>
-              </button>
-            </div>
-
-            <div className="pt-6 border-t border-border space-y-4">
+            <div className="pt-2 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Tema da imagem</span>
                 <div className="flex rounded-full border border-border overflow-hidden">

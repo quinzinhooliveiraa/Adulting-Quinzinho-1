@@ -618,9 +618,6 @@ export default function Journal() {
                   {typeof navigator !== "undefined" && navigator.share && (
                     <Button size="sm" onClick={() => handleShare(viewingEntry, "native")} className="flex-1 bg-foreground hover:bg-foreground/90 text-background" data-testid="button-share-native">Compartilhar</Button>
                   )}
-                  <Button size="sm" onClick={() => handleShare(viewingEntry, "twitter")} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">Twitter</Button>
-                  <Button size="sm" onClick={() => handleShare(viewingEntry, "substack")} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">Substack</Button>
-                  <Button size="sm" onClick={() => handleShare(viewingEntry, "instagram")} className="flex-1 bg-pink-500 hover:bg-pink-600 text-white">Instagram</Button>
                 </div>
               )}
             </div>
