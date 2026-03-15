@@ -777,7 +777,7 @@ export default function Journal() {
           null
         ) : (
           <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-700">
+          <div className="space-y-4 animate-in fade-in duration-700">
             {visibleEntries.length > 0 ? (
               visibleEntries.map(entry => {
                 const title = getEntryTitle(entry.text);

@@ -1761,7 +1761,7 @@ function CardGame({
 
   return (
     <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500 overflow-x-hidden">
-      <div className="px-6 md:px-10 pt-14 pb-4 flex items-center justify-between">
+      <div className="px-6 pt-14 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
           <ChevronLeft size={24} className="text-foreground" />
         </button>
@@ -1808,7 +1808,7 @@ function CardGame({
         </div>
       </div>
 
-      <div className="px-6 md:px-10 flex flex-col items-center justify-center" style={{ minHeight: "55vh" }}>
+      <div className="px-6 flex flex-col items-center justify-center" style={{ minHeight: "55vh" }}>
         <div
           className="w-full max-w-sm cursor-pointer"
           style={{ perspective: "1000px" }}
@@ -1962,7 +1962,7 @@ function FamilyMemberSelect({ onSelect, onBack }: { onSelect: (member: RelationT
   ];
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
       <div>
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-family">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2019,7 +2019,7 @@ function RelationSelect({
   ];
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
       <div>
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-relation">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2385,7 +2385,7 @@ function LobbyScreen({
             {joinAlert}
           </div>
         )}
-        <div className="px-6 md:px-10 pt-8 pb-4 flex items-center justify-between">
+        <div className="px-6 pt-8 pb-4 flex items-center justify-between">
           <button onClick={handleLeave} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-leave-game">
             <ChevronLeft size={24} className="text-foreground" />
           </button>
@@ -2401,7 +2401,7 @@ function LobbyScreen({
           <div className="w-10" />
         </div>
 
-        <div className="px-6 md:px-10 mb-4">
+        <div className="px-6 mb-4">
           <div className={`p-3 rounded-xl text-center ${isMyTurn ? "bg-primary/10 border border-primary/20" : "bg-muted/50 border border-border"}`}>
             <p className="text-xs text-muted-foreground mb-0.5">Vez de</p>
             <p className={`text-sm font-medium ${isMyTurn ? "text-primary" : "text-foreground"}`}>
@@ -2410,7 +2410,7 @@ function LobbyScreen({
           </div>
         </div>
 
-        <div className="px-6 md:px-10 flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
+        <div className="px-6 flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
           <div
             className="w-full max-w-sm cursor-pointer"
             style={{ perspective: "1000px" }}
@@ -2531,7 +2531,7 @@ function LobbyScreen({
 
   if (screen === "waiting") {
     return (
-      <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+      <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
         {joinAlert && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
             {joinAlert}
@@ -2617,7 +2617,7 @@ function LobbyScreen({
   }
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
       <div>
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-lobby-choice">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2692,7 +2692,7 @@ function LobbyScreen({
 
 function ConversaTypeSelect({ onSelect, onBack }: { onSelect: (type: ConversaType) => void; onBack: () => void }) {
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 space-y-8 animate-in fade-in duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-8 animate-in fade-in duration-500">
       <div>
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-conversa">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2740,7 +2740,7 @@ function SoloThemeSelect({ onSelect, onBack, isPremium }: { onSelect: (theme: So
   const themes = Object.entries(SOLO_THEMES) as [SoloThemeId, typeof SOLO_THEMES[SoloThemeId]][];
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+    <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
       <div>
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-solo">
           <ChevronLeft size={24} className="text-foreground" />
@@ -2851,7 +2851,7 @@ export default function Questions() {
 
     if (!showLobby) {
       return (
-        <div className="px-6 md:px-10 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
+        <div className="px-6 pt-12 pb-8 space-y-6 animate-in fade-in duration-500">
           <div>
             <button onClick={() => setRelation(null)} className="p-2 -ml-2 rounded-full hover:bg-muted mb-2" data-testid="button-back-play-choice">
               <ChevronLeft size={24} className="text-foreground" />
@@ -2913,7 +2913,7 @@ export default function Questions() {
   }
 
   return (
-    <div className="px-6 md:px-10 pt-12 pb-8 flex flex-col items-center justify-center min-h-[80vh] animate-in fade-in duration-700">
+    <div className="px-6 pt-12 pb-8 flex flex-col items-center justify-center min-h-[80vh] animate-in fade-in duration-700">
       <div className="text-center space-y-3 mb-12">
         <h1 className="text-3xl font-serif text-foreground">Perguntas Profundas</h1>
         <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
