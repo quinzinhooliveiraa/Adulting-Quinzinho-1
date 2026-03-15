@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Smartphone } from "lucide-react";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
+import { isNativePlatform } from "@/utils/capacitor";
 
 export function PwaInstallPrompt() {
+  const isNative = isNativePlatform();
   const { canInstall, installed, promptInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(() => {
     const ts = localStorage.getItem("casa-pwa-prompt-dismissed");
@@ -13,12 +15,12 @@ export function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (canInstall && !dismissed && !installed) {
+    if (canInstall && !dismissed && !installed && !isNative) {
       const timer = setTimeout(() => setVisible(true), 2000);
       return () => clearTimeout(timer);
     }
     setVisible(false);
-  }, [canInstall, dismissed, installed]);
+  }, [canInstall, dismissed, installed, isNative]);
 
   if (!visible) return null;
 
