@@ -466,6 +466,29 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   Ativando...
                 </div>
               )}
+
+              {notifStatus === "granted" && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/push/test", { method: "POST", credentials: "include" });
+                      const data = await res.json();
+                      if (data.sent > 0) {
+                        alert("Notificação enviada! Verifique seu dispositivo.");
+                      } else {
+                        alert("Nenhuma assinatura encontrada. Tente ativar novamente.");
+                      }
+                    } catch {
+                      alert("Erro ao enviar notificação de teste.");
+                    }
+                  }}
+                  className="w-full max-w-[280px] p-3 rounded-2xl border border-green-500/30 bg-green-500/5 text-green-600 font-medium text-sm hover:bg-green-500/10 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  data-testid="button-test-notification"
+                >
+                  <BellRing size={16} />
+                  Testar Notificação
+                </button>
+              )}
             </div>
           )}
 
@@ -598,14 +621,26 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           ) : (
             <>
-              <Button
-                onClick={next}
-                className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
-                data-testid="button-onboarding-next"
-              >
-                {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
-                <ArrowRight className="ml-2" size={18} />
-              </Button>
+              {currentStep === "pwa" && !pwaInstalled ? (
+                <Button
+                  onClick={next}
+                  variant="ghost"
+                  className="w-full h-14 rounded-full text-muted-foreground text-sm font-medium"
+                  data-testid="button-onboarding-skip-pwa"
+                >
+                  Já instalei / Instalar depois
+                  <ArrowRight className="ml-2" size={16} />
+                </Button>
+              ) : (
+                <Button
+                  onClick={next}
+                  className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                  data-testid="button-onboarding-next"
+                >
+                  {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
+                  <ArrowRight className="ml-2" size={18} />
+                </Button>
+              )}
 
               {stepIndex > 0 && (
                 <button
