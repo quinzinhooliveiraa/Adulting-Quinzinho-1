@@ -26,6 +26,8 @@ export const users = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   adminNotifyNewUser: boolean("admin_notify_new_user").notNull().default(true),
   adminNotifyNewSub: boolean("admin_notify_new_sub").notNull().default(true),
+  lastActiveAt: timestamp("last_active_at"),
+  pwaInstalled: boolean("pwa_installed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

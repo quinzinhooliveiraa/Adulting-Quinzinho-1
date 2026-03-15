@@ -13,7 +13,18 @@ if (typeof window !== "undefined") {
   window.addEventListener("appinstalled", () => {
     globalDeferredPrompt = null;
     listeners.forEach((fn) => fn());
+    fetch("/api/pwa/installed", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } }).catch(() => {});
   });
+
+  if (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as any).standalone === true
+  ) {
+    if (!sessionStorage.getItem("pwa-reported")) {
+      sessionStorage.setItem("pwa-reported", "1");
+      fetch("/api/pwa/installed", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } }).catch(() => {});
+    }
+  }
 }
 
 export function usePwaInstall() {

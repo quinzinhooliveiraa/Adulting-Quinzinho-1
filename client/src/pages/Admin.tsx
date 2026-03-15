@@ -25,6 +25,8 @@ interface AdminUser {
   createdAt: string;
   stripeSubscriptionId: string | null;
   isMasterAdmin?: boolean;
+  lastActiveAt: string | null;
+  pwaInstalled: boolean;
 }
 
 const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
@@ -124,7 +126,13 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
             <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
             <StatusBadge user={user} />
           </div>
-          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            {user.pwaInstalled && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-green-500" title="PWA instalado" />}
+            {user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime()) > 7 * 24 * 60 * 60 * 1000 && (
+              <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-medium">Inativo</span>
+            )}
+          </div>
         </div>
         <ChevronLeft size={14} className={`text-muted-foreground transition-transform ${expanded ? "-rotate-90" : "rotate-180"}`} />
       </button>
@@ -145,6 +153,27 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
             <div>
               <span className="text-muted-foreground">Cadastro:</span>
               <p className="text-foreground">{createdAt.toLocaleDateString("pt-BR")}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Última atividade:</span>
+              <p className="text-foreground">
+                {user.lastActiveAt ? (() => {
+                  const diff = Date.now() - new Date(user.lastActiveAt).getTime();
+                  const mins = Math.floor(diff / 60000);
+                  if (mins < 5) return "Agora";
+                  if (mins < 60) return `${mins}min atrás`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h atrás`;
+                  const days = Math.floor(hrs / 24);
+                  return days === 1 ? "Ontem" : `${days} dias atrás`;
+                })() : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">PWA:</span>
+              <p className={`font-medium ${user.pwaInstalled ? "text-green-500" : "text-muted-foreground"}`}>
+                {user.pwaInstalled ? "Instalado" : "Não"}
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Convite:</span>

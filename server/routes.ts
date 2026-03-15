@@ -42,6 +42,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Não autenticado" });
   }
+  storage.updateUser(req.session.userId, { lastActiveAt: new Date() }).catch(() => {});
   next();
 }
 
@@ -793,6 +794,8 @@ export async function registerRoutes(
           createdAt: u.createdAt,
           stripeSubscriptionId: u.stripeSubscriptionId,
           isMasterAdmin: u.email === ADMIN_EMAIL,
+          lastActiveAt: u.lastActiveAt,
+          pwaInstalled: u.pwaInstalled,
         };
       });
       res.json(usersWithStatus);
@@ -1909,6 +1912,15 @@ REGRAS:
 
   app.get("/api/push/vapid-key", (_req, res) => {
     res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
+  });
+
+  app.post("/api/pwa/installed", requireAuth, async (req, res) => {
+    try {
+      await storage.updateUser(req.session.userId!, { pwaInstalled: true });
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Erro" });
+    }
   });
 
   app.post("/api/push/subscribe", requireAuth, async (req, res) => {
