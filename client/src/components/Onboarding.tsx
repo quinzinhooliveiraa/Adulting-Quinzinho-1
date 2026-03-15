@@ -11,6 +11,27 @@ import bookCover from "@/assets/images/book-cover-oficial.png";
 import { subscribeToPush, isPushSupported } from "@/utils/pushNotifications";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 
+function PwaSkipButton({ onClick }: { onClick: () => void }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return <div className="h-14" />;
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full h-14 rounded-full text-muted-foreground/60 text-xs font-medium transition-all duration-500 animate-in fade-in"
+      data-testid="button-onboarding-skip-pwa"
+    >
+      Instalar depois
+      <ArrowRight className="ml-1 inline" size={12} />
+    </button>
+  );
+}
+
 type StepId = "welcome" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
 
 const STEP_ORDER: StepId[] = ["welcome", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
@@ -22,6 +43,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const savedPerm = typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("casa-push-subscribed") === "true";
   const [notifStatus, setNotifStatus] = useState<"idle" | "loading" | "granted" | "denied">(savedPerm ? "granted" : "idle");
   const { canInstall, installed: pwaInstalled, promptInstall } = usePwaInstall();
+  const [pwaAutoTriggered, setPwaAutoTriggered] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [slideDirection, setSlideDirection] = useState<"enter-right" | "enter-left" | "exit-left" | "exit-right" | "idle">("idle");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -29,6 +51,16 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
   }, []);
+
+  useEffect(() => {
+    if (currentStep === "pwa" && canInstall && !pwaInstalled && !pwaAutoTriggered) {
+      setPwaAutoTriggered(true);
+      const timer = setTimeout(() => {
+        promptInstall();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, canInstall, pwaInstalled, pwaAutoTriggered, promptInstall]);
 
   const goTo = (newIndex: number) => {
     if (isAnimating || newIndex === stepIndex) return;
@@ -170,67 +202,124 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {currentStep === "pwa" && (
-            <div className="flex flex-col items-center text-center space-y-6">
-              <div className="w-full max-w-[280px] space-y-4 stagger-1">
-                <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center transition-all duration-700 ${
-                  pwaInstalled ? "bg-green-500/10 scale-110" : "bg-primary/10 animate-float"
+          {currentStep === "pwa" && (() => {
+            const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent || "");
+            return (
+            <div className="flex flex-col items-center text-center space-y-5">
+              <div className="w-full max-w-[300px] space-y-4 stagger-1">
+                <div className={`w-24 h-24 rounded-3xl mx-auto flex items-center justify-center transition-all duration-700 ${
+                  pwaInstalled ? "bg-green-500/10 scale-110" : "bg-gradient-to-br from-primary/20 to-primary/5 animate-float"
                 }`}>
                   {pwaInstalled ? (
-                    <CheckCircle2 size={36} className="text-green-500" />
+                    <CheckCircle2 size={44} className="text-green-500" />
                   ) : (
-                    <Smartphone size={36} className="text-primary" />
+                    <Smartphone size={44} className="text-primary" />
                   )}
                 </div>
 
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl font-serif text-foreground">
+                    {pwaInstalled ? "App Instalado!" : "Instale o App"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {pwaInstalled
+                      ? "Tudo pronto! O app já está na sua tela inicial."
+                      : "Este passo é essencial para receber lembretes diários e ter a melhor experiência."
+                    }
+                  </p>
+                </div>
+
                 {!pwaInstalled && (
-                  <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                    <div className="flex items-start gap-3 text-left stagger-2">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <Share size={16} className="text-blue-500" />
+                  <>
+                    {canInstall ? (
+                      <button
+                        onClick={promptInstall}
+                        className="w-full p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/30 animate-pulse"
+                        data-testid="button-install-pwa"
+                      >
+                        <Plus size={20} />
+                        Instalar Agora
+                      </button>
+                    ) : (
+                      <div className="bg-card rounded-2xl border-2 border-primary/30 p-5 space-y-4 shadow-lg">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wider">Siga os passos:</p>
+                        {isIos ? (
+                          <>
+                            <div className="flex items-center gap-3 text-left stagger-2">
+                              <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
+                                <Share size={18} className="text-blue-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">1. Toque em <span className="text-blue-500">Compartilhar</span></p>
+                                <p className="text-[10px] text-muted-foreground">O ícone fica na barra inferior do Safari</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-left stagger-3">
+                              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                                <Plus size={18} className="text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">2. <span className="text-primary">Adicionar à Tela de Início</span></p>
+                                <p className="text-[10px] text-muted-foreground">Role para baixo no menu e toque nesta opção</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-left stagger-3">
+                              <div className="w-9 h-9 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
+                                <Check size={18} className="text-green-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">3. Toque em <span className="text-green-500">Adicionar</span></p>
+                                <p className="text-[10px] text-muted-foreground">Pronto! O app aparecerá na sua tela</p>
+                              </div>
+                            </div>
+                            {!isSafari && (
+                              <div className="mt-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium text-center">
+                                  No iPhone, use o Safari para instalar o app
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 text-left stagger-2">
+                              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                                <span className="text-primary text-lg font-bold">⋮</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">1. Toque no <span className="text-primary">menu ⋮</span> do navegador</p>
+                                <p className="text-[10px] text-muted-foreground">Os 3 pontos no canto superior direito</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-left stagger-3">
+                              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                                <Plus size={18} className="text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">2. <span className="text-primary">Instalar app</span> ou <span className="text-primary">Adicionar à tela</span></p>
+                                <p className="text-[10px] text-muted-foreground">Confirme para instalar</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-foreground">No Safari / Chrome</p>
-                        <p className="text-[10px] text-muted-foreground">Toque em "Compartilhar" ou no menu do navegador</p>
+                    )}
+
+                    <div className="flex items-center gap-2 justify-center pt-1">
+                      <div className="flex -space-x-1">
+                        {["📱", "🔔", "⚡"].map((e, i) => (
+                          <span key={i} className="text-sm">{e}</span>
+                        ))}
                       </div>
+                      <p className="text-[10px] text-muted-foreground">Notificações + Acesso rápido + Modo offline</p>
                     </div>
-                    <div className="flex items-start gap-3 text-left stagger-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <Plus size={16} className="text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-foreground">Adicionar à Tela Inicial</p>
-                        <p className="text-[10px] text-muted-foreground">Para acessar como um app nativo</p>
-                      </div>
-                    </div>
-                  </div>
+                  </>
                 )}
               </div>
-
-              <div className="space-y-2 pt-2 stagger-2">
-                <h2 className="text-2xl font-serif text-foreground">
-                  {pwaInstalled ? "App Instalado!" : "Instale o App"}
-                </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  {pwaInstalled
-                    ? "O app já está na sua tela inicial. Você terá a melhor experiência possível."
-                    : "Adicione a Casa dos 20 à sua tela inicial para ter acesso rápido, notificações e uma experiência completa."
-                  }
-                </p>
-              </div>
-
-              {canInstall && (
-                <button
-                  onClick={promptInstall}
-                  className="w-full max-w-[280px] p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-                  data-testid="button-install-pwa"
-                >
-                  <Plus size={18} />
-                  Instalar App
-                </button>
-              )}
             </div>
-          )}
+            );
+          })()}
 
           {currentStep === "checkin" && (
             <div className="flex flex-col items-center text-center space-y-6">
@@ -609,15 +698,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
           ) : (
             <>
               {currentStep === "pwa" && !pwaInstalled ? (
-                <Button
-                  onClick={next}
-                  variant="ghost"
-                  className="w-full h-14 rounded-full text-muted-foreground text-sm font-medium"
-                  data-testid="button-onboarding-skip-pwa"
-                >
-                  Já instalei / Instalar depois
-                  <ArrowRight className="ml-2" size={16} />
-                </Button>
+                <PwaSkipButton onClick={next} />
               ) : (
                 <Button
                   onClick={next}
