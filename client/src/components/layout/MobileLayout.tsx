@@ -514,8 +514,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         </aside>
       )}
 
-      <div className={cn("flex-1 flex justify-center", isDesktop ? "h-screen overflow-y-auto" : "min-h-screen")}>
-        <div className={cn("w-full max-w-md md:max-w-3xl lg:max-w-4xl xl:max-w-5xl md:mx-auto bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "min-h-screen")}>
+      <div className={cn("flex-1 flex justify-center bg-background", isDesktop ? "h-screen overflow-y-auto" : "min-h-screen")}>
+        <div className={cn("w-full bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "max-w-md mx-auto min-h-screen")}>
           
           {!isDesktop && (
             <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
