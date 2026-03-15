@@ -27,6 +27,22 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
+    <script>
+      (function(){
+        var k='casa-dos-20-theme',t;
+        try{t=localStorage.getItem(k)}catch(e){}
+        if(t==='system'||!t){
+          var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark',d);
+          document.documentElement.classList.toggle('light',!d);
+          document.documentElement.style.colorScheme=d?'dark':'light';
+        }else{
+          document.documentElement.classList.toggle('dark',t==='dark');
+          document.documentElement.classList.toggle('light',t==='light');
+          document.documentElement.style.colorScheme=t;
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

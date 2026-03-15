@@ -1,4 +1,4 @@
-const CACHE_NAME = "casa-dos-20-v1";
+const CACHE_NAME = "casa-dos-20-v2";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
