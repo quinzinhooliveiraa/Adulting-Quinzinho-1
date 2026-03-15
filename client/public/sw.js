@@ -1,4 +1,4 @@
-const CACHE_NAME = "casa-dos-20-v2";
+const CACHE_NAME = "casa-dos-20-v3";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
@@ -67,13 +67,27 @@ self.addEventListener("push", (event) => {
     icon: "/icon-192.png",
     badge: "/favicon.png",
     vibrate: [100, 50, 100],
-    data: { url: data.url || "/" },
+    data: { url: data.url || "/", sound: data.sound || null },
     actions: data.actions || [],
     tag: data.tag || "default",
     renotify: true,
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  if (data.tag === "admin-new-sub") {
+    options.vibrate = [200, 100, 200, 100, 300];
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options).then(() => {
+      if (data.sound) {
+        return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: "PLAY_SOUND", sound: data.sound });
+          });
+        });
+      }
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

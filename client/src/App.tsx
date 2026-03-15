@@ -41,6 +41,20 @@ function AuthGate() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === "PLAY_SOUND" && event.data.sound) {
+          const audio = new Audio(event.data.sound);
+          audio.volume = 0.7;
+          audio.play().catch(() => {});
+        }
+      };
+      navigator.serviceWorker.addEventListener("message", handler);
+      return () => navigator.serviceWorker.removeEventListener("message", handler);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
