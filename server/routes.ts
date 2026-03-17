@@ -14,7 +14,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
 import { notifyAdminNewUser } from "./adminNotify";
-import { getUncachableResendClient } from "./resendClient";
+import { sendBrevoEmail } from "./brevoClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const PgStore = connectPgSimple(session);
@@ -60,14 +60,16 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+function getAppDomain() {
+  return process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000";
+}
+
 async function sendVerificationEmail(email: string, token: string, name: string) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000";
-    const verifyUrl = `https://${domain}/api/auth/verify-email?token=${token}`;
-    await client.emails.send({
-      from: fromEmail || "Casa dos 20 <noreply@resend.dev>",
+    const verifyUrl = `https://${getAppDomain()}/api/auth/verify-email?token=${token}`;
+    await sendBrevoEmail({
       to: email,
+      toName: name,
       subject: "Confirme seu email — Casa dos 20",
       html: `
         <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px;">
@@ -83,6 +85,30 @@ async function sendVerificationEmail(email: string, token: string, name: string)
     console.log(`[email] Verification sent to ${email}`);
   } catch (err: any) {
     console.error("[email] Failed to send verification:", err.message);
+  }
+}
+
+async function sendPasswordResetEmail(email: string, token: string, name: string) {
+  try {
+    const resetUrl = `https://${getAppDomain()}/reset-password?token=${token}`;
+    await sendBrevoEmail({
+      to: email,
+      toName: name,
+      subject: "Recuperar senha — Casa dos 20",
+      html: `
+        <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+          <h2 style="color: #1a1a1a;">Olá, ${name}! 🔑</h2>
+          <p style="color: #333; line-height: 1.6;">Recebemos um pedido para redefinir a senha da sua conta no Casa dos 20. Clique no botão abaixo para escolher uma nova senha:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background: #7c3aed; color: white; padding: 14px 32px; border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block;">Redefinir Senha</a>
+          </div>
+          <p style="color: #888; font-size: 13px;">Este link expira em 1 hora. Se você não pediu a redefinição, ignore este email.</p>
+        </div>
+      `,
+    });
+    console.log(`[email] Password reset sent to ${email}`);
+  } catch (err: any) {
+    console.error("[email] Failed to send password reset:", err.message);
   }
 }
 
@@ -477,6 +503,74 @@ export async function registerRoutes(
       res.json({ message: "Email de verificação reenviado" });
     } catch (error) {
       res.status(500).json({ message: "Erro ao reenviar email" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email obrigatório" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ message: "Se este email estiver cadastrado, você receberá um link de recuperação." });
+      }
+
+      if (user.googleId && !user.password) {
+        return res.json({ message: "Esta conta usa login com Google. Use o botão 'Continuar com Google'." });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000);
+      await storage.updateUser(user.id, { passwordResetToken: token, passwordResetExpires: expires });
+      await sendPasswordResetEmail(user.email, token, user.name);
+
+      res.json({ message: "Se este email estiver cadastrado, você receberá um link de recuperação." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Erro ao processar pedido. Tente novamente." });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) return res.status(400).json({ message: "Dados incompletos" });
+      if (newPassword.length < 4) return res.status(400).json({ message: "A senha deve ter pelo menos 4 caracteres" });
+
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find(u => u.passwordResetToken === token);
+      if (!user || !user.passwordResetExpires || new Date(user.passwordResetExpires) < new Date()) {
+        return res.status(400).json({ message: "Link expirado ou inválido. Peça um novo link de recuperação." });
+      }
+
+      await storage.updateUser(user.id, {
+        password: hashPassword(newPassword),
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      });
+
+      req.session.userId = user.id;
+      const premiumStatus = getUserPremiumStatus(user);
+      res.json({
+        message: "Senha redefinida com sucesso!",
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          profilePhoto: user.profilePhoto,
+          hasPremium: premiumStatus.hasPremium,
+          premiumReason: premiumStatus.reason,
+          trialEndsAt: user.trialEndsAt,
+          emailVerified: user.emailVerified,
+          journeyOnboardingDone: user.journeyOnboardingDone,
+          journeyOrder: user.journeyOrder,
+        },
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Erro ao redefinir senha. Tente novamente." });
     }
   });
 

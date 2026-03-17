@@ -19,6 +19,8 @@ export const users = pgTable("users", {
   journeyOrder: text("journey_order").array().notNull().default(sql`'{}'::text[]`),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerificationToken: text("email_verification_token"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
   profilePhoto: text("profile_photo"),
   googleId: text("google_id"),
   appleId: text("apple_id"),

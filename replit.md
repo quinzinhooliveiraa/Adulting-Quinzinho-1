@@ -17,7 +17,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - All UI text in Brazilian Portuguese
 
 ## Database Schema (`shared/schema.ts`)
-- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
+- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, passwordResetToken, passwordResetExpires, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt
@@ -36,6 +36,18 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - Products/prices synced from Stripe dashboard
 - Routes: `/api/stripe/products`, `/api/stripe/checkout`, `/api/stripe/webhook`
 - Premium subscription with 14-day trial via Stripe Checkout
+
+## Email (Brevo)
+- Transactional emails via Brevo (Sendinblue) API v3
+- `BREVO_API_KEY` stored as secret; sender: `quinzinhooliveiraa@gmail.com`
+- Client: `server/brevoClient.ts` — single `sendBrevoEmail()` function
+- Used for: email verification on registration, password reset links
+- Routes:
+  - `POST /api/auth/forgot-password` — sends reset link (1-hour expiry)
+  - `POST /api/auth/reset-password` — validates token, sets new password, auto-logs in
+  - `GET /api/auth/verify-email?token=...` — confirms email
+  - `POST /api/auth/resend-verification` — resends verification email
+- Frontend: `/reset-password?token=...` page (outside auth gate) for password reset
 
 ## Push Notifications (PWA)
 - Service worker at `client/public/sw.js` handles push events and notification clicks

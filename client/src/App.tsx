@@ -23,6 +23,7 @@ import Admin from "@/pages/Admin";
 import Premium from "@/pages/Premium";
 import Reports from "@/pages/Reports";
 import SharedEntry from "@/pages/SharedEntry";
+import ResetPassword from "@/pages/ResetPassword";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -113,6 +114,7 @@ function App() {
             <Toaster />
             <Switch>
               <Route path="/shared/:slug" component={SharedEntry} />
+              <Route path="/reset-password" component={ResetPassword} />
               <Route>
                 <AuthGate />
               </Route>

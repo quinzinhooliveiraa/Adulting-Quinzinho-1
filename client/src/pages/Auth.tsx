@@ -29,14 +29,14 @@ declare global {
 }
 
 export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => void }) {
-  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [emailValidation, setEmailValidation] = useState<{ status: "idle" | "checking" | "valid" | "invalid"; message?: string; suggestion?: string }>({ status: "idle" });
@@ -176,40 +176,25 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleForgotPassword = async () => {
     setIsSubmitting(true);
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        setError("Email ou senha temporária incorretos.");
+        setError(data.message || "Erro ao enviar email.");
         return;
       }
-
-      const changeRes = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ newPassword }),
-      });
-      if (!changeRes.ok) {
-        const data = await changeRes.json();
-        setError(data.message || "Erro ao redefinir senha.");
-        return;
-      }
-
-      setSuccess("Senha redefinida com sucesso! Fazendo login...");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setForgotSent(true);
+      setSuccess(data.message);
     } catch {
-      setError("Erro ao redefinir senha. Tente novamente.");
+      setError("Erro ao enviar email. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -277,8 +262,8 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
 
   const isLoginValid = email.includes("@") && password.length >= 1;
   const isRegisterValid = email.includes("@") && password.length >= 4 && name.trim().length > 0 && emailValidation.status !== "invalid" && acceptedTerms;
-  const isResetValid = email.includes("@") && password.length >= 1 && newPassword.length >= 4;
-  const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isResetValid;
+  const isForgotValid = email.includes("@") && !forgotSent;
+  const isValid = mode === "login" ? isLoginValid : mode === "register" ? isRegisterValid : isForgotValid;
 
   const iconSrc = resolvedTheme === "dark" ? iconDark : iconLight;
 
@@ -291,12 +276,12 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
           </div>
           <h1 className="text-2xl font-serif text-foreground tracking-wide">Casa dos 20</h1>
           <p className="text-sm text-muted-foreground">
-            {mode === "login" ? "Bem-vindo de volta" : mode === "register" ? "Crie sua conta" : "Redefinir senha"}
+            {mode === "login" ? "Bem-vindo de volta" : mode === "register" ? "Crie sua conta" : "Recuperar senha"}
           </p>
         </div>
 
         <div className="w-full space-y-4">
-          {mode !== "reset" && (
+          {mode !== "forgot" && (
             <>
               {!googleReady && (
                 <div className="w-full h-12 rounded-xl border border-border bg-white dark:bg-muted flex items-center justify-center gap-3 text-sm font-medium text-muted-foreground opacity-50">
@@ -347,14 +332,16 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
             </>
           )}
 
-          {mode === "reset" && (
+          {mode === "forgot" && (
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
               <div className="flex items-center gap-2 mb-2">
                 <KeyRound size={16} className="text-primary" />
-                <p className="text-sm font-medium text-foreground">Redefinir senha</p>
+                <p className="text-sm font-medium text-foreground">Recuperar senha</p>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Insira seu email e a senha temporária que recebeu, depois escolha sua nova senha.
+                {forgotSent
+                  ? "Verifique seu email (incluindo a caixa de spam) e clique no link para redefinir sua senha."
+                  : "Insira seu email e enviaremos um link para redefinir sua senha."}
               </p>
             </div>
           )}
@@ -420,23 +407,14 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
             </div>
           )}
 
-          <Input
-            type="password"
-            placeholder={mode === "reset" ? "Senha temporária" : mode === "login" ? "Sua senha" : "Crie uma senha (min. 4 caracteres)"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans focus-visible:ring-primary/20"
-            data-testid="input-password"
-          />
-
-          {mode === "reset" && (
+          {mode !== "forgot" && (
             <Input
               type="password"
-              placeholder="Nova senha (min. 4 caracteres)"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={mode === "login" ? "Sua senha" : "Crie uma senha (min. 4 caracteres)"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="h-12 rounded-xl bg-white/50 border-border/50 text-center font-sans focus-visible:ring-primary/20"
-              data-testid="input-new-password"
+              data-testid="input-password"
             />
           )}
 
@@ -471,7 +449,7 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
           )}
 
           <Button
-            onClick={mode === "reset" ? handleResetPassword : handleSubmit}
+            onClick={mode === "forgot" ? handleForgotPassword : handleSubmit}
             disabled={isSubmitting || !isValid}
             className="w-full h-14 rounded-full bg-primary text-primary-foreground text-lg font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
             data-testid="button-auth-submit"
@@ -480,27 +458,28 @@ export default function Auth({ onRegisterSuccess }: { onRegisterSuccess: () => v
               <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                {mode === "login" ? "Entrar" : mode === "register" ? "Criar Conta" : "Redefinir Senha"}
-                <ArrowRight className="ml-2" size={20} />
+                {mode === "login" ? "Entrar" : mode === "register" ? "Criar Conta" : forgotSent ? "Email Enviado" : "Enviar Link"}
+                {!forgotSent && <ArrowRight className="ml-2" size={20} />}
+                {forgotSent && <Mail className="ml-2" size={20} />}
               </>
             )}
           </Button>
 
           {mode === "login" && (
             <button
-              onClick={() => { setMode("reset"); setError(""); setSuccess(""); }}
+              onClick={() => { setMode("forgot"); setError(""); setSuccess(""); setForgotSent(false); }}
               className="w-full text-xs text-muted-foreground hover:text-primary transition-colors text-center"
               data-testid="button-forgot-password"
             >
-              Esqueceu a senha ou recebeu uma senha temporária?
+              Esqueceu a senha?
             </button>
           )}
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          {mode === "reset" ? (
+          {mode === "forgot" ? (
             <button
-              onClick={() => { setMode("login"); setError(""); setSuccess(""); setNewPassword(""); }}
+              onClick={() => { setMode("login"); setError(""); setSuccess(""); setForgotSent(false); }}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               data-testid="button-back-to-login"
             >
