@@ -24,6 +24,7 @@ import Premium from "@/pages/Premium";
 import Reports from "@/pages/Reports";
 import SharedEntry from "@/pages/SharedEntry";
 import ResetPassword from "@/pages/ResetPassword";
+import OpenInBrowser from "@/pages/OpenInBrowser";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -105,7 +106,31 @@ function AuthGate() {
   );
 }
 
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || navigator.vendor || "";
+  return (
+    /FBAN|FBAV/i.test(ua) ||
+    /Instagram/i.test(ua) ||
+    /musical_ly|Bytedance|TikTok/i.test(ua) ||
+    /Twitter/i.test(ua) ||
+    /Snapchat/i.test(ua) ||
+    /LinkedIn/i.test(ua) ||
+    /Pinterest/i.test(ua)
+  );
+}
+
 function App() {
+  const [inAppBrowser] = useState(isInAppBrowser);
+
+  if (inAppBrowser) {
+    return (
+      <ThemeProvider defaultTheme="system" storageKey="casa-dos-20-theme" attribute="class" enableSystem disableTransitionOnChange={false}>
+        <OpenInBrowser />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="casa-dos-20-theme" attribute="class" enableSystem disableTransitionOnChange={false}>
       <QueryClientProvider client={queryClient}>
