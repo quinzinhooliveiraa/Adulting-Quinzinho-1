@@ -112,29 +112,27 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   };
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden bg-background">
+    <div className="border border-border rounded-xl bg-background">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+        className="w-full p-3 flex items-center gap-2.5 text-left hover:bg-muted/50 transition-colors rounded-xl"
         data-testid={`user-card-${user.id}`}
       >
-        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground/60 shrink-0">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground/60 shrink-0">
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-sm font-medium text-foreground truncate max-w-[140px]">{user.name}</p>
             <StatusBadge user={user} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
             {user.pwaInstalled && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-green-500" title="PWA instalado" />}
             {user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime()) > 7 * 24 * 60 * 60 * 1000 && (
               <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-medium">Inativo</span>
             )}
           </div>
+          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
         </div>
-        <ChevronLeft size={14} className={`text-muted-foreground transition-transform ${expanded ? "-rotate-90" : "rotate-180"}`} />
+        <ChevronLeft size={14} className={`text-muted-foreground transition-transform shrink-0 ${expanded ? "-rotate-90" : "rotate-180"}`} />
       </button>
 
       {expanded && (
@@ -745,14 +743,14 @@ export default function Admin() {
   const openFeedbackCount = allFeedback.filter(f => f.status === "open").length;
 
   return (
-    <div className="px-6 pt-12 pb-24 space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-3">
-        <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back-admin">
+    <div className="px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500">
+      <div className="flex items-center gap-3 pr-12">
+        <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-muted shrink-0" data-testid="button-back-admin">
           <ChevronLeft size={24} className="text-foreground" />
         </button>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-serif text-foreground">Painel Admin</h1>
-          <p className="text-xs text-muted-foreground">Gerencie usuários, feedbacks e acessos</p>
+          <p className="text-xs text-muted-foreground truncate">Gerencie usuários, feedbacks e acessos</p>
         </div>
       </div>
 
@@ -763,29 +761,29 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 overflow-x-auto">
         <button
           onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
             activeTab === "users"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
           }`}
           data-testid="tab-users"
         >
-          <Users size={16} />
+          <Users size={14} />
           Usuários
         </button>
         <button
           onClick={() => setActiveTab("feedback")}
-          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors relative ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors relative whitespace-nowrap ${
             activeTab === "feedback"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
           }`}
           data-testid="tab-feedback"
         >
-          <MessageSquare size={16} />
+          <MessageSquare size={14} />
           Chamados
           {openFeedbackCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
@@ -795,14 +793,14 @@ export default function Admin() {
         </button>
         <button
           onClick={() => setActiveTab("push")}
-          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
             activeTab === "push"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
           }`}
           data-testid="tab-push"
         >
-          <Send size={16} />
+          <Send size={14} />
           Push
         </button>
       </div>
@@ -810,7 +808,7 @@ export default function Admin() {
       {activeTab === "users" && (
         <>
           {stats && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <StatCard icon={Users} label="Total" value={stats.totalUsers} color="text-foreground" />
               <StatCard icon={Star} label="Premium" value={stats.premiumUsers} color="text-yellow-500" />
               <StatCard icon={Clock} label="Trial" value={stats.trialUsers} color="text-blue-500" />
