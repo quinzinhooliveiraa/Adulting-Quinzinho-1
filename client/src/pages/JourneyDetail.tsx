@@ -430,10 +430,13 @@ export default function JourneyDetail() {
   const progress = Math.round((completedDays.length / journey.totalDays) * 100);
   const isCompleted = completedDays.length >= journey.totalDays;
 
+  const [saveError, setSaveError] = useState("");
+
   const toggleDay = async (dayId: string) => {
     if (!isPremium) return;
     const isCompleting = !completedDays.includes(dayId);
     setAnimatingDay(dayId);
+    setSaveError("");
 
     try {
       const endpoint = isCompleting ? "/api/journey/complete-day" : "/api/journey/uncomplete-day";
@@ -450,8 +453,13 @@ export default function JourneyDetail() {
           const ts = JSON.parse(data.completedTimestamps || "{}");
           setCompletedTimestamps(ts);
         } catch {}
+      } else {
+        const err = await res.json().catch(() => ({ message: "Erro ao salvar" }));
+        setSaveError(err.message || "Erro ao salvar progresso");
       }
-    } catch {}
+    } catch {
+      setSaveError("Erro de conexão. Verifique sua internet.");
+    }
     setTimeout(() => setAnimatingDay(null), 300);
   };
 
@@ -495,17 +503,24 @@ export default function JourneyDetail() {
   const handleSaveWriting = async (day: JourneyDay) => {
     if (!writingText.trim()) return;
     setSavingEntry(true);
+    setSaveError("");
     try {
       await apiRequest("POST", "/api/journal", {
         text: writingText,
         tags: ["jornada", journey.title.toLowerCase()],
-        mood: null,
         date: new Date().toISOString().split("T")[0],
       });
       await toggleDay(day.id);
       setWritingDayId(null);
       setWritingText("");
-    } catch {}
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("JOURNAL_LIMIT")) {
+        setSaveError("Limite mensal de entradas atingido.");
+      } else {
+        setSaveError("Erro ao salvar. Tente novamente.");
+      }
+    }
     setSavingEntry(false);
   };
 
@@ -639,6 +654,15 @@ export default function JourneyDetail() {
           <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
             Assine o plano premium (R$9,90/mês) para completar desafios e acompanhar seu progresso.
           </p>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="mx-6 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 animate-in fade-in duration-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={14} className="text-red-500 shrink-0" />
+            <p className="text-xs text-red-600 dark:text-red-400 font-medium" data-testid="text-save-error">{saveError}</p>
+          </div>
         </div>
       )}
 

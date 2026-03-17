@@ -1113,7 +1113,7 @@ export async function registerRoutes(
   const createEntrySchema = z.object({
     text: z.string().min(1),
     tags: z.array(z.string()).default([]),
-    mood: z.string().optional(),
+    mood: z.string().nullable().optional(),
     date: z.string().optional(),
   });
 
