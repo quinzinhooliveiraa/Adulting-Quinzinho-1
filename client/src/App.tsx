@@ -27,9 +27,33 @@ import ResetPassword from "@/pages/ResetPassword";
 import OpenInBrowser from "@/pages/OpenInBrowser";
 
 function AuthGate() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refetch } = useAuth();
   const needsOnboarding = user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleNewUser = params.get("google_new_user");
+    const err = params.get("google_error");
+    if (googleNewUser || err !== null) {
+      window.history.replaceState({}, "", window.location.pathname);
+      if (googleNewUser) {
+        localStorage.setItem("casa-dos-20-needs-onboarding", "true");
+      }
+      if (err) {
+        const messages: Record<string, string> = {
+          cancelled: "Login com Google cancelado.",
+          invalid_state: "Erro de segurança. Tente novamente.",
+          token_failed: "Erro ao autenticar com Google. Tente novamente.",
+          server_error: "Erro interno. Tente novamente.",
+          inactive: "Conta desativada.",
+        };
+        setGoogleError(messages[err] || "Erro ao fazer login com Google.");
+      }
+      refetch();
+    }
+  }, [refetch]);
 
   useEffect(() => {
     if (needsOnboarding) {
@@ -71,6 +95,7 @@ function AuthGate() {
         onRegisterSuccess={() => {
           localStorage.setItem("casa-dos-20-needs-onboarding", "true");
         }}
+        initialError={googleError}
       />
     );
   }

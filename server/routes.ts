@@ -22,6 +22,7 @@ const PgStore = connectPgSimple(session);
 declare module "express-session" {
   interface SessionData {
     userId: string;
+    oauthState?: string;
   }
 }
 
@@ -656,6 +657,101 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Google auth error:", error);
       res.status(500).json({ message: "Erro ao fazer login com Google" });
+    }
+  });
+
+  app.get("/api/auth/google-oauth", (req: Request, res: Response) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return res.status(500).json({ message: "Google not configured" });
+    const domain = getAppDomain();
+    const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
+    const state = randomBytes(16).toString("hex");
+    req.session.oauthState = state;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      access_type: "offline",
+      prompt: "select_account",
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  });
+
+  app.get("/api/auth/google-oauth/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state, error } = req.query as Record<string, string>;
+      const domain = getAppDomain();
+      const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
+
+      if (error || !code) {
+        return res.redirect("/?google_error=cancelled");
+      }
+
+      if (state !== (req.session as any).oauthState) {
+        return res.redirect("/?google_error=invalid_state");
+      }
+      delete (req.session as any).oauthState;
+
+      const clientId = process.env.GOOGLE_CLIENT_ID!;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: "authorization_code" }),
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenData.id_token) {
+        console.error("[google-oauth] No id_token:", tokenData);
+        return res.redirect("/?google_error=token_failed");
+      }
+
+      const parts = tokenData.id_token.split(".");
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+      const { sub: googleId, email, name: googleName, email_verified } = payload;
+      const name = googleName || email.split("@")[0];
+
+      let user = await storage.getUserByGoogleId(googleId);
+      if (!user) {
+        user = await storage.getUserByEmail(email);
+        if (user) {
+          await storage.updateUser(user.id, { googleId, emailVerified: email_verified || user.emailVerified });
+          user = (await storage.getUser(user.id))!;
+        }
+      }
+
+      let isNewUser = false;
+      if (!user) {
+        const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        user = await storage.createUser({
+          username: email,
+          password: hashPassword(randomBytes(32).toString("hex")),
+          name,
+          email,
+          role: isAdminEmail ? "admin" : "user",
+          isPremium: isAdminEmail,
+          isActive: true,
+          trialEndsAt: null,
+          premiumUntil: null,
+          invitedBy: null,
+          googleId,
+          emailVerified: true,
+        });
+        isNewUser = true;
+        notifyAdminNewUser(name, email).catch(() => {});
+      }
+
+      if (!user.isActive) {
+        return res.redirect("/?google_error=inactive");
+      }
+
+      req.session.userId = user.id;
+      res.redirect(isNewUser ? "/?google_new_user=1" : "/");
+    } catch (err) {
+      console.error("[google-oauth] callback error:", err);
+      res.redirect("/?google_error=server_error");
     }
   });
 
