@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
 import { DAILY_REFLECTIONS } from "./Book";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn, analyzeCheckIn } from "@/utils/intelligentRecommendation";
-import { addNotification } from "@/utils/notificationService";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import { useAuth } from "@/hooks/useAuth";
@@ -356,12 +355,6 @@ export default function Home() {
       // Fallback handled below
     }
     
-    addNotification({
-      type: "journal",
-      title: "✍️ Reflexão Guardada",
-      message: "Sua entrada foi salva no diário com sucesso!",
-    });
-
     setIsSaved(true);
     setTimeout(() => {
       setIsReflecting(false);
@@ -1203,11 +1196,6 @@ export default function Home() {
             if (user) {
               await createEntry.mutateAsync({ text: content, tags: finalTags, mood: mood || undefined });
             }
-            addNotification({
-              type: "journal",
-              title: "✍️ Pensamento Guardado",
-              message: `"${title}" foi salvo com sucesso!`,
-            });
           }}
         />
       )}

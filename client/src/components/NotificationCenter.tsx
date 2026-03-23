@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { Bell, X } from "lucide-react";
-import { getUnreadNotifications, dismissNotification, Notification } from "@/utils/notificationService";
+import { Bell, X, Trash2 } from "lucide-react";
+import { getUnreadNotifications, dismissNotification, clearNotifications, Notification } from "@/utils/notificationService";
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function pruneOldNotifications() {
+  const stored = getUnreadNotifications();
+  const now = Date.now();
+  const fresh = stored.filter(n => now - n.timestamp < SEVEN_DAYS_MS);
+  if (fresh.length !== stored.length) {
+    clearNotifications();
+    fresh.forEach(n => {
+      const all = JSON.parse(localStorage.getItem("casa-dos-20-notifications") || "[]");
+      all.push(n);
+      localStorage.setItem("casa-dos-20-notifications", JSON.stringify(all));
+    });
+  }
+  return fresh;
+}
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -9,7 +26,7 @@ export default function NotificationCenter() {
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
-    setNotifications(getUnreadNotifications());
+    setNotifications(pruneOldNotifications());
     const interval = setInterval(() => {
       setNotifications(getUnreadNotifications());
     }, 30000);
@@ -42,7 +59,12 @@ export default function NotificationCenter() {
 
   const handleDismiss = (id: string) => {
     dismissNotification(id);
-    setNotifications(notifications.filter(n => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleClearAll = () => {
+    clearNotifications();
+    setNotifications([]);
   };
 
   const unreadCount = notifications.length;
@@ -71,9 +93,16 @@ export default function NotificationCenter() {
           >
             <div className="px-4 py-3 border-b border-border flex justify-between items-center">
               <h3 className="text-sm font-medium text-foreground">Notificações</h3>
-              {unreadCount > 0 && (
-                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{unreadCount}</span>
-              )}
+              {unreadCount > 0 ? (
+                <button
+                  onClick={handleClearAll}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-clear-notifications"
+                >
+                  <Trash2 size={10} />
+                  Limpar tudo
+                </button>
+              ) : null}
             </div>
             <div className="overflow-y-auto max-h-60">
               {notifications.length > 0 ? (
@@ -88,6 +117,7 @@ export default function NotificationCenter() {
                         <button
                           onClick={() => handleDismiss(notif.id)}
                           className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          data-testid={`button-dismiss-notif-${notif.id}`}
                         >
                           <X size={12} />
                         </button>

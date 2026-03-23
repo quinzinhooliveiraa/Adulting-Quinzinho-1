@@ -4,7 +4,6 @@ import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { shareEntry } from "@/utils/journalStorage";
-import { addNotification } from "@/utils/notificationService";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import NotebookEditor from "@/components/NotebookEditor";
@@ -451,12 +450,6 @@ export default function Journal() {
       }
     } catch {}
 
-    addNotification({
-      type: "journal",
-      title: "Diário Atualizado",
-      message: isEditing ? "Sua reflexão foi atualizada!" : "Nova reflexão adicionada ao diário!",
-    });
-    
     setIsSaved(true);
     setTimeout(() => {
       setIsWriting(false);
@@ -1047,11 +1040,6 @@ export default function Journal() {
             } else {
               await createEntryMut.mutateAsync({ text: content, tags: finalTags });
             }
-            addNotification({
-              type: "journal",
-              title: "Pensamento Guardado",
-              message: `"${title}" foi salvo com sucesso!`,
-            });
             setIsWriting(false);
             setEntryText("");
             setSelectedTags([]);

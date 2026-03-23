@@ -5,7 +5,6 @@ import {
   PenLine, X, Lock, Send, Copy, Check, Loader2, Mic, MicOff, Square,
   Image as ImageIcon, Shuffle, ListOrdered
 } from "lucide-react";
-import { addNotification } from "@/utils/notificationService";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
@@ -1513,17 +1512,8 @@ function AnswerSheet({
         onShareAnswer(answer, cardIndex);
       }
       onSaved();
-      addNotification({
-        type: "journal",
-        title: "Reflexão salva",
-        message: "Sua resposta foi guardada no diário.",
-      });
     } catch {
-      addNotification({
-        type: "journal",
-        title: "Erro",
-        message: "Não foi possível salvar. Tente novamente.",
-      });
+      // silently handled
     }
   };
 
@@ -1689,11 +1679,6 @@ function CardGame({
   const handleSave = () => {
     if (!savedCards.includes(currentIndex)) {
       setSavedCards([...savedCards, currentIndex]);
-      addNotification({
-        type: "journal",
-        title: "Carta Salva",
-        message: "Pergunta salva para reflexão futura.",
-      });
     }
   };
 
@@ -1703,11 +1688,6 @@ function CardGame({
       navigator.share({ title: "Casa dos 20", text }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text);
-      addNotification({
-        type: "journal",
-        title: "Copiado",
-        message: "Pergunta copiada para a área de transferência.",
-      });
     }
   };
 
@@ -1776,11 +1756,6 @@ function CardGame({
         <button
           onClick={() => {
             setShuffleMode(!shuffleMode);
-            addNotification({
-              type: "journal",
-              title: shuffleMode ? "Modo Sequencial" : "Modo Sorteio",
-              message: shuffleMode ? "Cartas na ordem original." : "Cartas aleatórias ativadas!",
-            });
           }}
           className={`p-2 rounded-full transition-colors ${isShuffling ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
           data-testid="button-toggle-shuffle"
