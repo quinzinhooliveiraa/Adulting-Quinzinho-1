@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Bell, X, Trash2 } from "lucide-react";
 import { getUnreadNotifications, dismissNotification, clearNotifications, Notification } from "@/utils/notificationService";
 
@@ -19,11 +19,28 @@ function pruneOldNotifications() {
   return fresh;
 }
 
+function calcDropdownStyle(btn: HTMLElement): React.CSSProperties {
+  const rect = btn.getBoundingClientRect();
+  const viewW = window.innerWidth;
+  const viewH = window.innerHeight;
+  const dropW = Math.min(288, viewW - 16);
+  const dropH = 320;
+
+  let left = rect.right - dropW;
+  let top = rect.bottom + 8;
+
+  if (left < 8) left = 8;
+  if (left + dropW > viewW - 8) left = viewW - dropW - 8;
+  if (top + dropH > viewH - 8) top = rect.top - dropH - 8;
+
+  return { position: "fixed", left, top, width: dropW, zIndex: 9999 };
+}
+
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({ position: "fixed", left: -9999, top: -9999, width: 288, zIndex: 9999 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setNotifications(pruneOldNotifications());
@@ -33,28 +50,11 @@ export default function NotificationCenter() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const viewW = window.innerWidth;
-      const viewH = window.innerHeight;
-      const dropW = 288;
-      const dropH = 320;
-
-      let left = rect.left;
-      let top = rect.bottom + 8;
-
-      if (left + dropW > viewW - 8) {
-        left = viewW - dropW - 8;
-      }
-      if (left < 8) left = 8;
-
-      if (top + dropH > viewH - 8) {
-        top = rect.top - dropH - 8;
-      }
-
-      setDropdownStyle({ position: 'fixed', left, top, width: dropW });
+  const handleToggle = useCallback(() => {
+    if (!isOpen && btnRef.current) {
+      setDropdownStyle(calcDropdownStyle(btnRef.current));
     }
+    setIsOpen(prev => !prev);
   }, [isOpen]);
 
   const handleDismiss = (id: string) => {
@@ -70,9 +70,10 @@ export default function NotificationCenter() {
   const unreadCount = notifications.length;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={btnRef}
+        onClick={handleToggle}
         className="relative w-9 h-9 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border/40 hover:bg-muted transition-colors shadow-sm"
         data-testid="button-notifications"
       >
@@ -88,12 +89,12 @@ export default function NotificationCenter() {
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
           <div
-            className="z-[9999] max-h-80 bg-background border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+            className="max-h-80 bg-background border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in duration-150"
             style={dropdownStyle}
           >
             <div className="px-4 py-3 border-b border-border flex justify-between items-center">
               <h3 className="text-sm font-medium text-foreground">Notificações</h3>
-              {unreadCount > 0 ? (
+              {unreadCount > 0 && (
                 <button
                   onClick={handleClearAll}
                   className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
@@ -102,7 +103,7 @@ export default function NotificationCenter() {
                   <Trash2 size={10} />
                   Limpar tudo
                 </button>
-              ) : null}
+              )}
             </div>
             <div className="overflow-y-auto max-h-60">
               {notifications.length > 0 ? (
