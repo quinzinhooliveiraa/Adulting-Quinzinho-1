@@ -2488,7 +2488,7 @@ function LobbyScreen({
         </div>
 
         <div className="px-6 mt-4">
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
             {players.map((p) => (
               <div
                 key={p.id}

@@ -798,10 +798,10 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="flex gap-1.5 overflow-x-auto">
+      <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide">
         <button
           onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "users"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
@@ -813,7 +813,7 @@ export default function Admin() {
         </button>
         <button
           onClick={() => setActiveTab("feedback")}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors relative whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors relative whitespace-nowrap shrink-0 ${
             activeTab === "feedback"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
@@ -830,7 +830,7 @@ export default function Admin() {
         </button>
         <button
           onClick={() => setActiveTab("push")}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "push"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
@@ -842,7 +842,7 @@ export default function Admin() {
         </button>
         <button
           onClick={() => setActiveTab("coupons")}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "coupons"
               ? "bg-foreground text-background"
               : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
@@ -897,7 +897,7 @@ export default function Admin() {
               />
             </div>
 
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
               {[
                 { id: "all", label: "Todos" },
                 { id: "trial", label: "Trial" },
@@ -909,7 +909,7 @@ export default function Admin() {
                 <button
                   key={f.id}
                   onClick={() => setFilterStatus(f.id)}
-                  className={`text-[11px] px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
+                  className={`text-[11px] px-3 py-1.5 rounded-full border whitespace-nowrap shrink-0 transition-colors ${
                     filterStatus === f.id
                       ? "bg-foreground text-background border-foreground"
                       : "bg-muted/50 text-muted-foreground border-border hover:text-foreground"
