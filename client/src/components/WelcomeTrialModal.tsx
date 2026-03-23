@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, CreditCard, ShieldCheck } from "lucide-react";
+import { X, ShieldCheck } from "lucide-react";
 
 interface WelcomeTrialModalProps {
   userId: string;
@@ -54,17 +54,17 @@ export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaim
 
           <p className="text-3xl mb-3">🎁</p>
           <h2 className="text-xl font-bold font-serif text-foreground mb-1">
-            Queres 30 dias grátis?
+            Ganha mais 16 dias grátis
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Adiciona o teu cartão agora e ganha <strong className="text-foreground">+16 dias extras</strong> — sem qualquer custo durante o trial.
+            Ativa agora e fica com <strong className="text-foreground">30 dias grátis</strong> no total — sem pagar nada.
           </p>
         </div>
 
         <div className="px-6 pb-6 pt-4 space-y-3">
           <div className="flex items-start gap-2">
             <ShieldCheck size={14} className="text-green-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-muted-foreground">Só pagas quando o trial acabar, se quiseres continuar. Cancela a qualquer momento.</p>
+            <p className="text-xs text-muted-foreground">Sem custos durante os 30 dias. Só pagas se quiseres continuar depois.</p>
           </div>
 
           {error && (
@@ -77,8 +77,8 @@ export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaim
             className="w-full py-3.5 rounded-2xl bg-foreground text-background font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2"
             data-testid="btn-claim-bonus"
           >
-            <CreditCard size={18} />
-            {loading ? "A redirecionar..." : "Adicionar cartão e ganhar +16 dias"}
+            <span className="text-lg">🎁</span>
+            {loading ? "A ativar..." : "Ganhar 30 dias grátis"}
           </button>
 
           <button
@@ -86,7 +86,7 @@ export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaim
             className="w-full py-2.5 rounded-2xl text-sm text-muted-foreground hover:text-foreground transition-colors"
             data-testid="btn-close-later"
           >
-            Agora não
+            Ficar só com os 14 dias
           </button>
         </div>
       </div>

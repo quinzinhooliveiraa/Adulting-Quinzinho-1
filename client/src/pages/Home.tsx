@@ -41,13 +41,13 @@ function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
         <span className="text-xl">🎁</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Tens {daysLeft} dias grátis — resgata +16 dias!
+            Ganha +16 dias e fica com 30 dias grátis!
           </p>
           <p className="text-xs text-muted-foreground truncate">
-            Clica para ganhar 30 dias grátis no total. Sem cartão.
+            Ativa agora — sem pagar nada.
           </p>
         </div>
-        <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">Resgatar →</span>
+        <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">Ganhar →</span>
       </button>
     );
   }
