@@ -15,15 +15,43 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { JOURNEYS } from "./Journey";
 import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
 import { useLocation } from "wouter";
 
-function TrialBanner({ trialEndsAt, onUpgrade }: { trialEndsAt: string | null; onUpgrade: () => void }) {
+function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
+  trialEndsAt: string | null;
+  trialBonusClaimed: boolean;
+  onUpgrade: () => void;
+  onClaim: () => void;
+}) {
   if (!trialEndsAt) return null;
   const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
   if (daysLeft <= 0) return null;
   const urgent = daysLeft <= 2;
+
+  if (!trialBonusClaimed) {
+    return (
+      <button
+        onClick={onClaim}
+        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-amber-500/10 border border-amber-400/30 hover:bg-amber-500/20 transition-all"
+        data-testid="trial-banner-home"
+      >
+        <span className="text-xl">🎁</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            Tens {daysLeft} dias grátis — resgata +16 dias!
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            Clica para ganhar 30 dias grátis no total. Sem cartão.
+          </p>
+        </div>
+        <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">Resgatar →</span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onUpgrade}
@@ -547,7 +575,19 @@ export default function Home() {
       </header>
 
       {user?.premiumReason === "trial" && user?.trialEndsAt && (
-        <TrialBanner trialEndsAt={user.trialEndsAt} onUpgrade={() => navigate("/premium")} />
+        <TrialBanner
+          trialEndsAt={user.trialEndsAt}
+          trialBonusClaimed={user.trialBonusClaimed}
+          onUpgrade={() => navigate("/premium")}
+          onClaim={async () => {
+            try {
+              const res = await fetch("/api/auth/claim-trial-bonus", { method: "POST", credentials: "include" });
+              if (res.ok) {
+                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+              }
+            } catch {}
+          }}
+        />
       )}
 
       <section className="space-y-4">

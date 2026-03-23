@@ -285,7 +285,7 @@ export async function registerRoutes(
         role: isAdminEmail ? "admin" : "user",
         isPremium: isAdminEmail,
         isActive: true,
-        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         premiumUntil: null,
         invitedBy: data.inviteCode || null,
         emailVerified: isAdminEmail,
@@ -311,6 +311,7 @@ export async function registerRoutes(
         emailVerified: user.emailVerified,
         journeyOnboardingDone: user.journeyOnboardingDone,
         journeyOrder: user.journeyOrder,
+        trialBonusClaimed: user.trialBonusClaimed,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -447,7 +448,33 @@ export async function registerRoutes(
       emailVerified: user.emailVerified,
       journeyOnboardingDone: user.journeyOnboardingDone,
       journeyOrder: user.journeyOrder,
+      trialBonusClaimed: user.trialBonusClaimed,
     });
+  });
+
+  app.post("/api/auth/claim-trial-bonus", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+      if (user.trialBonusClaimed) return res.status(400).json({ message: "Já reclamaste o teu bónus de trial!" });
+      if (!user.trialEndsAt) return res.status(400).json({ message: "Sem trial ativo" });
+
+      const currentTrialEnd = new Date(user.trialEndsAt);
+      const newTrialEnd = new Date(currentTrialEnd.getTime() + 16 * 24 * 60 * 60 * 1000);
+      const updated = await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+      if (!updated) return res.status(500).json({ message: "Erro ao atualizar trial" });
+
+      const premiumStatus = getUserPremiumStatus(updated);
+      res.json({
+        message: "🎉 +16 dias grátis ativados! Aproveita ao máximo a Casa dos 20.",
+        trialEndsAt: updated.trialEndsAt,
+        trialBonusClaimed: updated.trialBonusClaimed,
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+      });
+    } catch {
+      res.status(500).json({ message: "Erro ao resgatar bónus" });
+    }
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response) => {
@@ -624,7 +651,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -733,7 +760,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -800,7 +827,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           appleId,

@@ -12,6 +12,7 @@ import Auth from "@/pages/Auth";
 import Onboarding from "@/components/Onboarding";
 import { refreshPushSubscription } from "@/utils/pushNotifications";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import WelcomeTrialModal from "@/components/WelcomeTrialModal";
 
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
@@ -31,6 +32,7 @@ function AuthGate() {
   const needsOnboarding = user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,6 +68,16 @@ function AuthGate() {
       refreshPushSubscription();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && user.trialEndsAt && user.role !== "admin") {
+      const seenKey = `casa-welcome-seen-${user.id}`;
+      if (!localStorage.getItem(seenKey)) {
+        const timer = setTimeout(() => setShowWelcomeModal(true), 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user?.id, user?.trialEndsAt]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -127,6 +139,14 @@ function AuthGate() {
         <Route component={NotFound} />
       </Switch>
       <PwaInstallPrompt />
+      {showWelcomeModal && user && (
+        <WelcomeTrialModal
+          userId={user.id}
+          trialEndsAt={user.trialEndsAt}
+          trialBonusClaimed={user.trialBonusClaimed}
+          onClose={() => setShowWelcomeModal(false)}
+        />
+      )}
     </MobileLayout>
   );
 }

@@ -16,6 +16,7 @@ interface AuthUser {
   emailVerified: boolean;
   journeyOnboardingDone: boolean;
   journeyOrder: string[];
+  trialBonusClaimed: boolean;
 }
 
 interface AuthContextType {
