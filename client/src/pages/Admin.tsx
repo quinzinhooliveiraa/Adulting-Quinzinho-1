@@ -761,60 +761,32 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-1.5">
-        <button
-          onClick={() => setActiveTab("users")}
-          className={`flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-medium transition-colors ${
-            activeTab === "users"
-              ? "bg-foreground text-background"
-              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
-          }`}
-          data-testid="tab-users"
-        >
-          <Users size={13} />
-          <span>Usuários</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("feedback")}
-          className={`flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-medium transition-colors relative ${
-            activeTab === "feedback"
-              ? "bg-foreground text-background"
-              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
-          }`}
-          data-testid="tab-feedback"
-        >
-          <MessageSquare size={13} />
-          <span>Chamados</span>
-          {openFeedbackCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-              {openFeedbackCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("push")}
-          className={`flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-medium transition-colors ${
-            activeTab === "push"
-              ? "bg-foreground text-background"
-              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
-          }`}
-          data-testid="tab-push"
-        >
-          <Send size={13} />
-          <span>Push</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("coupons")}
-          className={`flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-medium transition-colors ${
-            activeTab === "coupons"
-              ? "bg-foreground text-background"
-              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
-          }`}
-          data-testid="tab-coupons"
-        >
-          <Ticket size={13} />
-          <span>Cupões</span>
-        </button>
+      <div className="grid grid-cols-4 gap-1">
+        {([
+          { id: "users", icon: <Users size={16} />, label: "Usuários" },
+          { id: "feedback", icon: <MessageSquare size={16} />, label: "Chamados", badge: openFeedbackCount },
+          { id: "push", icon: <Send size={16} />, label: "Push" },
+          { id: "coupons", icon: <Ticket size={16} />, label: "Cupões" },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`relative flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl transition-colors ${
+              activeTab === tab.id
+                ? "bg-foreground text-background"
+                : "bg-muted/50 text-muted-foreground border border-border"
+            }`}
+            data-testid={`tab-${tab.id}`}
+          >
+            {tab.icon}
+            <span className="text-[9px] font-medium leading-none">{tab.label}</span>
+            {"badge" in tab && tab.badge > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {activeTab === "users" && (
