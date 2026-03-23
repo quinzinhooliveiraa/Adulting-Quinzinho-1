@@ -832,7 +832,7 @@ export default function Admin() {
               />
             </div>
 
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
               {[
                 { id: "all", label: "Todos" },
                 { id: "trial", label: "Trial" },
