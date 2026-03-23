@@ -33,12 +33,15 @@ function AuthGate() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [bonusBanner, setBonusBanner] = useState<"success" | "cancel" | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const googleNewUser = params.get("google_new_user");
     const err = params.get("google_error");
-    if (googleNewUser || err !== null) {
+    const bonus = params.get("bonus");
+
+    if (googleNewUser || err !== null || bonus) {
       window.history.replaceState({}, "", window.location.pathname);
       if (googleNewUser) {
         localStorage.setItem("casa-dos-20-needs-onboarding", "true");
@@ -52,6 +55,16 @@ function AuthGate() {
           inactive: "Conta desativada.",
         };
         setGoogleError(messages[err] || "Erro ao fazer login com Google.");
+      }
+      if (bonus === "success") {
+        setBonusBanner("success");
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        }, 2500);
+        setTimeout(() => setBonusBanner(null), 8000);
+      } else if (bonus === "cancel") {
+        setBonusBanner("cancel");
+        setTimeout(() => setBonusBanner(null), 5000);
       }
       refetch();
     }
@@ -139,6 +152,25 @@ function AuthGate() {
         <Route component={NotFound} />
       </Switch>
       <PwaInstallPrompt />
+      {bonusBanner && (
+        <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+          bonusBanner === "success"
+            ? "bg-green-500/10 border-green-400/30"
+            : "bg-muted border-border"
+        }`} data-testid="bonus-result-banner">
+          <span className="text-xl">{bonusBanner === "success" ? "🎉" : "😕"}</span>
+          <div>
+            <p className={`text-sm font-semibold ${bonusBanner === "success" ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
+              {bonusBanner === "success" ? "+16 dias a ser ativados!" : "Adição de cartão cancelada"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {bonusBanner === "success"
+                ? "O teu trial de 30 dias será ativado em instantes."
+                : "Podes tentar novamente quando quiseres."}
+            </p>
+          </div>
+        </div>
+      )}
       {showWelcomeModal && user && (
         <WelcomeTrialModal
           userId={user.id}

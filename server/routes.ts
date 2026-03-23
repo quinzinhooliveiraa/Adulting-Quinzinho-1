@@ -947,6 +947,55 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/stripe/setup-for-bonus", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+      if (user.trialBonusClaimed) return res.status(400).json({ message: "Já reclamaste o teu bónus de trial!" });
+      if (!user.trialEndsAt) return res.status(400).json({ message: "Sem trial ativo" });
+
+      const stripe = await getUncachableStripeClient();
+
+      let customerId = user.stripeCustomerId;
+      if (customerId) {
+        try {
+          await stripe.customers.retrieve(customerId);
+        } catch {
+          customerId = null;
+        }
+      }
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
+        });
+        customerId = customer.id;
+        await storage.updateUser(user.id, { stripeCustomerId: customerId });
+      }
+
+      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        mode: "setup",
+        success_url: `${domain}/?bonus=success`,
+        cancel_url: `${domain}/?bonus=cancel`,
+        metadata: { purpose: "trial_bonus", userId: user.id },
+        currency: "eur",
+        consent_collection: { terms_of_service: "none" },
+        custom_text: {
+          submit: { message: "O teu cartão só será cobrado quando o trial terminar, se decidires assinar." },
+        },
+      } as any);
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Setup-for-bonus error:", error);
+      res.status(500).json({ message: "Erro ao criar sessão de pagamento" });
+    }
+  });
+
   app.post("/api/stripe/portal", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);

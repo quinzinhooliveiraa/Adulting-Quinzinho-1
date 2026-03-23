@@ -1,0 +1,112 @@
+
+Library
+Search
+Other
+Documents
+Production
+Status
+Joaquim published 6 days ago
+Visibility
+Public
+Domain
+https://Acasados20.replit.app
+Type
+Autoscale
+(2 vCPU / 4 GiB RAM / 3 Max)
+See all usage
+Database
+Production database connected
+Your production database is ready! Your app can now save and manage live user data securely.
+51265ef7
+JO
+joaquimoliveir8
+Joaquim
+published 7 days ago
+a75f4c85
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+47aa4872
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+0bdf5e57
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+5c4259bc
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+aa0c6664
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+e0caff8e
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+6c2069dd
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+886a3059
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+2440ded4
+JO
+joaquimoliveir8
+Joaquim
+published 8 days ago
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Security and Privacy Scanner
+Beta
+Run a scan to check for potential security risks and privacy leaks in your application. Scans are typically complete within minutes. Learn more
+2 potential vulnerabilities found.
+Last ran on
+ 
+5:30 pm, Mar 23, 2026
+Security
+Outdated dependencies have known vulnerabilities
+There are dependencies that have vulnerabilities and may need to be updated.
+These dependencies can be updated automatically.
+jspdf@4.2.0 -> 4.2.1
+jspdf@4.2.0 -> 4.2.1
+Vulnerability scans are enabled by the following Replit partners:
+Security scans are powered by Semgrep Community Edition.
+Privacy scans are powered by HoundDog.ai.
+Security scanning powered by Semgrep and privacy scanning powered by HoundDog.ai , both running locally on Replit infrastructure. No code or data is transmitted to any third party, including Semgrep or HoundDog.ai.
+Add a welcome modal and bonus claiming for new trial users
+pode ser de 30 dias, alg tipo parabens voce recebeu 14 dias gratuidos, se qiser mais dias gratuito claim it here, e ai n claim a pessoa tem que colocar carta
+
+E o claim de 30dia s é so uma vez, e para cliam tem que ir no stipre e clocar cartao okay?

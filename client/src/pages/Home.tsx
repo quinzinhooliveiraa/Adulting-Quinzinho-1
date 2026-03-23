@@ -581,9 +581,10 @@ export default function Home() {
           onUpgrade={() => navigate("/premium")}
           onClaim={async () => {
             try {
-              const res = await fetch("/api/auth/claim-trial-bonus", { method: "POST", credentials: "include" });
-              if (res.ok) {
-                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+              const res = await fetch("/api/stripe/setup-for-bonus", { method: "POST", credentials: "include" });
+              const data = await res.json();
+              if (res.ok && data.url) {
+                window.location.href = data.url;
               }
             } catch {}
           }}

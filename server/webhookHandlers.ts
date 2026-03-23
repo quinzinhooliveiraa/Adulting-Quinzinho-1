@@ -31,6 +31,29 @@ export class WebhookHandlers {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        if (session.mode === "setup" && session.metadata?.purpose === "trial_bonus") {
+          const customerId = session.customer as string;
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) {
+            console.log(`[stripe] trial_bonus: No user found for customer ${customerId}`);
+            return;
+          }
+          if (user.trialBonusClaimed) {
+            console.log(`[stripe] trial_bonus: User ${user.email} already claimed bonus`);
+            return;
+          }
+          if (!user.trialEndsAt) {
+            console.log(`[stripe] trial_bonus: User ${user.email} has no active trial`);
+            return;
+          }
+          const currentTrialEnd = new Date(user.trialEndsAt);
+          const newTrialEnd = new Date(currentTrialEnd.getTime() + 16 * 24 * 60 * 60 * 1000);
+          await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+          console.log(`[stripe] trial_bonus: User ${user.email} granted +16 days, trial now until ${newTrialEnd.toISOString()}`);
+          return;
+        }
+
         if (session.mode !== "subscription") return;
 
         const customerId = session.customer as string;
