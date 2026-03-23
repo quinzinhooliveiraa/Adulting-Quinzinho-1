@@ -524,7 +524,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         <div className={cn("w-full bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "max-w-md mx-auto min-h-screen")}>
           
           {!isDesktop && (
-            <div className="absolute top-4 right-4 z-50 flex gap-1.5 items-center">
+            <div className="absolute right-4 z-50 flex gap-1.5 items-center" style={{ top: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))" }}>
               <NotificationCenter />
               <div className="relative">
                 <button
