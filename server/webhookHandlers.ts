@@ -43,14 +43,14 @@ export class WebhookHandlers {
             console.log(`[stripe] trial_bonus: User ${user.email} already claimed bonus`);
             return;
           }
-          if (!user.trialEndsAt) {
-            console.log(`[stripe] trial_bonus: User ${user.email} has no active trial`);
-            return;
-          }
-          const currentTrialEnd = new Date(user.trialEndsAt);
-          const newTrialEnd = new Date(currentTrialEnd.getTime() + 16 * 24 * 60 * 60 * 1000);
+          const now = Date.now();
+          const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
+            ? new Date(user.trialEndsAt)
+            : new Date(now);
+          const daysToAdd = user.trialEndsAt ? 16 : 30;
+          const newTrialEnd = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
           await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
-          console.log(`[stripe] trial_bonus: User ${user.email} granted +16 days, trial now until ${newTrialEnd.toISOString()}`);
+          console.log(`[stripe] trial_bonus: User ${user.email} granted +${daysToAdd} days, trial now until ${newTrialEnd.toISOString()}`);
           return;
         }
 

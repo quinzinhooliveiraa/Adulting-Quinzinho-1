@@ -70,6 +70,23 @@ export default function Premium() {
     }
   };
 
+  const handleSetupForBonus = async () => {
+    setLoading("bonus");
+    try {
+      const res = await fetch("/api/stripe/setup-for-bonus", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const features = [
     { icon: Sparkles, text: "Todas as cartas de reflexão desbloqueadas" },
     { icon: Map, text: "Jornadas de 30 dias completas" },
@@ -80,7 +97,7 @@ export default function Premium() {
     ? Math.max(0, Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const canActivateTrial = !user?.trialEndsAt && !user?.hasPremium && user?.role !== "admin";
+  const canActivateTrial = !user?.hasPremium && !user?.trialBonusClaimed && user?.role !== "admin";
   const isOnTrial = user?.premiumReason === "trial" && trialDaysLeft > 0;
 
   return (
@@ -141,9 +158,9 @@ export default function Premium() {
         </div>
 
         <div className="space-y-4">
-          {canActivateTrial && monthlyPrice && (
+          {canActivateTrial && (
             <button
-              onClick={() => handleCheckout(monthlyPrice.price_id, 14)}
+              onClick={handleSetupForBonus}
               disabled={!!loading}
               className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-500/5 hover:bg-green-500/10 transition-colors text-left"
               data-testid="button-activate-trial"
@@ -152,13 +169,13 @@ export default function Premium() {
                 <div className="flex items-center gap-3">
                   <Gift className="w-6 h-6 text-green-600 flex-shrink-0" />
                   <div>
-                    <p className="font-bold text-lg">Experimentar Grátis</p>
-                    <p className="text-muted-foreground text-sm">14 dias grátis, depois R$9,90/mês</p>
+                    <p className="font-bold text-lg">Ganhar 30 dias grátis</p>
+                    <p className="text-muted-foreground text-sm">Sem custos durante o período grátis</p>
                   </div>
                 </div>
               </div>
-              {loading === "trial" && (
-                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Redirecionando...</p>
+              {loading === "bonus" && (
+                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">A redirecionar...</p>
               )}
             </button>
           )}

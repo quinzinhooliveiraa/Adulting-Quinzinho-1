@@ -952,7 +952,9 @@ export async function registerRoutes(
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(401).json({ message: "Não autenticado" });
       if (user.trialBonusClaimed) return res.status(400).json({ message: "Já reclamaste o teu bónus de trial!" });
-      if (!user.trialEndsAt) return res.status(400).json({ message: "Sem trial ativo" });
+      if (user.isPremium && user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
+        return res.status(400).json({ message: "Já tens o Premium ativo." });
+      }
 
       const stripe = await getUncachableStripeClient();
 
