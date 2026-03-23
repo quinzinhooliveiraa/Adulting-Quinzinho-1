@@ -101,34 +101,19 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const [checkoutError, setCheckoutError] = useState("");
 
-  const handleStartTrial = async () => {
+  const handleAddCardForBonus = async () => {
     setCheckoutLoading(true);
     setCheckoutError("");
     try {
-      const productsRes = await fetch("/api/stripe/products");
-      const products = await productsRes.json();
-      const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
-
-      if (!monthlyPrice?.price_id) {
-        setCheckoutError("Planos ainda não disponíveis. Tente novamente mais tarde.");
-        setCheckoutLoading(false);
-        return;
-      }
-
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/stripe/setup-for-bonus", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          priceId: monthlyPrice.price_id,
-          trialDays: 14,
-        }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setCheckoutError("Erro ao iniciar pagamento. Tente novamente.");
+        setCheckoutError(data.message || "Erro ao iniciar. Tente novamente.");
       }
     } catch {
       setCheckoutError("Erro de conexão. Tente novamente.");
@@ -624,19 +609,19 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   </div>
                 </div>
 
-                <div className="bg-green-500/5 rounded-xl border border-green-500/20 p-3 space-y-2 stagger-4">
+                <div className="bg-amber-500/5 rounded-xl border border-amber-500/20 p-3 space-y-2 stagger-4">
                   <div className="flex items-center gap-2 justify-center">
-                    <ShieldCheck size={14} className="text-green-600" />
-                    <p className="text-xs font-semibold text-green-700 dark:text-green-400">14 dias grátis para experimentar</p>
+                    <Sparkles size={14} className="text-amber-500" />
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">🎁 Tens 14 dias grátis incluídos!</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-left">
                       <CreditCard size={11} className="text-muted-foreground shrink-0" />
-                      <p className="text-[10px] text-muted-foreground">Adicione um cartão para iniciar — <span className="font-semibold text-foreground">não será cobrado nada agora</span></p>
+                      <p className="text-[10px] text-muted-foreground">Adiciona o cartão agora e ganha <span className="font-semibold text-foreground">+16 dias extra = 30 dias no total</span></p>
                     </div>
                     <div className="flex items-center gap-2 text-left">
-                      <Sparkles size={11} className="text-muted-foreground shrink-0" />
-                      <p className="text-[10px] text-muted-foreground">A cobrança só começa <span className="font-semibold text-foreground">após 14 dias</span>, e você pode cancelar a qualquer momento</p>
+                      <ShieldCheck size={11} className="text-green-500 shrink-0" />
+                      <p className="text-[10px] text-muted-foreground">Só pagas quando o trial acabar, se quiseres continuar. Cancela quando quiseres.</p>
                     </div>
                   </div>
                 </div>
@@ -665,7 +650,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 <p className="text-xs text-red-500 text-center" data-testid="text-checkout-error">{checkoutError}</p>
               )}
               <Button
-                onClick={handleStartTrial}
+                onClick={handleAddCardForBonus}
                 disabled={checkoutLoading}
                 className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-base font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all"
                 data-testid="button-onboarding-premium"
@@ -674,8 +659,8 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <>
-                    <Crown size={18} className="mr-2" />
-                    Começar Trial Grátis
+                    <CreditCard size={18} className="mr-2" />
+                    Adicionar cartão e ganhar 30 dias
                   </>
                 )}
               </Button>
@@ -684,7 +669,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2"
                 data-testid="button-onboarding-skip-premium"
               >
-                Continuar grátis por agora
+                Ficar com os 14 dias por agora
               </button>
               <button
                 onClick={back}
