@@ -9,6 +9,8 @@ import {
   pushSubscriptions,
   scheduledNotifications,
   journeyReports,
+  coupons,
+  couponUses,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -32,6 +34,9 @@ import {
   type InsertAutoNotificationConfig,
   type AutoNotificationLog,
   type PushCampaign,
+  type Coupon,
+  type InsertCoupon,
+  type CouponUse,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -100,6 +105,16 @@ export interface IStorage {
   getPushCampaigns(): Promise<PushCampaign[]>;
   incrementCampaignClicks(id: number): Promise<void>;
   updatePushCampaignCounts(id: number, sent: number, failed: number): Promise<void>;
+
+  getCoupons(): Promise<Coupon[]>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  getCouponById(id: number): Promise<Coupon | undefined>;
+  createCoupon(data: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: number, data: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: number): Promise<boolean>;
+  hasCouponBeenUsedByUser(couponId: number, userId: string): Promise<boolean>;
+  recordCouponUse(couponId: number, userId: string): Promise<void>;
+  getCouponUseCount(couponId: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -485,6 +500,53 @@ export class DatabaseStorage implements IStorage {
 
   async updatePushCampaignCounts(id: number, sent: number, failed: number): Promise<void> {
     await db.update(pushCampaigns).set({ sentCount: sent, failedCount: failed }).where(eq(pushCampaigns.id, id));
+  }
+
+  async getCoupons(): Promise<Coupon[]> {
+    return db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code.toUpperCase()));
+    return coupon;
+  }
+
+  async getCouponById(id: number): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.id, id));
+    return coupon;
+  }
+
+  async createCoupon(data: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).returning();
+    return coupon;
+  }
+
+  async updateCoupon(id: number, data: Partial<Coupon>): Promise<Coupon | undefined> {
+    const [coupon] = await db.update(coupons).set(data).where(eq(coupons.id, id)).returning();
+    return coupon;
+  }
+
+  async deleteCoupon(id: number): Promise<boolean> {
+    const result = await db.delete(coupons).where(eq(coupons.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async hasCouponBeenUsedByUser(couponId: number, userId: string): Promise<boolean> {
+    const [use] = await db.select().from(couponUses).where(and(eq(couponUses.couponId, couponId), eq(couponUses.userId, userId)));
+    return !!use;
+  }
+
+  async recordCouponUse(couponId: number, userId: string): Promise<void> {
+    await db.insert(couponUses).values({ couponId, userId });
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.id, couponId));
+    if (coupon) {
+      await db.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(eq(coupons.id, couponId));
+    }
+  }
+
+  async getCouponUseCount(couponId: number): Promise<number> {
+    const [result] = await db.select({ value: count() }).from(couponUses).where(eq(couponUses.couponId, couponId));
+    return result?.value || 0;
   }
 }
 

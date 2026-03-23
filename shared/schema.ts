@@ -201,6 +201,32 @@ export const insertJourneyReportSchema = createInsertSchema(journeyReports).omit
 export type InsertJourneyReport = z.infer<typeof insertJourneyReportSchema>;
 export type JourneyReport = typeof journeyReports.$inferSelect;
 
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull().default("premium_days"),
+  value: integer("value").notNull(),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").notNull().default(0),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, usedCount: true, createdAt: true });
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+
+export const couponUses = pgTable("coupon_uses", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").notNull().references(() => coupons.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  usedAt: timestamp("used_at").defaultNow().notNull(),
+});
+
+export type CouponUse = typeof couponUses.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;

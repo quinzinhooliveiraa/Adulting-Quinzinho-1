@@ -5,7 +5,7 @@ import {
   ChevronLeft, Users, Crown, Shield, UserPlus, Ban, Check,
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
-  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw
+  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -634,7 +634,9 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons">("users");
+  const [couponForm, setCouponForm] = useState({ code: "", type: "premium_days", value: "30", maxUses: "", expiresAt: "", note: "" });
+  const [couponFormOpen, setCouponFormOpen] = useState(false);
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
@@ -711,6 +713,41 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/feedback"] });
     },
+  });
+
+  const { data: coupons = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/coupons"],
+    enabled: activeTab === "coupons",
+  });
+
+  const createCouponMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/coupons", data);
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] });
+      setCouponForm({ code: "", type: "premium_days", value: "30", maxUses: "", expiresAt: "", note: "" });
+      setCouponFormOpen(false);
+    },
+    onError: (e: Error) => { setAdminAlert(e.message); setTimeout(() => setAdminAlert(null), 5000); },
+  });
+
+  const toggleCouponMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/coupons/${id}`, { isActive });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] }),
+  });
+
+  const deleteCouponMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/coupons/${id}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] }),
   });
 
   const handleUpdate = (id: string, data: any) => {
@@ -802,6 +839,18 @@ export default function Admin() {
         >
           <Send size={14} />
           Push
+        </button>
+        <button
+          onClick={() => setActiveTab("coupons")}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap ${
+            activeTab === "coupons"
+              ? "bg-foreground text-background"
+              : "bg-muted/50 text-muted-foreground border border-border hover:text-foreground"
+          }`}
+          data-testid="tab-coupons"
+        >
+          <Ticket size={14} />
+          Cupões
         </button>
       </div>
 
@@ -1505,6 +1554,183 @@ function AutoNotificationsPanel() {
           );
         })}
       </div>
+
+      {activeTab === "coupons" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Ticket size={16} />
+              Cupões de desconto
+            </h3>
+            <button
+              onClick={() => setCouponFormOpen(!couponFormOpen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-foreground text-background text-[13px] font-medium"
+              data-testid="btn-create-coupon"
+            >
+              <Plus size={14} />
+              Criar cupão
+            </button>
+          </div>
+
+          {couponFormOpen && (
+            <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Novo cupão</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-[11px] text-muted-foreground mb-1 block">Código</label>
+                  <input
+                    value={couponForm.code}
+                    onChange={e => setCouponForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                    placeholder="ex: AMIGOS20"
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm font-mono"
+                    data-testid="input-coupon-code"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground mb-1 block">Tipo</label>
+                  <select
+                    value={couponForm.type}
+                    onChange={e => setCouponForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm"
+                    data-testid="select-coupon-type"
+                  >
+                    <option value="premium_days">Dias de premium</option>
+                    <option value="full_premium">Premium completo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground mb-1 block">
+                    {couponForm.type === "premium_days" ? "Nº de dias" : "Valor (ignorado)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={couponForm.value}
+                    onChange={e => setCouponForm(f => ({ ...f, value: e.target.value }))}
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm"
+                    data-testid="input-coupon-value"
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground mb-1 block">Máx. utilizações (vazio = ilimitado)</label>
+                  <input
+                    type="number"
+                    value={couponForm.maxUses}
+                    onChange={e => setCouponForm(f => ({ ...f, maxUses: e.target.value }))}
+                    placeholder="Ilimitado"
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm"
+                    data-testid="input-coupon-max-uses"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground mb-1 block">Expira em (vazio = nunca)</label>
+                  <input
+                    type="date"
+                    value={couponForm.expiresAt}
+                    onChange={e => setCouponForm(f => ({ ...f, expiresAt: e.target.value }))}
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm"
+                    data-testid="input-coupon-expires"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-muted-foreground mb-1 block">Nota interna (opcional)</label>
+                  <input
+                    value={couponForm.note}
+                    onChange={e => setCouponForm(f => ({ ...f, note: e.target.value }))}
+                    placeholder="ex: Campanha de verão"
+                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm"
+                    data-testid="input-coupon-note"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCouponFormOpen(false)}
+                  className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => createCouponMutation.mutate({
+                    code: couponForm.code,
+                    type: couponForm.type,
+                    value: Number(couponForm.value),
+                    maxUses: couponForm.maxUses ? Number(couponForm.maxUses) : null,
+                    expiresAt: couponForm.expiresAt || null,
+                    note: couponForm.note || null,
+                  })}
+                  disabled={!couponForm.code || !couponForm.value || createCouponMutation.isPending}
+                  className="flex-1 py-2 rounded-xl bg-foreground text-background text-sm font-medium disabled:opacity-50"
+                  data-testid="btn-save-coupon"
+                >
+                  {createCouponMutation.isPending ? "A criar..." : "Criar cupão"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {coupons.length === 0 ? (
+            <div className="py-12 text-center">
+              <Ticket size={32} className="text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Nenhum cupão criado ainda.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {coupons.map((c: any) => (
+                <div key={c.id} className="bg-card rounded-2xl border border-border p-4 space-y-2" data-testid={`coupon-card-${c.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-sm text-foreground tracking-wider">{c.code}</span>
+                        <button
+                          onClick={() => navigator.clipboard?.writeText(c.code)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copiar código"
+                        >
+                          <Copy size={12} />
+                        </button>
+                        {c.isActive ? (
+                          <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">Ativo</span>
+                        ) : (
+                          <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Inativo</span>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        {c.type === "premium_days" ? `${c.value} dias de premium` : "Premium completo"}
+                        {" · "}
+                        {c.usedCount} uso{c.usedCount !== 1 ? "s" : ""}
+                        {c.maxUses !== null ? ` / ${c.maxUses}` : " (ilimitado)"}
+                      </p>
+                      {c.note && <p className="text-[11px] text-muted-foreground/70 italic">{c.note}</p>}
+                      {c.expiresAt && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Expira: {new Date(c.expiresAt).toLocaleDateString("pt-PT")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => toggleCouponMutation.mutate({ id: c.id, isActive: !c.isActive })}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid={`toggle-coupon-${c.id}`}
+                      >
+                        {c.isActive ? <ToggleRight size={24} className="text-primary" /> : <ToggleLeft size={24} />}
+                      </button>
+                      <button
+                        onClick={() => { if (confirm("Apagar cupão?")) deleteCouponMutation.mutate(c.id); }}
+                        className="text-red-400 hover:text-red-500 transition-colors"
+                        data-testid={`delete-coupon-${c.id}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

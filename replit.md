@@ -18,6 +18,8 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 
 ## Database Schema (`shared/schema.ts`)
 - `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, passwordResetToken, passwordResetExpires, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
+- `coupons`: id (serial), code (text unique), type ("premium_days"|"full_premium"), value (integer), maxUses (integer|null), usedCount (integer), expiresAt (timestamp|null), isActive (bool), note (text|null), createdAt
+- `coupon_uses`: id (serial), couponId (FK→coupons), userId (FK→users), usedAt (timestamp)
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
 - `mood_checkins`: id (serial), userId (FK), mood, entry, tags (text[]), date, createdAt
 - `feedback_tickets`: id (serial), userId (FK), type (feedback/idea/bug/support), subject, message, status, createdAt

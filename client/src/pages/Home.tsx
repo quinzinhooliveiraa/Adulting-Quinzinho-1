@@ -19,6 +19,35 @@ import { JOURNEYS } from "./Journey";
 import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
 import { useLocation } from "wouter";
 
+function TrialBanner({ trialEndsAt, onUpgrade }: { trialEndsAt: string | null; onUpgrade: () => void }) {
+  if (!trialEndsAt) return null;
+  const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  if (daysLeft <= 0) return null;
+  const urgent = daysLeft <= 2;
+  return (
+    <button
+      onClick={onUpgrade}
+      className={`w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 transition-all ${
+        urgent
+          ? "bg-red-500/10 border border-red-400/30 hover:bg-red-500/20"
+          : "bg-amber-500/10 border border-amber-400/30 hover:bg-amber-500/20"
+      }`}
+      data-testid="trial-banner-home"
+    >
+      <span className="text-xl">{urgent ? "⏰" : "✨"}</span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${urgent ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
+          {daysLeft === 1 ? "Último dia de trial!" : `${daysLeft} dias de trial restantes`}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {urgent ? "Assina agora para não perderes o acesso" : "Explorar todas as funcionalidades premium"}
+        </p>
+      </div>
+      <span className="text-xs font-medium text-primary shrink-0">Ver planos →</span>
+    </button>
+  );
+}
+
 
 function extractCleanText(raw: string): string {
   try {
@@ -516,6 +545,10 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {user?.premiumReason === "trial" && user?.trialEndsAt && (
+        <TrialBanner trialEndsAt={user.trialEndsAt} onUpgrade={() => navigate("/premium")} />
+      )}
 
       <section className="space-y-4">
         <div className="flex justify-between items-center">

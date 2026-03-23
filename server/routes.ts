@@ -7,7 +7,7 @@ import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
-import { insertJournalEntrySchema, insertMoodCheckinSchema } from "@shared/schema";
+import { insertJournalEntrySchema, insertMoodCheckinSchema, type User } from "@shared/schema";
 import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { z } from "zod";
@@ -285,7 +285,7 @@ export async function registerRoutes(
         role: isAdminEmail ? "admin" : "user",
         isPremium: isAdminEmail,
         isActive: true,
-        trialEndsAt: null,
+        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         premiumUntil: null,
         invitedBy: data.inviteCode || null,
         emailVerified: isAdminEmail,
@@ -624,7 +624,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: null,
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -733,7 +733,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: null,
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -800,7 +800,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: null,
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           appleId,
@@ -1189,6 +1189,106 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar chamado" });
+    }
+  });
+
+  // --- COUPONS (user) ---
+  app.post("/api/coupons/apply", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      if (!code || typeof code !== "string") return res.status(400).json({ message: "Código inválido" });
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+
+      const coupon = await storage.getCouponByCode(code.trim());
+      if (!coupon) return res.status(404).json({ message: "Cupão não encontrado" });
+      if (!coupon.isActive) return res.status(400).json({ message: "Este cupão não está ativo" });
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) return res.status(400).json({ message: "Este cupão já expirou" });
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ message: "Este cupão atingiu o limite de utilizações" });
+
+      const alreadyUsed = await storage.hasCouponBeenUsedByUser(coupon.id, user.id);
+      if (alreadyUsed) return res.status(400).json({ message: "Já usaste este cupão" });
+
+      let updatedUser: User | undefined;
+      if (coupon.type === "premium_days") {
+        const baseDate = user.premiumUntil && user.premiumUntil > new Date()
+          ? user.premiumUntil
+          : (user.trialEndsAt && user.trialEndsAt > new Date() ? user.trialEndsAt : new Date());
+        const newPremiumUntil = new Date(baseDate.getTime() + coupon.value * 24 * 60 * 60 * 1000);
+        updatedUser = await storage.updateUser(user.id, { premiumUntil: newPremiumUntil, isPremium: true });
+      } else if (coupon.type === "full_premium") {
+        updatedUser = await storage.updateUser(user.id, { isPremium: true, premiumUntil: null });
+      }
+
+      await storage.recordCouponUse(coupon.id, user.id);
+
+      if (!updatedUser) updatedUser = user;
+      const premiumStatus = getUserPremiumStatus(updatedUser);
+      res.json({
+        message: coupon.type === "premium_days"
+          ? `✨ ${coupon.value} dias de premium ativados com sucesso!`
+          : "🌟 Premium ativado com sucesso!",
+        hasPremium: premiumStatus.hasPremium,
+        premiumReason: premiumStatus.reason,
+        premiumUntil: updatedUser.premiumUntil,
+        trialEndsAt: updatedUser.trialEndsAt,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao aplicar cupão" });
+    }
+  });
+
+  // --- COUPONS (admin) ---
+  app.get("/api/admin/coupons", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const all = await storage.getCoupons();
+      res.json(all);
+    } catch {
+      res.status(500).json({ message: "Erro ao listar cupões" });
+    }
+  });
+
+  app.post("/api/admin/coupons", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { code, type, value, maxUses, expiresAt, note } = req.body;
+      if (!code || !type || value === undefined) return res.status(400).json({ message: "Campos obrigatórios em falta" });
+      const existing = await storage.getCouponByCode(code.trim());
+      if (existing) return res.status(400).json({ message: "Já existe um cupão com este código" });
+      const coupon = await storage.createCoupon({
+        code: code.trim(),
+        type,
+        value: Number(value),
+        maxUses: maxUses ? Number(maxUses) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        isActive: true,
+        note: note || null,
+      });
+      res.status(201).json(coupon);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar cupão" });
+    }
+  });
+
+  app.patch("/api/admin/coupons/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const coupon = await storage.updateCoupon(id, req.body);
+      if (!coupon) return res.status(404).json({ message: "Cupão não encontrado" });
+      res.json(coupon);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar cupão" });
+    }
+  });
+
+  app.delete("/api/admin/coupons/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const ok = await storage.deleteCoupon(id);
+      if (!ok) return res.status(404).json({ message: "Cupão não encontrado" });
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ message: "Erro ao apagar cupão" });
     }
   });
 
