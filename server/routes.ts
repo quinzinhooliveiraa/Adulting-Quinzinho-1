@@ -984,7 +984,7 @@ export async function registerRoutes(
         success_url: `${domain}/?bonus=success`,
         cancel_url: `${domain}/?bonus=cancel`,
         metadata: { purpose: "trial_bonus", userId: user.id },
-        currency: "eur",
+        currency: "brl",
         consent_collection: { terms_of_service: "none" },
         custom_text: {
           submit: { message: "O teu cartão só será cobrado quando o trial terminar, se decidires assinar." },
