@@ -94,6 +94,19 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const currentStep = STEP_ORDER[stepIndex];
 
   useEffect(() => {
+    if (currentStep === "premium") {
+      setPremiumCountdown(5);
+      const interval = setInterval(() => {
+        setPremiumCountdown(prev => {
+          if (prev <= 1) { clearInterval(interval); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentStep]);
+
+  useEffect(() => {
     if (currentStep === "pwa" && canInstall && !pwaInstalled && !pwaAutoTriggered) {
       setPwaAutoTriggered(true);
       const timer = setTimeout(() => {
@@ -114,6 +127,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   };
 
   const [checkoutError, setCheckoutError] = useState("");
+  const [premiumCountdown, setPremiumCountdown] = useState(5);
   const [profileAge, setProfileAge] = useState<number | null>(null);
   const [profileInterests, setProfileInterests] = useState<string[]>([]);
 
@@ -754,12 +768,18 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               )}
               <Button
                 onClick={handleAddCardForBonus}
-                disabled={checkoutLoading}
-                className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-base font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                disabled={checkoutLoading || premiumCountdown > 0}
+                className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-base font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="button-onboarding-premium"
               >
                 {checkoutLoading ? (
                   <Loader2 size={18} className="animate-spin" />
+                ) : premiumCountdown > 0 ? (
+                  <>
+                    <span className="text-lg mr-1">🎁</span>
+                    Ganhar 30 dias grátis
+                    <span className="ml-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">{premiumCountdown}</span>
+                  </>
                 ) : (
                   <>
                     <span className="text-lg mr-1">🎁</span>
@@ -769,10 +789,11 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               </Button>
               <button
                 onClick={onComplete}
-                className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2"
+                disabled={premiumCountdown > 0}
+                className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="button-onboarding-skip-premium"
               >
-                Ficar com os 14 dias por agora
+                {premiumCountdown > 0 ? `Aguarda ${premiumCountdown}s...` : "Ficar com os 14 dias por agora"}
               </button>
               <button
                 onClick={back}
