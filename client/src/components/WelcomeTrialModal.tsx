@@ -8,7 +8,7 @@ interface WelcomeTrialModalProps {
   onClose: () => void;
 }
 
-export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaimed, onClose }: WelcomeTrialModalProps) {
+export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }: WelcomeTrialModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,17 +41,25 @@ export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaim
   if (trialBonusClaimed) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-      <div className="bg-card rounded-3xl border border-border w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-        <div className="px-6 pt-7 pb-2">
-          <button
-            onClick={handleClose}
-            className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-muted/50 text-muted-foreground"
-            data-testid="btn-close-welcome-modal"
-          >
-            <X size={18} />
-          </button>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      onClick={handleClose}
+    >
+      <div
+        className="relative bg-card rounded-t-3xl border border-border w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500"
+        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted/70 text-muted-foreground transition-colors z-10"
+          data-testid="btn-close-welcome-modal"
+        >
+          <X size={18} />
+        </button>
 
+        <div className="px-6 pt-7 pb-2">
           <p className="text-3xl mb-3">🎁</p>
           <h2 className="text-xl font-bold font-serif text-foreground mb-1">
             Ganha mais 16 dias grátis
@@ -61,7 +69,7 @@ export default function WelcomeTrialModal({ userId, trialEndsAt, trialBonusClaim
           </p>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-3">
+        <div className="px-6 pb-2 pt-4 space-y-3">
           <div className="flex items-start gap-2">
             <ShieldCheck size={14} className="text-green-500 mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground">Sem custos durante os 30 dias. Só pagas se quiseres continuar depois.</p>
