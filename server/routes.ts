@@ -2768,6 +2768,14 @@ function getNextJourneyDay(userId: string, progress: any[]): { journeyId: string
   return null;
 }
 
+function getBrazilHour(): number {
+  const now = new Date();
+  const brazilOffset = -3 * 60;
+  const utcMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const brazilMin = ((utcMin + brazilOffset) % (24 * 60) + 24 * 60) % (24 * 60);
+  return Math.floor(brazilMin / 60);
+}
+
 async function checkAutoNotificationCondition(type: string, userId: string): Promise<boolean> {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2786,10 +2794,12 @@ async function checkAutoNotificationCondition(type: string, userId: string): Pro
       return !todayEntry;
     }
     case "daily_motivation": {
-      return true;
+      const hour = getBrazilHour();
+      return hour >= 20 && hour < 23;
     }
     case "daily_reminder": {
-      return true;
+      const hour = getBrazilHour();
+      return hour >= 7 && hour < 10;
     }
     case "daily_reflection": {
       const entries = await storage.getEntries(userId);
