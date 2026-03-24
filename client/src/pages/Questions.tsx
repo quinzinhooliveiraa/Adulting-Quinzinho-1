@@ -1608,7 +1608,7 @@ function CardGame({
     } catch { return []; }
   });
 
-  const isShuffling = shuffleMode || !!weightedMode;
+  const isShuffling = shuffleMode;
 
   const getNextCard = useCallback(() => {
     if (!isShuffling) return null;
