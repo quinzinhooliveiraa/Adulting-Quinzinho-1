@@ -8,6 +8,7 @@ import { useTheme } from "next-themes";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed, refreshPushSubscription } from "@/utils/pushNotifications";
+import { useTrack } from "@/hooks/useTrack";
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -113,6 +114,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const { logout, user, refetch } = useAuth();
   const { theme, setTheme } = useTheme();
+  const track = useTrack();
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isPushSubscribed());
@@ -131,6 +133,23 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const pageMap: Record<string, string> = {
+      "/": "page:home",
+      "/journal": "page:diário",
+      "/questions": "page:perguntas",
+      "/journey": "page:jornada",
+      "/book": "page:livro",
+      "/admin": "page:admin",
+      "/premium": "page:premium",
+      "/reports": "page:relatórios",
+    };
+    const normalized = location.split("?")[0].split("#")[0];
+    const eventName = pageMap[normalized] || (normalized.startsWith("/journey/") ? "page:jornada-detalhe" : null);
+    if (eventName) track(eventName);
+  }, [location, user]);
 
   useEffect(() => {
     if (isPushSubscribed() && isPushSupported()) {

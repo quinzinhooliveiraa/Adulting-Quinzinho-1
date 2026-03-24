@@ -228,6 +228,16 @@ export const couponUses = pgTable("coupon_uses", {
 
 export type CouponUse = typeof couponUses.$inferSelect;
 
+export const userEvents = pgTable("user_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserEvent = typeof userEvents.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;

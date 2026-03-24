@@ -5,7 +5,7 @@ import {
   ChevronLeft, Users, Crown, Shield, UserPlus, Ban, Check,
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
-  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy
+  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -634,7 +634,8 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics">("users");
+  const [analyticsDays, setAnalyticsDays] = useState(30);
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
@@ -651,6 +652,15 @@ export default function Admin() {
 
   const { data: notifyPrefs } = useQuery<{ notifyNewUser: boolean; notifyNewSub: boolean }>({
     queryKey: ["/api/admin/notify-prefs"],
+  });
+
+  const { data: analyticsData } = useQuery<{
+    eventCounts: { event: string; count: number }[];
+    dailyActive: { date: string; count: number }[];
+  }>({
+    queryKey: ["/api/admin/analytics", analyticsDays],
+    queryFn: () => fetch(`/api/admin/analytics?days=${analyticsDays}`, { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "analytics",
   });
 
   const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
@@ -864,12 +874,13 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {([
-          { id: "users", icon: <Users size={16} />, label: "Usuários" },
-          { id: "feedback", icon: <MessageSquare size={16} />, label: "Chamados", badge: openFeedbackCount },
-          { id: "push", icon: <Send size={16} />, label: "Push" },
-          { id: "coupons", icon: <Ticket size={16} />, label: "Cupões" },
+          { id: "users", icon: <Users size={14} />, label: "Usuários" },
+          { id: "analytics", icon: <TrendingUp size={14} />, label: "Analytics" },
+          { id: "feedback", icon: <MessageSquare size={14} />, label: "Chamados", badge: openFeedbackCount },
+          { id: "push", icon: <Send size={14} />, label: "Push" },
+          { id: "coupons", icon: <Ticket size={14} />, label: "Cupões" },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -1177,6 +1188,96 @@ export default function Admin() {
           </div>
 
           <PushNotificationPanel />
+        </div>
+      )}
+
+      {activeTab === "analytics" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Uso do App</h2>
+            <div className="flex gap-1">
+              {[7, 30, 90].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setAnalyticsDays(d)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${analyticsDays === d ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Utilizadores ativos por dia</p>
+              <div className="flex items-end gap-0.5 h-16">
+                {analyticsData.dailyActive.map((d, i) => {
+                  const max = Math.max(...analyticsData.dailyActive.map(x => x.count));
+                  const pct = max > 0 ? (d.count / max) * 100 : 0;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+                      <div
+                        className="w-full rounded-sm bg-primary/70 hover:bg-primary transition-colors"
+                        style={{ height: `${Math.max(pct, 4)}%` }}
+                        title={`${d.date}: ${d.count}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                <span>{analyticsData.dailyActive[0]?.date.slice(5)}</span>
+                <span>{analyticsData.dailyActive[analyticsData.dailyActive.length - 1]?.date.slice(5)}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">Funcionalidades mais usadas</p>
+            {!analyticsData || analyticsData.eventCounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Ainda sem dados suficientes</p>
+            ) : (
+              <div className="space-y-2">
+                {analyticsData.eventCounts.map((item, i) => {
+                  const max = analyticsData.eventCounts[0]?.count || 1;
+                  const pct = (item.count / max) * 100;
+                  const label = item.event.replace("page:", "📱 ").replace("journal:", "📝 ").replace("journey:", "🗺️ ").replace("card:", "🃏 ").replace("mood:", "😊 ");
+                  return (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-foreground capitalize">{label}</span>
+                        <span className="text-xs font-semibold text-foreground">{item.count}</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-card border border-border rounded-2xl p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">
+                {analyticsData?.dailyActive.reduce((sum, d) => sum + d.count, 0) || 0}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">sessões únicas</p>
+              <p className="text-[9px] text-muted-foreground">últimos {analyticsDays}d</p>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">
+                {analyticsData?.eventCounts.reduce((sum, e) => sum + e.count, 0) || 0}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">ações totais</p>
+              <p className="text-[9px] text-muted-foreground">últimos {analyticsDays}d</p>
+            </div>
+          </div>
         </div>
       )}
 

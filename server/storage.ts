@@ -1,4 +1,4 @@
-import { eq, and, desc, ne, gte, count } from "drizzle-orm";
+import { eq, and, desc, ne, gte, count, sql as drizzleSql } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -11,6 +11,8 @@ import {
   journeyReports,
   coupons,
   couponUses,
+  userEvents,
+  type UserEvent,
   type User,
   type InsertUser,
   type JournalEntry,
@@ -115,6 +117,10 @@ export interface IStorage {
   hasCouponBeenUsedByUser(couponId: number, userId: string): Promise<boolean>;
   recordCouponUse(couponId: number, userId: string): Promise<void>;
   getCouponUseCount(couponId: number): Promise<number>;
+
+  trackEvent(userId: string | null, event: string, metadata?: string): Promise<void>;
+  getEventCounts(days?: number): Promise<{ event: string; count: number }[]>;
+  getDailyActiveUsers(days?: number): Promise<{ date: string; count: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -547,6 +553,33 @@ export class DatabaseStorage implements IStorage {
   async getCouponUseCount(couponId: number): Promise<number> {
     const [result] = await db.select({ value: count() }).from(couponUses).where(eq(couponUses.couponId, couponId));
     return result?.value || 0;
+  }
+
+  async trackEvent(userId: string | null, event: string, metadata?: string): Promise<void> {
+    await db.insert(userEvents).values({ userId: userId || null, event, metadata });
+  }
+
+  async getEventCounts(days: number = 30): Promise<{ event: string; count: number }[]> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({ event: userEvents.event, count: count() })
+      .from(userEvents)
+      .where(gte(userEvents.createdAt, since))
+      .groupBy(userEvents.event)
+      .orderBy(desc(count()));
+    return rows.map(r => ({ event: r.event, count: Number(r.count) }));
+  }
+
+  async getDailyActiveUsers(days: number = 30): Promise<{ date: string; count: number }[]> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await db.execute(drizzleSql`
+      SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as date, COUNT(DISTINCT user_id) as count
+      FROM user_events
+      WHERE created_at >= ${since} AND user_id IS NOT NULL
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+      ORDER BY date ASC
+    `);
+    return (rows.rows as any[]).map(r => ({ date: r.date, count: Number(r.count) }));
   }
 }
 

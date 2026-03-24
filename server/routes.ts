@@ -1409,6 +1409,30 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/track", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { event, metadata } = req.body;
+      if (!event || typeof event !== "string") return res.status(400).json({ error: "evento inválido" });
+      await storage.trackEvent(req.session.userId!, event, metadata ? JSON.stringify(metadata) : undefined);
+      res.json({ ok: true });
+    } catch {
+      res.json({ ok: false });
+    }
+  });
+
+  app.get("/api/admin/analytics", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const days = Number(req.query.days) || 30;
+      const [eventCounts, dailyActive] = await Promise.all([
+        storage.getEventCounts(days),
+        storage.getDailyActiveUsers(days),
+      ]);
+      res.json({ eventCounts, dailyActive });
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar analytics" });
+    }
+  });
+
   app.get("/api/admin/notify-prefs", requireAdmin, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);
