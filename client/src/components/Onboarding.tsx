@@ -200,7 +200,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         .stagger-5 { animation: staggerFade 0.5s ease-out 0.5s both; }
       `}</style>
 
-      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6 py-8">
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)", paddingBottom: "1rem" }}>
         <div className={`w-full max-w-sm flex flex-col items-center transition-all duration-300 ease-out ${slideClass}`}>
 
           {currentStep === "welcome" && (
@@ -734,7 +734,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         </div>
       </div>
 
-      <div className="shrink-0 w-full flex justify-center pb-6 pt-4 px-6 bg-background">
+      <div className="shrink-0 w-full flex justify-center pt-4 px-6 bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}>
         <div className="w-full max-w-sm space-y-4">
           <div className="flex justify-center gap-1.5">
             {STEP_ORDER.map((_, i) => (
