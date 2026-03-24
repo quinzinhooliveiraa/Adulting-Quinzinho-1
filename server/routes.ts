@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
+import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
@@ -64,6 +64,35 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 function getAppDomain() {
   return process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000";
+}
+
+function createOAuthState(source?: string): string {
+  const nonce = randomBytes(16).toString("hex");
+  const timestamp = Date.now();
+  const data = JSON.stringify({ nonce, timestamp, source: source || null });
+  const secret = process.env.SESSION_SECRET || "oauth-state-secret";
+  const sig = createHmac("sha256", secret).update(data).digest("hex");
+  return Buffer.from(JSON.stringify({ data, sig })).toString("base64url");
+}
+
+function verifyOAuthState(state: string): { nonce: string; timestamp: number; source?: string } | null {
+  try {
+    const { data, sig } = JSON.parse(Buffer.from(state, "base64url").toString());
+    const secret = process.env.SESSION_SECRET || "oauth-state-secret";
+    const expected = createHmac("sha256", secret).update(data).digest("hex");
+    if (sig !== expected) return null;
+    const parsed = JSON.parse(data);
+    if (Date.now() - parsed.timestamp > 15 * 60 * 1000) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getRequestDomain(req: Request): string {
+  const forwarded = req.get("x-forwarded-host") || req.get("host") || "";
+  if (forwarded && forwarded !== "localhost:5000") return forwarded;
+  return getAppDomain();
 }
 
 async function sendVerificationEmail(email: string, token: string, name: string) {
@@ -697,45 +726,40 @@ export async function registerRoutes(
   app.get("/api/auth/google-oauth", (req: Request, res: Response) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).json({ message: "Google not configured" });
-    const domain = getAppDomain();
+    const domain = getRequestDomain(req);
     const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
-    const state = randomBytes(16).toString("hex");
-    req.session.oauthState = state;
-    if (req.query.source === "pwa") {
-      (req.session as any).oauthFromPwa = true;
-    }
-    req.session.save((err) => {
-      if (err) {
-        console.error("[google-oauth] session save error:", err);
-        return res.status(500).json({ message: "Erro de sessão" });
-      }
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: "openid email profile",
-        state,
-        access_type: "offline",
-        prompt: "select_account",
-      });
-      res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+    const source = req.query.source as string | undefined;
+    const state = createOAuthState(source);
+    console.log(`[google-oauth] init domain=${domain} source=${source || "web"}`);
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      access_type: "offline",
+      prompt: "select_account",
     });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
   });
 
   app.get("/api/auth/google-oauth/callback", async (req: Request, res: Response) => {
     try {
       const { code, state, error } = req.query as Record<string, string>;
-      const domain = getAppDomain();
+      const domain = getRequestDomain(req);
       const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
+      console.log(`[google-oauth] callback domain=${domain} hasCode=${!!code} hasState=${!!state} error=${error || "none"}`);
 
       if (error || !code) {
         return res.redirect("/?google_error=cancelled");
       }
 
-      if (state !== (req.session as any).oauthState) {
+      const stateData = verifyOAuthState(state);
+      if (!stateData) {
+        console.error("[google-oauth] invalid state:", state?.slice(0, 30));
         return res.redirect("/?google_error=invalid_state");
       }
-      delete (req.session as any).oauthState;
+      const fromPwa = stateData.source === "pwa";
 
       const clientId = process.env.GOOGLE_CLIENT_ID!;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
@@ -791,8 +815,7 @@ export async function registerRoutes(
       }
 
       req.session.userId = user.id;
-      const fromPwa = !!(req.session as any).oauthFromPwa;
-      delete (req.session as any).oauthFromPwa;
+      console.log(`[google-oauth] success user=${user.id} isNew=${isNewUser} fromPwa=${fromPwa}`);
       if (isNewUser) {
         res.redirect(fromPwa ? "/?google_new_user=1&pwa=1" : "/?google_new_user=1");
       } else {
