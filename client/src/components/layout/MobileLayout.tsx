@@ -440,7 +440,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   );
 
   return (
-    <div className={cn("bg-background text-foreground bg-noise flex", isDesktop ? "h-screen overflow-hidden" : "min-h-screen")}>
+    <div className={cn("bg-background text-foreground bg-noise flex overflow-x-hidden", isDesktop ? "h-screen overflow-hidden" : "min-h-screen")}>
       {isDesktop && (
         <aside
           className={cn(
@@ -520,8 +520,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         </aside>
       )}
 
-      <div className={cn("flex-1 flex justify-center bg-background", isDesktop ? "h-screen overflow-y-auto" : "min-h-screen")}>
-        <div className={cn("w-full bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "max-w-md mx-auto min-h-screen")}>
+      <div className={cn("flex-1 bg-background overflow-x-hidden", isDesktop ? "h-screen overflow-y-auto flex justify-center" : "min-h-screen")}>
+        <div className={cn("w-full bg-background relative overflow-x-hidden flex flex-col transition-all", isDesktop ? "" : "min-h-screen")}>
           
           {!isDesktop && (
             <div className="absolute right-4 z-50 flex gap-1.5 items-center" style={{ top: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))" }}>
@@ -608,7 +608,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             </div>
           )}
 
-          <main className={cn("flex-1 overflow-y-auto overflow-x-hidden", isDesktop ? "pb-6" : "pb-24")}>
+          <main className={cn("flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full", isDesktop ? "pb-6" : "pb-24")}>
             {children}
           </main>
           
