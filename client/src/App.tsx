@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -29,6 +29,7 @@ import OpenInBrowser from "@/pages/OpenInBrowser";
 
 function AuthGate() {
   const { user, isLoading, refetch } = useAuth();
+  const [, setLocation] = useLocation();
   const needsOnboarding = user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -132,6 +133,7 @@ function AuthGate() {
           localStorage.removeItem("casa-dos-20-needs-onboarding");
           localStorage.removeItem("casa-onboarding-step");
           setShowOnboarding(false);
+          setLocation("/");
         }}
       />
     );
