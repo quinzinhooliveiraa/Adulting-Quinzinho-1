@@ -12,3 +12,9 @@ id = "ZrOF0q1UhPHjj32ng-1gR"
 uri = "file://GUIA_CASA_DOS_20.md"
 type = "text"
 title = "Guia Completo - Casa dos 20"
+
+[[outputs]]
+id = "kT8XlB6Yg6NpSWykm9F2u"
+uri = "file://LP_CasaDos20.md"
+type = "text"
+title = "Documento de Landing Page — Casa dos 20"
