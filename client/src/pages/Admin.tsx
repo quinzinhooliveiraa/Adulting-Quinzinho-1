@@ -800,8 +800,8 @@ export default function Admin() {
   const openFeedbackCount = allFeedback.filter(f => f.status === "open").length;
 
   return (
-    <div className="w-full overflow-x-hidden px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500">
-      <div className="flex items-center gap-3">
+    <div className="w-full box-border px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500">
+      <div className="flex items-center gap-3 pr-20 md:pr-0">
         <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-muted shrink-0" data-testid="button-back-admin">
           <ChevronLeft size={24} className="text-foreground" />
         </button>
@@ -809,7 +809,6 @@ export default function Admin() {
           <h1 className="text-2xl font-serif text-foreground truncate">Painel Admin</h1>
           <p className="text-xs text-muted-foreground truncate">Gerencie usuários, feedbacks e acessos</p>
         </div>
-        <div className="w-[52px] shrink-0" />
       </div>
 
       {adminAlert && (
