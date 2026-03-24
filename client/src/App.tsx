@@ -35,14 +35,16 @@ function AuthGate() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [bonusBanner, setBonusBanner] = useState<"success" | "cancel" | null>(null);
+  const [pwaReturnBanner, setPwaReturnBanner] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const googleNewUser = params.get("google_new_user");
     const err = params.get("google_error");
     const bonus = params.get("bonus");
+    const fromPwa = params.get("pwa") === "1";
 
-    if (googleNewUser || err !== null || bonus) {
+    if (googleNewUser || err !== null || bonus || fromPwa) {
       window.history.replaceState({}, "", window.location.pathname);
       if (googleNewUser) {
         localStorage.setItem("casa-dos-20-needs-onboarding", "true");
@@ -67,8 +69,22 @@ function AuthGate() {
         setBonusBanner("cancel");
         setTimeout(() => setBonusBanner(null), 5000);
       }
+      if (fromPwa && !googleNewUser) {
+        setPwaReturnBanner(true);
+        setTimeout(() => setPwaReturnBanner(false), 6000);
+      }
       refetch();
     }
+  }, [refetch]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        refetch();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [refetch]);
 
   useEffect(() => {
@@ -170,6 +186,15 @@ function AuthGate() {
                 ? "O teu trial de 30 dias será ativado em instantes."
                 : "Podes tentar novamente quando quiseres."}
             </p>
+          </div>
+        </div>
+      )}
+      {pwaReturnBanner && (
+        <div className="fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 shadow-xl border bg-green-500/10 border-green-400/30 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300" data-testid="pwa-return-banner">
+          <span className="text-xl">✅</span>
+          <div>
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400">Login com Google feito!</p>
+            <p className="text-xs text-muted-foreground">Volta à app no ecrã inicial do iPhone.</p>
           </div>
         </div>
       )}

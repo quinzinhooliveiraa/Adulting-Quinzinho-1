@@ -701,6 +701,9 @@ export async function registerRoutes(
     const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
     const state = randomBytes(16).toString("hex");
     req.session.oauthState = state;
+    if (req.query.source === "pwa") {
+      (req.session as any).oauthFromPwa = true;
+    }
     req.session.save((err) => {
       if (err) {
         console.error("[google-oauth] session save error:", err);
@@ -788,7 +791,13 @@ export async function registerRoutes(
       }
 
       req.session.userId = user.id;
-      res.redirect(isNewUser ? "/?google_new_user=1" : "/");
+      const fromPwa = !!(req.session as any).oauthFromPwa;
+      delete (req.session as any).oauthFromPwa;
+      if (isNewUser) {
+        res.redirect(fromPwa ? "/?google_new_user=1&pwa=1" : "/?google_new_user=1");
+      } else {
+        res.redirect(fromPwa ? "/?pwa=1" : "/");
+      }
     } catch (err) {
       console.error("[google-oauth] callback error:", err);
       res.redirect("/?google_error=server_error");

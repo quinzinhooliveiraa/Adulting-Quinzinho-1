@@ -285,7 +285,7 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
             <>
               {!isNative && (
                 <a
-                  href="/api/auth/google-oauth"
+                  href={typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches ? "/api/auth/google-oauth?source=pwa" : "/api/auth/google-oauth"}
                   className="w-full h-12 rounded-xl border border-border bg-white dark:bg-muted flex items-center justify-center gap-3 text-sm font-medium text-foreground hover:bg-muted/60 transition-all"
                   data-testid="button-google-login"
                 >
