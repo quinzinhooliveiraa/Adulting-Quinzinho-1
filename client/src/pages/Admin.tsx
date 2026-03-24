@@ -88,6 +88,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
 function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void; currentUserEmail: string; allUsers: AdminUser[] }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showTrialPicker, setShowTrialPicker] = useState(false);
   const [trialDays, setTrialDays] = useState(14);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
@@ -424,20 +425,37 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                 ) : !isMainAdmin && (
                   <>
                     {confirmDelete ? (
-                      <div className="flex gap-1 items-center">
-                        <button
-                          onClick={() => { onDelete(user.id); setConfirmDelete(false); }}
-                          className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1"
-                          data-testid={`button-confirm-delete-${user.id}`}
-                        >
-                          <Trash2 size={12} /> Confirmar
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(false)}
-                          className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
-                        >
-                          Cancelar
-                        </button>
+                      <div className="mt-2 p-3 rounded-xl bg-red-500/5 border border-red-500/20 space-y-2">
+                        <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
+                          Esta ação é irreversível. Todos os dados serão apagados.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Escreve <strong className="text-foreground">"apagar"</strong> para confirmar:
+                        </p>
+                        <input
+                          type="text"
+                          value={deleteConfirmText}
+                          onChange={e => setDeleteConfirmText(e.target.value)}
+                          placeholder="apagar"
+                          className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-border bg-background focus:outline-none focus:border-red-400"
+                          data-testid={`input-delete-confirm-${user.id}`}
+                        />
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => { onDelete(user.id); setConfirmDelete(false); setDeleteConfirmText(""); }}
+                            disabled={deleteConfirmText !== "apagar"}
+                            className="text-[11px] px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            data-testid={`button-confirm-delete-${user.id}`}
+                          >
+                            <Trash2 size={12} /> Apagar definitivamente
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDelete(false); setDeleteConfirmText(""); }}
+                            className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <button
