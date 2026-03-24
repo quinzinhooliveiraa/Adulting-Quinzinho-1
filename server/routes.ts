@@ -1429,9 +1429,10 @@ export async function registerRoutes(
   app.get("/api/admin/analytics", requireAdmin, async (req: Request, res: Response) => {
     try {
       const days = Number(req.query.days) || 30;
+      const excludeAdmins = req.query.excludeAdmins === "true";
       const [eventCounts, dailyActive] = await Promise.all([
-        storage.getEventCounts(days),
-        storage.getDailyActiveUsers(days),
+        storage.getEventCounts(days, excludeAdmins),
+        storage.getDailyActiveUsers(days, excludeAdmins),
       ]);
       res.json({ eventCounts, dailyActive });
     } catch {
@@ -1441,7 +1442,8 @@ export async function registerRoutes(
 
   app.get("/api/admin/demographics", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const allUsers = await storage.getAllUsers();
+      const excludeAdmins = req.query.excludeAdmins === "true";
+      const allUsers = (await storage.getAllUsers()).filter(u => !excludeAdmins || u.role !== "admin");
       const now = new Date().getFullYear();
       const ageRanges: Record<string, number> = {
         "15–19": 0, "20–22": 0, "23–25": 0, "26–29": 0, "30–35": 0, "36+": 0,

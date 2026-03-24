@@ -119,8 +119,8 @@ export interface IStorage {
   getCouponUseCount(couponId: number): Promise<number>;
 
   trackEvent(userId: string | null, event: string, metadata?: string): Promise<void>;
-  getEventCounts(days?: number): Promise<{ event: string; count: number }[]>;
-  getDailyActiveUsers(days?: number): Promise<{ date: string; count: number }[]>;
+  getEventCounts(days?: number, excludeAdmins?: boolean): Promise<{ event: string; count: number }[]>;
+  getDailyActiveUsers(days?: number, excludeAdmins?: boolean): Promise<{ date: string; count: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -559,8 +559,19 @@ export class DatabaseStorage implements IStorage {
     await db.insert(userEvents).values({ userId: userId || null, event, metadata });
   }
 
-  async getEventCounts(days: number = 30): Promise<{ event: string; count: number }[]> {
+  async getEventCounts(days: number = 30, excludeAdmins: boolean = false): Promise<{ event: string; count: number }[]> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    if (excludeAdmins) {
+      const rows = await db.execute(drizzleSql`
+        SELECT ue.event, COUNT(*) as count
+        FROM user_events ue
+        JOIN users u ON ue.user_id = u.id
+        WHERE ue.created_at >= ${since} AND u.role != 'admin'
+        GROUP BY ue.event
+        ORDER BY count DESC
+      `);
+      return (rows.rows as any[]).map(r => ({ event: r.event, count: Number(r.count) }));
+    }
     const rows = await db
       .select({ event: userEvents.event, count: count() })
       .from(userEvents)
@@ -570,13 +581,17 @@ export class DatabaseStorage implements IStorage {
     return rows.map(r => ({ event: r.event, count: Number(r.count) }));
   }
 
-  async getDailyActiveUsers(days: number = 30): Promise<{ date: string; count: number }[]> {
+  async getDailyActiveUsers(days: number = 30, excludeAdmins: boolean = false): Promise<{ date: string; count: number }[]> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const adminClause = excludeAdmins
+      ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
+      : "";
     const rows = await db.execute(drizzleSql`
-      SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as date, COUNT(DISTINCT user_id) as count
-      FROM user_events
-      WHERE created_at >= ${since} AND user_id IS NOT NULL
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+      SELECT TO_CHAR(ue.created_at, 'YYYY-MM-DD') as date, COUNT(DISTINCT ue.user_id) as count
+      FROM user_events ue
+      WHERE ue.created_at >= ${since} AND ue.user_id IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY TO_CHAR(ue.created_at, 'YYYY-MM-DD')
       ORDER BY date ASC
     `);
     return (rows.rows as any[]).map(r => ({ date: r.date, count: Number(r.count) }));

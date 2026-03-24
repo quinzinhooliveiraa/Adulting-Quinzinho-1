@@ -636,6 +636,7 @@ export default function Admin() {
   const [showInvite, setShowInvite] = useState(false);
   const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics">("users");
   const [analyticsDays, setAnalyticsDays] = useState(30);
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
@@ -658,8 +659,8 @@ export default function Admin() {
     eventCounts: { event: string; count: number }[];
     dailyActive: { date: string; count: number }[];
   }>({
-    queryKey: ["/api/admin/analytics", analyticsDays],
-    queryFn: () => fetch(`/api/admin/analytics?days=${analyticsDays}`, { credentials: "include" }).then(r => r.json()),
+    queryKey: ["/api/admin/analytics", analyticsDays, excludeAdmins],
+    queryFn: () => fetch(`/api/admin/analytics?days=${analyticsDays}&excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
 
@@ -670,7 +671,8 @@ export default function Admin() {
     ageRanges: { range: string; count: number }[];
     topInterests: { interest: string; count: number }[];
   }>({
-    queryKey: ["/api/admin/demographics"],
+    queryKey: ["/api/admin/demographics", excludeAdmins],
+    queryFn: () => fetch(`/api/admin/demographics?excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
 
@@ -1218,6 +1220,21 @@ export default function Admin() {
               ))}
             </div>
           </div>
+
+          <button
+            onClick={() => setExcludeAdmins(v => !v)}
+            data-testid="toggle-exclude-admins"
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors w-full justify-between border ${
+              excludeAdmins
+                ? "bg-primary/10 text-primary border-primary/20"
+                : "bg-muted text-muted-foreground border-border"
+            }`}
+          >
+            <span>Excluir admins dos dados</span>
+            <span className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 ${excludeAdmins ? "bg-primary" : "bg-muted-foreground/30"}`}>
+              <span className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${excludeAdmins ? "translate-x-4" : "translate-x-0"}`} />
+            </span>
+          </button>
 
           {analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-4">
