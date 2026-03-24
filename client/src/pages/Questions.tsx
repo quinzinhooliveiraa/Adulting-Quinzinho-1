@@ -1747,7 +1747,7 @@ function CardGame({
 
   return (
     <div className="min-h-screen bg-background pb-24 animate-in fade-in duration-500 overflow-x-hidden">
-      <div className="px-6 pt-14 pb-4 flex items-center justify-between">
+      <div className="px-6 pt-14 pb-4 flex items-center justify-between pr-24 md:pr-6">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
           <ChevronLeft size={24} className="text-foreground" />
         </button>
@@ -2673,19 +2673,19 @@ function LobbyScreen({
 
         <div className="p-4 rounded-2xl bg-muted/50 border border-border space-y-3">
           <p className="text-sm font-medium text-foreground">Entrar numa Sala {!isPremium && <span className="text-[10px] text-green-600 ml-1">GRÁTIS</span>}</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 min-w-0">
             <input
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               placeholder="Código da sala"
               maxLength={5}
-              className="flex-1 p-3 rounded-xl bg-background border border-border text-foreground text-center text-lg font-mono tracking-[0.2em] uppercase placeholder:text-muted-foreground placeholder:text-sm placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="flex-1 min-w-0 p-3 rounded-xl bg-background border border-border text-foreground text-center text-lg font-mono tracking-[0.2em] uppercase placeholder:text-muted-foreground placeholder:text-sm placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
               data-testid="input-join-code"
             />
             <button
               onClick={handleJoin}
               disabled={joinCode.length < 5}
-              className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50"
+              className="shrink-0 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50"
               data-testid="button-join-lobby"
             >
               Entrar
