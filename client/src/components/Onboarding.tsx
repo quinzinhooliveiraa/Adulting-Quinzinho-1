@@ -768,18 +768,12 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               )}
               <Button
                 onClick={handleAddCardForBonus}
-                disabled={checkoutLoading || premiumCountdown > 0}
+                disabled={checkoutLoading}
                 className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-base font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="button-onboarding-premium"
               >
                 {checkoutLoading ? (
                   <Loader2 size={18} className="animate-spin" />
-                ) : premiumCountdown > 0 ? (
-                  <>
-                    <span className="text-lg mr-1">🎁</span>
-                    Ganhar 30 dias grátis
-                    <span className="ml-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">{premiumCountdown}</span>
-                  </>
                 ) : (
                   <>
                     <span className="text-lg mr-1">🎁</span>
