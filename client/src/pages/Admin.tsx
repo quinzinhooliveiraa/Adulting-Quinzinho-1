@@ -138,21 +138,21 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
       {expanded && (
         <div className="px-3 pb-3 space-y-3 border-t border-border pt-3 animate-in fade-in duration-200">
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Plano:</span>
-              <p className="text-foreground font-medium">{getPlanLabel()}</p>
+              <p className="text-foreground font-medium truncate">{getPlanLabel()}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Vencimento:</span>
-              <p className="text-foreground font-medium">
+              <p className="text-foreground font-medium truncate">
                 {premiumEnd ? premiumEnd.toLocaleDateString("pt-BR") : trialEnd ? trialEnd.toLocaleDateString("pt-BR") + " (trial)" : user.isPremium ? "Ilimitado" : "—"}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Cadastro:</span>
               <p className="text-foreground">{createdAt.toLocaleDateString("pt-BR")}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Última atividade:</span>
               <p className="text-foreground">
                 {user.lastActiveAt ? (() => {
@@ -167,15 +167,15 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                 })() : "—"}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">PWA:</span>
               <p className={`font-medium ${user.pwaInstalled ? "text-green-500" : "text-muted-foreground"}`}>
                 {user.pwaInstalled ? "Instalado" : "Não"}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Convite:</span>
-              <p className="text-foreground">{user.invitedBy || "—"}</p>
+              <p className="text-foreground truncate">{user.invitedBy || "—"}</p>
             </div>
           </div>
 
@@ -841,7 +841,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="w-full box-border px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500">
+    <div className="w-full box-border px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500 overflow-x-hidden">
       <div className="flex items-center gap-3 pr-20 md:pr-0">
         <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-muted shrink-0" data-testid="button-back-admin">
           <ChevronLeft size={24} className="text-foreground" />
@@ -1029,14 +1029,14 @@ export default function Admin() {
             )}
 
             <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between py-2">
-                <div>
+              <div className="flex items-center justify-between py-2 gap-3">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground">Novo usuário</p>
-                  <p className="text-[11px] text-muted-foreground">Receber notificação quando alguém criar conta</p>
+                  <p className="text-[11px] text-muted-foreground leading-tight">Receber notificação quando alguém criar conta</p>
                 </div>
                 <button
                   onClick={() => notifyPrefsMutation.mutate({ notifyNewUser: !notifyPrefs?.notifyNewUser })}
-                  className="transition-colors"
+                  className="transition-colors shrink-0"
                   data-testid="toggle-notify-new-user"
                 >
                   {notifyPrefs?.notifyNewUser ? (
@@ -1047,14 +1047,14 @@ export default function Admin() {
                 </button>
               </div>
               <div className="border-t border-border" />
-              <div className="flex items-center justify-between py-2">
-                <div>
+              <div className="flex items-center justify-between py-2 gap-3">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground">Pagamentos e cartões</p>
-                  <p className="text-[11px] text-muted-foreground">Nova assinatura, cartão adicionado e renovações</p>
+                  <p className="text-[11px] text-muted-foreground leading-tight">Nova assinatura, cartão adicionado e renovações</p>
                 </div>
                 <button
                   onClick={() => notifyPrefsMutation.mutate({ notifyNewSub: !notifyPrefs?.notifyNewSub })}
-                  className="transition-colors"
+                  className="transition-colors shrink-0"
                   data-testid="toggle-notify-new-sub"
                 >
                   {notifyPrefs?.notifyNewSub ? (
@@ -1541,19 +1541,19 @@ function PushNotificationPanel() {
                       )}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-2">
+                    <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap min-w-0">
+                      <span className="flex items-center gap-1 shrink-0">
                         <Clock size={10} /> {intervalLabel}
                       </span>
-                      <span>Último: {lastSent}</span>
+                      <span className="shrink-0">Último: {lastSent}</span>
                       {notif.url !== "/" && (
-                        <span className="text-primary">{notif.url}</span>
+                        <span className="text-primary truncate max-w-[80px]">{notif.url}</span>
                       )}
                     </div>
                     <button
                       onClick={() => handleDeleteScheduled(notif.id)}
-                      className="text-red-400 hover:text-red-500 transition-colors"
+                      className="text-red-400 hover:text-red-500 transition-colors shrink-0"
                       data-testid={`button-delete-notif-${notif.id}`}
                     >
                       <Trash2 size={12} />
@@ -1714,15 +1714,15 @@ function AutoNotificationsPanel() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <Clock size={10} /> Min. {notif.triggerHours}h entre envios
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-2">
+                <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap min-w-0">
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Clock size={10} /> {notif.triggerHours}h mín.
                   </span>
-                  <span>Último: {lastSent}</span>
+                  <span className="shrink-0">Último: {lastSent}</span>
                 </div>
-                <span className="bg-muted/50 px-2 py-0.5 rounded-full font-medium">
-                  {notif.totalSent || 0} enviada{(notif.totalSent || 0) !== 1 ? "s" : ""}
+                <span className="bg-muted/50 px-2 py-0.5 rounded-full font-medium shrink-0">
+                  {notif.totalSent || 0} env.
                 </span>
               </div>
             </div>
