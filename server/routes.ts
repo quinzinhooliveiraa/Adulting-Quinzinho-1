@@ -10,6 +10,7 @@ import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema, type User } from "@shared/schema";
 import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
+import { DEFAULT_REMINDERS } from "@shared/reminders";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
@@ -2653,8 +2654,16 @@ const AUTO_NOTIFICATION_DEFAULTS = [
   },
   {
     type: "daily_motivation",
-    title: "Reflexão do Dia ✨",
+    title: "Reflexão do Dia 📖",
     body: "{reflection}",
+    url: "/",
+    triggerHours: 24,
+    isActive: true,
+  },
+  {
+    type: "daily_reminder",
+    title: "Lembrete do Dia 💛",
+    body: "{reminder}",
     url: "/",
     triggerHours: 24,
     isActive: true,
@@ -2680,6 +2689,7 @@ const AUTO_NOTIFICATION_PRIORITY: string[] = [
   "mood_checkin",
   "streak_celebration",
   "daily_motivation",
+  "daily_reminder",
 ];
 
 export async function processAutoNotifications() {
@@ -2778,6 +2788,9 @@ async function checkAutoNotificationCondition(type: string, userId: string): Pro
     case "daily_motivation": {
       return true;
     }
+    case "daily_reminder": {
+      return true;
+    }
     case "daily_reflection": {
       const entries = await storage.getEntries(userId);
       const todayEntry = entries.find(e => new Date(e.createdAt) >= todayStart);
@@ -2838,6 +2851,14 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
     const index = Math.abs(seed) % DAILY_REFLECTIONS.length;
     const reflection = DAILY_REFLECTIONS[index];
     body = reflection.text;
+  }
+
+  if (config.type === "daily_reminder") {
+    const today = new Date().toISOString().split('T')[0];
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
+    const index = Math.abs(seed + 7) % DEFAULT_REMINDERS.length;
+    body = DEFAULT_REMINDERS[index];
   }
 
   if (config.type === "morning_prompt") {
