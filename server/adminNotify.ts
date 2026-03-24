@@ -15,6 +15,11 @@ async function sendToAdmin(adminId: string, title: string, body: string, url: st
     );
 
     const subs = await storage.getPushSubscriptions(adminId);
+    if (subs.length === 0) {
+      console.warn(`[admin-notify] No push subscriptions found for admin ${adminId}`);
+      return;
+    }
+
     const payload = JSON.stringify({ title, body, url });
 
     for (const sub of subs) {
@@ -23,8 +28,14 @@ async function sendToAdmin(adminId: string, title: string, body: string, url: st
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload
         );
-      } catch {
-        await storage.deletePushSubscription(adminId, sub.endpoint);
+        console.log(`[admin-notify] Notification sent to admin ${adminId}`);
+      } catch (err: any) {
+        const status = err?.statusCode || err?.status;
+        console.error(`[admin-notify] Failed to send to admin ${adminId}, status: ${status}`, err?.message);
+        if (status === 410 || status === 404) {
+          console.log(`[admin-notify] Removing expired subscription for admin ${adminId}`);
+          await storage.deletePushSubscription(adminId, sub.endpoint);
+        }
       }
     }
   } catch (err) {
@@ -71,14 +82,23 @@ export async function notifyAdminNewSubscription(userName: string, userEmail: st
     for (const admin of admins) {
       if (admin.role === "admin" && admin.adminNotifyNewSub) {
         const subs = await storage.getPushSubscriptions(admin.id);
+        if (subs.length === 0) {
+          console.warn(`[admin-notify] No push subscriptions for admin ${admin.id} to notify about new subscription`);
+        }
         for (const sub of subs) {
           try {
             await webpush.sendNotification(
               { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
               payload
             );
-          } catch {
-            await storage.deletePushSubscription(admin.id, sub.endpoint);
+            console.log(`[admin-notify] New subscription notification sent to admin ${admin.id}`);
+          } catch (err: any) {
+            const status = err?.statusCode || err?.status;
+            console.error(`[admin-notify] Failed to send to admin ${admin.id}, status: ${status}`, err?.message);
+            if (status === 410 || status === 404) {
+              console.log(`[admin-notify] Removing expired subscription for admin ${admin.id}`);
+              await storage.deletePushSubscription(admin.id, sub.endpoint);
+            }
           }
         }
       }

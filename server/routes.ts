@@ -2385,8 +2385,11 @@ REGRAS:
             payload
           );
           sent++;
-        } catch {
-          await storage.deletePushSubscription(sub.userId, sub.endpoint);
+        } catch (err: any) {
+          const status = err?.statusCode || err?.status;
+          if (status === 410 || status === 404) {
+            await storage.deletePushSubscription(sub.userId, sub.endpoint);
+          }
           failed++;
         }
       }
@@ -2478,8 +2481,11 @@ REGRAS:
             payload
           );
           sent++;
-        } catch {
-          await storage.deletePushSubscription(sub.userId, sub.endpoint);
+        } catch (err: any) {
+          const status = err?.statusCode || err?.status;
+          if (status === 410 || status === 404) {
+            await storage.deletePushSubscription(sub.userId, sub.endpoint);
+          }
         }
       }
       res.json({ sent });
@@ -2488,7 +2494,55 @@ REGRAS:
     }
   });
 
-  app.get("/api/notifications/auto", requireAuth, async (req, res) => {
+  app.get("/api/admin/push-status", requireAdmin, async (req, res) => {
+    try {
+      const subs = await storage.getPushSubscriptions(req.session.userId!);
+      res.json({ subscriptionCount: subs.length, hasSubscription: subs.length > 0 });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/push-test", requireAdmin, async (req, res) => {
+    try {
+      const webpushModule = await import("web-push");
+      const webpush = webpushModule.default || webpushModule;
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+        process.env.VAPID_PUBLIC_KEY || "",
+        process.env.VAPID_PRIVATE_KEY || ""
+      );
+      const subs = await storage.getPushSubscriptions(req.session.userId!);
+      if (subs.length === 0) {
+        return res.status(404).json({ error: "Nenhuma inscrição de push encontrada. Ative as notificações no seu dispositivo." });
+      }
+      const payload = JSON.stringify({
+        title: "Teste de Notificação ✅",
+        body: "Notificações de admin estão funcionando!",
+        url: "/admin",
+      });
+      let sent = 0;
+      for (const sub of subs) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            payload
+          );
+          sent++;
+        } catch (err: any) {
+          const status = err?.statusCode || err?.status;
+          if (status === 410 || status === 404) {
+            await storage.deletePushSubscription(req.session.userId!, sub.endpoint);
+          }
+        }
+      }
+      res.json({ sent, total: subs.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/notifications/auto", requireAdmin, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user || user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });

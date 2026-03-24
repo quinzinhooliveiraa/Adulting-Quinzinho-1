@@ -653,6 +653,11 @@ export default function Admin() {
     queryKey: ["/api/admin/notify-prefs"],
   });
 
+  const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
+    queryKey: ["/api/admin/push-status"],
+    refetchOnWindowFocus: true,
+  });
+
   const notifyPrefsMutation = useMutation({
     mutationFn: async (data: { notifyNewUser?: boolean; notifyNewSub?: boolean }) => {
       const res = await fetch("/api/admin/notify-prefs", {
@@ -667,6 +672,58 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/notify-prefs"] });
     },
   });
+
+  const [pushTestMsg, setPushTestMsg] = useState<string | null>(null);
+  const pushTestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/push-test", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erro ao enviar");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPushTestMsg(data.sent > 0 ? `✅ Enviado para ${data.sent} dispositivo(s)` : "⚠️ Nenhum dispositivo recebeu");
+      setTimeout(() => setPushTestMsg(null), 5000);
+    },
+    onError: (err: any) => {
+      setPushTestMsg(`❌ ${err.message}`);
+      setTimeout(() => setPushTestMsg(null), 6000);
+    },
+  });
+
+  const handleSubscribePush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const vapidRes = await fetch("/api/push/vapid-key");
+      const { publicKey } = await vapidRes.json();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey,
+      });
+      const subJson = sub.toJSON() as any;
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+        }),
+      });
+      refetchPushStatus();
+      setPushTestMsg("✅ Inscrição renovada com sucesso!");
+      setTimeout(() => setPushTestMsg(null), 4000);
+    } catch (err: any) {
+      setPushTestMsg(`❌ Erro ao inscrever: ${err.message}`);
+      setTimeout(() => setPushTestMsg(null), 5000);
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
@@ -896,7 +953,42 @@ export default function Admin() {
               <Bell size={16} />
               Alertas do Admin
             </h3>
-            <div className="space-y-2">
+
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${pushStatus?.hasSubscription ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
+              <span className={`w-2 h-2 rounded-full ${pushStatus?.hasSubscription ? "bg-green-500" : "bg-red-500"}`} />
+              {pushStatus === undefined
+                ? "Verificando inscrição..."
+                : pushStatus.hasSubscription
+                ? `${pushStatus.subscriptionCount} dispositivo(s) inscrito(s) — notificações ativas`
+                : "Nenhuma inscrição ativa — notificações não serão entregues"}
+            </div>
+
+            {!pushStatus?.hasSubscription && (
+              <button
+                onClick={handleSubscribePush}
+                className="w-full py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+                data-testid="button-push-subscribe"
+              >
+                Reativar Notificações neste Dispositivo
+              </button>
+            )}
+
+            {pushStatus?.hasSubscription && (
+              <button
+                onClick={() => pushTestMutation.mutate()}
+                disabled={pushTestMutation.isPending}
+                className="w-full py-2 rounded-xl bg-muted text-foreground text-sm font-medium disabled:opacity-50"
+                data-testid="button-push-test"
+              >
+                {pushTestMutation.isPending ? "Enviando..." : "Testar Notificação"}
+              </button>
+            )}
+
+            {pushTestMsg && (
+              <p className="text-xs text-center text-muted-foreground">{pushTestMsg}</p>
+            )}
+
+            <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm text-foreground">Novo usuário</p>
