@@ -616,7 +616,7 @@ export default function Journal() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background animate-in fade-in duration-500 pb-24 w-full overflow-x-hidden" style={{ touchAction: 'pan-y', maxWidth: '100vw' }}>
-      <div className="pl-4 pr-24 md:px-10 pt-12 pb-4 space-y-4 sticky top-0 bg-background/90 backdrop-blur-xl z-20 w-full max-w-[100vw] box-border">
+      <div className="pl-4 pr-4 md:px-10 pt-12 pb-4 space-y-4 sticky top-0 bg-background/90 backdrop-blur-xl z-20 w-full max-w-[100vw] box-border">
         {!isPremium && journalLimit && journalLimit.remaining !== null && (
           <div className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2 ${
             journalLimit.remaining <= 3
@@ -629,7 +629,7 @@ export default function Journal() {
               : "Limite mensal atingido — assine o premium para continuar"}
           </div>
         )}
-        <div className="flex justify-between items-center gap-2 min-w-0">
+        <div className="flex justify-between items-center gap-2 min-w-0 pr-24 md:pr-0">
           <h1 className="text-3xl font-serif text-foreground shrink-0">Diário</h1>
           <div className="flex items-center gap-1.5 shrink-0">
             <button
