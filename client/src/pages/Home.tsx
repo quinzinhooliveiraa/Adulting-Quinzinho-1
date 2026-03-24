@@ -101,22 +101,6 @@ const analyzeTextForTags = (text: string) => {
   return Array.from(foundTags).slice(0, 3);
 };
 
-// Shared Mock Entries (In a real app, this would come from a database/context)
-const RECENT_JOURNAL_ENTRIES = [
-  {
-    id: 1,
-    date: "Ontem",
-    text: "Acho que estou me cobrando demais sobre onde eu deveria estar aos 25. Todo mundo parece ter um plano...",
-    tags: ["ansiedade", "identidade"]
-  },
-  {
-    id: 2,
-    date: "12 de Março",
-    text: "Hoje percebi que a solidão não precisa ser vazia. Foi bom ter um momento só para mim.",
-    tags: ["solidão", "crescimento"]
-  }
-];
-
 // Reminders mapped to themes
 const THEMED_REMINDERS: Record<string, string[]> = {
   ansiedade: [
@@ -149,7 +133,34 @@ const THEMED_REMINDERS: Record<string, string[]> = {
 const DEFAULT_REMINDERS = [
   "A transição para a vida adulta não é uma corrida. Respire.",
   "Cada pequena vitória merece ser celebrada hoje.",
-  "Você está fazendo o melhor que pode com o que tem."
+  "Você está fazendo o melhor que pode com o que tem.",
+  "O presente é o único lugar onde você realmente pode viver.",
+  "Não se compare com o palco dos outros. Sua jornada tem o seu próprio ritmo.",
+  "Confie no processo. Suas buscas estão te levando exatamente onde você precisa estar.",
+  "Está tudo bem não saber tudo ainda. Você ainda está aprendendo.",
+  "A pessoa que você está se tornando importa mais do que a que você era.",
+  "Você merece dedicar tanta atenção a si mesmo quanto aos outros.",
+  "Crescer dói, mas estagnar dói muito mais. Orgulhe-se do seu progresso.",
+  "Seja gentil consigo hoje. Amanhã é mais um passo.",
+  "O amadurecimento é lento. Seja gentil com o seu tempo.",
+  "Respire. O futuro não chegou e você não precisa resolver tudo hoje.",
+  "Sua ansiedade mostra que você se importa, mas não é uma previsão do futuro.",
+  "Você tem permissão para mudar de ideia, de sonho, de direção.",
+  "Pequenas ações alinhadas com seus valores valem mais do que grandes metas vazias.",
+  "Você está mais perto do que imagina.",
+  "Cada desafio superado é um degrau na construção da sua melhor versão.",
+  "A vida não precisa fazer sentido para ninguém, apenas para você.",
+  "Você já sobreviveu a tudo que achava que não conseguiria. Isso importa.",
+  "Não existe momento perfeito. Existe agora.",
+  "Seu valor não depende de quanto você produz.",
+  "Você merece estar ao redor de pessoas que te escolhem de verdade.",
+  "Às vezes, o maior avanço é apenas continuar.",
+  "Você não precisa provar nada a ninguém hoje.",
+  "A paciência com você mesmo é uma forma de amor.",
+  "Cada dia é uma nova chance de ser quem você quer ser.",
+  "O silêncio também é resposta. Às vezes, a mais honesta.",
+  "Você é suficiente do jeito que você é.",
+  "Uma coisa de cada vez. Só uma."
 ];
 
 export default function Home() {
@@ -214,20 +225,25 @@ export default function Home() {
     return { greeting: g, userName: nameStr };
   }, [user]);
 
-  // Intelligent Reminder Selection
-  const dailyReminder = useMemo(() => {
-    // In a real app, RECENT_JOURNAL_ENTRIES would be dynamic state
-    const latestEntry = RECENT_JOURNAL_ENTRIES[0];
-    if (!latestEntry || !latestEntry.tags.length) {
-      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-      return DEFAULT_REMINDERS[dayOfYear % DEFAULT_REMINDERS.length];
-    }
-
-    // Pick a random tag from the latest entry and a random reminder for that tag
-    const randomTag = latestEntry.tags[Math.floor(Math.random() * latestEntry.tags.length)];
-    const options = THEMED_REMINDERS[randomTag] || DEFAULT_REMINDERS;
-    return options[Math.floor(Math.random() * options.length)];
+  // Deterministic daily seed based on today's date
+  const todayDateSeed = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
+    return Math.abs(seed);
   }, []);
+
+  // Intelligent Reminder Selection — changes once per day, uses real check-in tags
+  const dailyReminder = useMemo(() => {
+    const tags = latestCheckin?.tags ?? [];
+    const themedTags = tags.filter(t => THEMED_REMINDERS[t]);
+    if (themedTags.length > 0) {
+      const tag = themedTags[todayDateSeed % themedTags.length];
+      const options = THEMED_REMINDERS[tag];
+      return options[(todayDateSeed >> 3) % options.length];
+    }
+    return DEFAULT_REMINDERS[todayDateSeed % DEFAULT_REMINDERS.length];
+  }, [latestCheckin, todayDateSeed]);
 
   const dailyReflection = useMemo(() => {
     if (recommendedContent?.reflection) {
