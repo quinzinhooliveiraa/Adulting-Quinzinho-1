@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed } from "@/utils/pushNotifications";
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed, refreshPushSubscription } from "@/utils/pushNotifications";
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -133,10 +133,16 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (!isPushSubscribed() && isPushSupported() && Notification.permission !== "denied") {
-      const dismissed = localStorage.getItem("casa-push-banner-dismissed");
-      if (!dismissed) {
-        setShowPushBanner(true);
+    if (isPushSubscribed() && isPushSupported()) {
+      refreshPushSubscription().catch(() => {});
+    } else if (isPushSupported()) {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        subscribeToPush().catch(() => {});
+      } else if (typeof Notification === "undefined" || Notification.permission !== "denied") {
+        const dismissed = localStorage.getItem("casa-push-banner-dismissed");
+        if (!dismissed) {
+          setShowPushBanner(true);
+        }
       }
     }
   }, []);

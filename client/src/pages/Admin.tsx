@@ -710,9 +710,14 @@ export default function Admin() {
       const reg = await navigator.serviceWorker.ready;
       const vapidRes = await fetch("/api/push/vapid-key");
       const { publicKey } = await vapidRes.json();
+      const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
+      const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const applicationServerKey = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) applicationServerKey[i] = rawData.charCodeAt(i);
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: publicKey,
+        applicationServerKey,
       });
       const subJson = sub.toJSON() as any;
       await fetch("/api/push/subscribe", {
