@@ -1642,6 +1642,17 @@ function CardGame({
     }
   }, [showImagePreview, imageTheme, currentIndex, questions]);
 
+  const resetGame = () => {
+    const startIndex = isShuffling ? Math.floor(Math.random() * questions.length) : 0;
+    setCurrentIndex(startIndex);
+    setIsFlipped(false);
+    setCardsPlayed(0);
+    setShowCompleted(false);
+    setSavedCards([]);
+    setSeenIndices([]);
+    try { localStorage.removeItem(sessionKey); } catch {}
+  };
+
   const markSeen = (idx: number) => {
     if (isShuffling && !seenIndices.includes(idx)) {
       const updated = [...seenIndices, idx];
@@ -1716,12 +1727,7 @@ function CardGame({
         </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
-            onClick={() => {
-              setCurrentIndex(0);
-              setIsFlipped(false);
-              setCardsPlayed(0);
-              setShowCompleted(false);
-            }}
+            onClick={resetGame}
             className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium flex items-center justify-center gap-2"
             data-testid="button-replay"
           >
@@ -1750,20 +1756,46 @@ function CardGame({
             {subtitle}
           </p>
           <p className="text-xs text-foreground font-medium">
-            {isShuffling ? `${seenIndices.length}/${questions.length} vistas` : `${currentIndex + 1} / ${questions.length}`}
+            {isShuffling
+              ? `${Math.min(seenIndices.filter(i => i !== currentIndex).length + 1, questions.length)} / ${questions.length} vistas`
+              : `${currentIndex + 1} / ${questions.length}`}
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShuffleMode(!shuffleMode);
-          }}
-          className={`p-2 rounded-full transition-colors ${isShuffling ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
-          data-testid="button-toggle-shuffle"
-          title={isShuffling ? "Modo Sorteio (ativo)" : "Modo Sequencial"}
-        >
-          {isShuffling ? <Shuffle size={20} /> : <ListOrdered size={20} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={resetGame}
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            data-testid="button-restart-game"
+            title="Reiniciar jogo"
+          >
+            <RotateCcw size={18} />
+          </button>
+          <button
+            onClick={() => {
+              const next = !shuffleMode;
+              setShuffleMode(next);
+              if (!next) {
+                setCurrentIndex(0);
+                setIsFlipped(false);
+              }
+            }}
+            className={`p-2 rounded-full transition-colors ${isShuffling ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+            data-testid="button-toggle-shuffle"
+            title={isShuffling ? "Modo Sorteio (ativo)" : "Modo Sequencial"}
+          >
+            {isShuffling ? <Shuffle size={20} /> : <ListOrdered size={20} />}
+          </button>
+        </div>
       </div>
+
+      {isShuffling && (
+        <div className="mx-6 mb-2 flex items-center justify-center">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+            <Shuffle size={12} className="text-primary" />
+            <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Modo Sorteio</span>
+          </div>
+        </div>
+      )}
 
       {isFreeLimit && (
         <div className="mx-6 mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
