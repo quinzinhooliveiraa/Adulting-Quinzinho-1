@@ -674,6 +674,15 @@ export default function Admin() {
   });
 
   const [pushTestMsg, setPushTestMsg] = useState<string | null>(null);
+  const [targetUserSearch, setTargetUserSearch] = useState("");
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUserName, setTargetUserName] = useState("");
+  const [directTitle, setDirectTitle] = useState("Casa dos 20");
+  const [directBody, setDirectBody] = useState("");
+  const [directUrl, setDirectUrl] = useState("/");
+  const [directSending, setDirectSending] = useState(false);
+  const [directResult, setDirectResult] = useState<string | null>(null);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const pushTestMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/admin/push-test", {
@@ -798,6 +807,38 @@ export default function Admin() {
   });
 
   const openFeedbackCount = allFeedback.filter(f => f.status === "open").length;
+
+  const filteredTargetUsers = targetUserSearch.trim().length > 0
+    ? allUsers.filter(u =>
+        u.name.toLowerCase().includes(targetUserSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(targetUserSearch.toLowerCase())
+      ).slice(0, 6)
+    : [];
+
+  const handleSendDirect = async () => {
+    if (!targetUserId || !directBody.trim()) return;
+    setDirectSending(true);
+    setDirectResult(null);
+    try {
+      const res = await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: directTitle, body: directBody, url: directUrl, targetUserId }),
+      });
+      const data = await res.json();
+      if (data.sent > 0) {
+        setDirectResult(`✅ Enviado para ${data.sent} dispositivo(s) de ${targetUserName}`);
+        setDirectBody("");
+      } else {
+        setDirectResult(`⚠️ ${targetUserName} não tem dispositivos inscritos`);
+      }
+    } catch {
+      setDirectResult("❌ Erro ao enviar. Tente novamente.");
+    }
+    setDirectSending(false);
+    setTimeout(() => setDirectResult(null), 6000);
+  };
 
   return (
     <div className="w-full box-border px-4 pt-12 pb-24 space-y-5 animate-in fade-in duration-500">
@@ -1008,8 +1049,8 @@ export default function Admin() {
               <div className="border-t border-border" />
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="text-sm text-foreground">Nova assinatura</p>
-                  <p className="text-[11px] text-muted-foreground">Receber notificação quando alguém assinar premium</p>
+                  <p className="text-sm text-foreground">Pagamentos e cartões</p>
+                  <p className="text-[11px] text-muted-foreground">Nova assinatura, cartão adicionado e renovações</p>
                 </div>
                 <button
                   onClick={() => notifyPrefsMutation.mutate({ notifyNewSub: !notifyPrefs?.notifyNewSub })}
@@ -1025,6 +1066,111 @@ export default function Admin() {
               </div>
             </div>
           </div>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Send size={16} />
+              Enviar para Usuário Específico
+            </h3>
+
+            <div className="relative">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar usuário por nome ou email..."
+                  value={targetUserId ? targetUserName : targetUserSearch}
+                  onChange={(e) => {
+                    if (targetUserId) {
+                      setTargetUserId(null);
+                      setTargetUserName("");
+                    }
+                    setTargetUserSearch(e.target.value);
+                    setShowUserDropdown(true);
+                  }}
+                  onFocus={() => { if (!targetUserId) setShowUserDropdown(true); }}
+                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 150)}
+                  className="w-full pl-8 pr-8 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="input-target-user-search"
+                />
+                {targetUserId && (
+                  <button
+                    onClick={() => { setTargetUserId(null); setTargetUserName(""); setTargetUserSearch(""); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <XCircle size={14} />
+                  </button>
+                )}
+              </div>
+
+              {showUserDropdown && filteredTargetUsers.length > 0 && !targetUserId && (
+                <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                  {filteredTargetUsers.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        setTargetUserId(u.id);
+                        setTargetUserName(u.name);
+                        setTargetUserSearch("");
+                        setShowUserDropdown(false);
+                      }}
+                      className="w-full px-3 py-2.5 text-left hover:bg-muted/50 transition-colors flex items-center gap-2.5"
+                      data-testid={`target-user-option-${u.id}`}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-[10px] font-bold text-primary">{u.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {targetUserId && (
+              <div className="space-y-2 animate-in fade-in duration-200">
+                <input
+                  type="text"
+                  placeholder="Título"
+                  value={directTitle}
+                  onChange={e => setDirectTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="input-direct-title"
+                />
+                <textarea
+                  placeholder="Mensagem..."
+                  value={directBody}
+                  onChange={e => setDirectBody(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  data-testid="input-direct-body"
+                />
+                <input
+                  type="text"
+                  placeholder="URL (ex: /journey)"
+                  value={directUrl}
+                  onChange={e => setDirectUrl(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="input-direct-url"
+                />
+                <button
+                  onClick={handleSendDirect}
+                  disabled={directSending || !directBody.trim()}
+                  className="w-full py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  data-testid="button-send-direct"
+                >
+                  <Send size={14} />
+                  {directSending ? "Enviando..." : `Enviar para ${targetUserName}`}
+                </button>
+                {directResult && (
+                  <p className="text-xs text-center text-muted-foreground animate-in fade-in duration-200">{directResult}</p>
+                )}
+              </div>
+            )}
+          </div>
+
           <PushNotificationPanel />
         </div>
       )}

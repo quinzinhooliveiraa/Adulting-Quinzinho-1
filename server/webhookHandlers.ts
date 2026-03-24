@@ -1,7 +1,7 @@
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
 import { storage } from "./storage";
 import Stripe from "stripe";
-import { notifyAdminNewSubscription } from "./adminNotify";
+import { notifyAdminNewSubscription, notifyAdminCardAdded, notifyAdminRenewal } from "./adminNotify";
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -51,6 +51,7 @@ export class WebhookHandlers {
           const newTrialEnd = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
           await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
           console.log(`[stripe] trial_bonus: User ${user.email} granted +${daysToAdd} days, trial now until ${newTrialEnd.toISOString()}`);
+          notifyAdminCardAdded(user.name, user.email).catch(() => {});
           return;
         }
 
@@ -144,6 +145,10 @@ export class WebhookHandlers {
           premiumUntil: periodEnd,
         });
         console.log(`[stripe] User ${user.email} invoice paid, premium renewed until ${periodEnd.toISOString()}`);
+
+        if ((invoice as any).billing_reason === "subscription_cycle") {
+          notifyAdminRenewal(user.name, user.email).catch(() => {});
+        }
         break;
       }
 
