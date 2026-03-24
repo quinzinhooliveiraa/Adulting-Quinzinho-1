@@ -225,7 +225,7 @@ function JourneyStartConfirm({ journey, onStart }: { journey: JourneyData; onSta
         </p>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
         <button
           onClick={onStart}
           className="w-full py-3 rounded-2xl text-sm font-semibold text-white active:scale-[0.97] transition-all flex items-center justify-center gap-2"

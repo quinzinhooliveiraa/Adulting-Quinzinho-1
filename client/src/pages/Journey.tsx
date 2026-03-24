@@ -594,7 +594,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="fixed bottom-0 left-0 right-0 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="flex gap-3">
             {introStep > 0 && (
               <button
@@ -821,7 +821,7 @@ function JourneyOnboarding({ onComplete }: { onComplete: (order: string[]) => vo
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 pb-20 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 px-6 pt-6 bg-gradient-to-t from-background via-background to-transparent" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="flex gap-3">
           <button
             onClick={() => {
