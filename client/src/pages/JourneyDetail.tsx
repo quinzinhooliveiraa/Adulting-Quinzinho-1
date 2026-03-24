@@ -266,6 +266,7 @@ export default function JourneyDetail() {
   const [reportError, setReportError] = useState("");
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (!journeyId) return;
@@ -429,8 +430,6 @@ export default function JourneyDetail() {
 
   const progress = Math.round((completedDays.length / journey.totalDays) * 100);
   const isCompleted = completedDays.length >= journey.totalDays;
-
-  const [saveError, setSaveError] = useState("");
 
   const toggleDay = async (dayId: string) => {
     if (!isPremium) return;
