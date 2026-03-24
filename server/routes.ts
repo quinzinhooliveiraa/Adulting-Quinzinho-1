@@ -701,16 +701,22 @@ export async function registerRoutes(
     const redirectUri = `https://${domain}/api/auth/google-oauth/callback`;
     const state = randomBytes(16).toString("hex");
     req.session.oauthState = state;
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "openid email profile",
-      state,
-      access_type: "offline",
-      prompt: "select_account",
+    req.session.save((err) => {
+      if (err) {
+        console.error("[google-oauth] session save error:", err);
+        return res.status(500).json({ message: "Erro de sessão" });
+      }
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid email profile",
+        state,
+        access_type: "offline",
+        prompt: "select_account",
+      });
+      res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
     });
-    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
   });
 
   app.get("/api/auth/google-oauth/callback", async (req: Request, res: Response) => {
