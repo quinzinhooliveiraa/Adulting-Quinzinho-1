@@ -371,13 +371,19 @@ export async function registerRoutes(
 
   app.patch("/api/auth/profile", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { name, profilePhoto } = req.body;
+      const { name, profilePhoto, birthYear, interests } = req.body;
       const updateData: any = {};
       if (name && typeof name === "string" && name.trim().length >= 2) {
         updateData.name = name.trim();
       }
       if (profilePhoto !== undefined) {
         updateData.profilePhoto = profilePhoto;
+      }
+      if (birthYear !== undefined && typeof birthYear === "number" && birthYear >= 1970 && birthYear <= new Date().getFullYear()) {
+        updateData.birthYear = birthYear;
+      }
+      if (interests !== undefined && Array.isArray(interests)) {
+        updateData.interests = interests.filter((i: any) => typeof i === "string");
       }
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "Nenhum dado válido para atualizar" });
@@ -1430,6 +1436,49 @@ export async function registerRoutes(
       res.json({ eventCounts, dailyActive });
     } catch {
       res.status(500).json({ error: "Erro ao buscar analytics" });
+    }
+  });
+
+  app.get("/api/admin/demographics", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const now = new Date().getFullYear();
+      const ageRanges: Record<string, number> = {
+        "15–19": 0, "20–22": 0, "23–25": 0, "26–29": 0, "30–35": 0, "36+": 0,
+      };
+      const interestCounts: Record<string, number> = {};
+      let withAge = 0;
+      let withInterests = 0;
+      for (const u of allUsers) {
+        if (u.birthYear) {
+          withAge++;
+          const age = now - u.birthYear;
+          if (age <= 19) ageRanges["15–19"]++;
+          else if (age <= 22) ageRanges["20–22"]++;
+          else if (age <= 25) ageRanges["23–25"]++;
+          else if (age <= 29) ageRanges["26–29"]++;
+          else if (age <= 35) ageRanges["30–35"]++;
+          else ageRanges["36+"]++;
+        }
+        if (u.interests && u.interests.length > 0) {
+          withInterests++;
+          for (const interest of u.interests) {
+            interestCounts[interest] = (interestCounts[interest] || 0) + 1;
+          }
+        }
+      }
+      const topInterests = Object.entries(interestCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([interest, count]) => ({ interest, count }));
+      res.json({
+        total: allUsers.length,
+        withAge,
+        withInterests,
+        ageRanges: Object.entries(ageRanges).map(([range, count]) => ({ range, count })),
+        topInterests,
+      });
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar dados demográficos" });
     }
   });
 

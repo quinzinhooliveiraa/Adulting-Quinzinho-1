@@ -32,9 +32,22 @@ function PwaSkipButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-type StepId = "welcome" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
+type StepId = "welcome" | "profile" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
 
-const STEP_ORDER: StepId[] = ["welcome", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
+const STEP_ORDER: StepId[] = ["welcome", "profile", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
+
+const INTERESTS = [
+  { id: "autoconhecimento", label: "Autoconhecimento", emoji: "🧠" },
+  { id: "saude-mental", label: "Saúde Mental", emoji: "💙" },
+  { id: "relacoes", label: "Relações", emoji: "❤️" },
+  { id: "carreira", label: "Carreira", emoji: "💼" },
+  { id: "proposito", label: "Propósito", emoji: "✨" },
+  { id: "criatividade", label: "Criatividade", emoji: "🎨" },
+  { id: "familia", label: "Família", emoji: "👨‍👩‍👦" },
+  { id: "amizades", label: "Amizades", emoji: "🤝" },
+  { id: "financas", label: "Finanças", emoji: "💰" },
+  { id: "espiritualidade", label: "Espiritualidade", emoji: "🌟" },
+];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const savedStep = parseInt(localStorage.getItem("casa-onboarding-step") || "0", 10);
@@ -70,6 +83,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   };
 
   const next = () => {
+    if (currentStep === "profile") saveProfile();
     if (stepIndex < STEP_ORDER.length - 1) goTo(stepIndex + 1);
   };
 
@@ -100,6 +114,30 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   };
 
   const [checkoutError, setCheckoutError] = useState("");
+  const [profileAge, setProfileAge] = useState<number | null>(null);
+  const [profileInterests, setProfileInterests] = useState<string[]>([]);
+
+  const toggleInterest = (id: string) => {
+    setProfileInterests(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const saveProfile = async () => {
+    if (!profileAge && profileInterests.length === 0) return;
+    const body: any = {};
+    if (profileAge) body.birthYear = new Date().getFullYear() - profileAge;
+    if (profileInterests.length > 0) body.interests = profileInterests;
+    try {
+      await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+    } catch {
+    }
+  };
 
   const handleAddCardForBonus = async () => {
     setCheckoutLoading(true);
@@ -183,6 +221,71 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 <p className="text-xs text-muted-foreground/70 italic px-4 stagger-3">
                   Baseado no livro de Quinzinho Oliveira
                 </p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === "profile" && (
+            <div className="flex flex-col space-y-6 w-full">
+              <div className="text-center space-y-2">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <span className="text-3xl">👤</span>
+                </div>
+                <h2 className="text-2xl font-serif text-foreground">Conta-nos sobre ti</h2>
+                <p className="text-sm text-muted-foreground">Ajuda-nos a personalizar a tua experiência</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quantos anos tens?</p>
+                <div className="flex flex-wrap gap-2">
+                  {[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35].map(age => (
+                    <button
+                      key={age}
+                      onClick={() => setProfileAge(profileAge === age ? null : age)}
+                      data-testid={`button-age-${age}`}
+                      className={`w-12 h-10 rounded-xl text-sm font-medium transition-all ${
+                        profileAge === age
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {age}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setProfileAge(profileAge === 36 ? null : 36)}
+                    data-testid="button-age-36plus"
+                    className={`px-3 h-10 rounded-xl text-sm font-medium transition-all ${
+                      profileAge === 36
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    36+
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que mais te importa agora?</p>
+                <p className="text-[11px] text-muted-foreground/70">Podes escolher vários</p>
+                <div className="flex flex-wrap gap-2">
+                  {INTERESTS.map(interest => (
+                    <button
+                      key={interest.id}
+                      onClick={() => toggleInterest(interest.id)}
+                      data-testid={`button-interest-${interest.id}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-all ${
+                        profileInterests.includes(interest.id)
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      <span>{interest.emoji}</span>
+                      {interest.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -693,6 +796,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
                   <ArrowRight className="ml-2" size={18} />
                 </Button>
+              )}
+
+              {currentStep === "profile" && !profileAge && profileInterests.length === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center -mt-1">Podes saltar e preencher mais tarde</p>
               )}
 
               {stepIndex > 0 && (

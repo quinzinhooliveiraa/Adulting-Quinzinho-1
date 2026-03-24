@@ -49,7 +49,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByAppleId(appleId: string): Promise<User | undefined>;
-  updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "passwordResetToken" | "passwordResetExpires" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled" | "trialBonusClaimed">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "passwordResetToken" | "passwordResetExpires" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled" | "trialBonusClaimed" | "birthYear" | "interests">>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
 
@@ -159,7 +159,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "passwordResetToken" | "passwordResetExpires" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "passwordResetToken" | "passwordResetExpires" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled" | "birthYear" | "interests">>): Promise<User | undefined> {
     const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return updated;
   }

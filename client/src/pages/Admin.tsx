@@ -663,6 +663,17 @@ export default function Admin() {
     enabled: activeTab === "analytics",
   });
 
+  const { data: demographics } = useQuery<{
+    total: number;
+    withAge: number;
+    withInterests: number;
+    ageRanges: { range: string; count: number }[];
+    topInterests: { interest: string; count: number }[];
+  }>({
+    queryKey: ["/api/admin/demographics"],
+    enabled: activeTab === "analytics",
+  });
+
   const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
     queryKey: ["/api/admin/push-status"],
     refetchOnWindowFocus: true,
@@ -1276,6 +1287,73 @@ export default function Admin() {
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">ações totais</p>
               <p className="text-[9px] text-muted-foreground">últimos {analyticsDays}d</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Perfil do Público</h3>
+              {demographics && (
+                <span className="text-[10px] text-muted-foreground">
+                  {demographics.withAge}/{demographics.total} responderam
+                </span>
+              )}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Distribuição de idades</p>
+              {!demographics || demographics.withAge === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">Ainda sem dados</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {demographics.ageRanges.map((item) => {
+                    const max = Math.max(...demographics.ageRanges.map(r => r.count));
+                    const pct = max > 0 ? (item.count / max) * 100 : 0;
+                    return (
+                      <div key={item.range} className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-10 shrink-0">{item.range}</span>
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary/70 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] font-semibold text-foreground w-5 text-right">{item.count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Principais interesses</p>
+              {!demographics || demographics.topInterests.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">Ainda sem dados</p>
+              ) : (
+                <div className="space-y-2">
+                  {demographics.topInterests.slice(0, 6).map((item) => {
+                    const max = demographics.topInterests[0]?.count || 1;
+                    const pct = (item.count / max) * 100;
+                    const emojis: Record<string, string> = {
+                      "autoconhecimento": "🧠", "saude-mental": "💙", "relacoes": "❤️",
+                      "carreira": "💼", "proposito": "✨", "criatividade": "🎨",
+                      "familia": "👨‍👩‍👦", "amizades": "🤝", "financas": "💰", "espiritualidade": "🌟"
+                    };
+                    return (
+                      <div key={item.interest} className="space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-foreground capitalize flex items-center gap-1">
+                            <span>{emojis[item.interest] || "•"}</span>
+                            {item.interest.replace(/-/g, " ")}
+                          </span>
+                          <span className="text-xs font-semibold text-foreground">{item.count}</span>
+                        </div>
+                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

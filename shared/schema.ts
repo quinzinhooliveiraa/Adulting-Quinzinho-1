@@ -31,6 +31,8 @@ export const users = pgTable("users", {
   adminNotifyNewSub: boolean("admin_notify_new_sub").notNull().default(true),
   lastActiveAt: timestamp("last_active_at"),
   pwaInstalled: boolean("pwa_installed").notNull().default(false),
+  birthYear: integer("birth_year"),
+  interests: text("interests").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
