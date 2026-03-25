@@ -590,14 +590,25 @@ export class DatabaseStorage implements IStorage {
       ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
       : "";
     const rows = await db.execute(drizzleSql`
-      SELECT TO_CHAR(ue.created_at, 'YYYY-MM-DD') as date, COUNT(DISTINCT ue.user_id) as count
+      SELECT TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
+             COUNT(DISTINCT ue.user_id) as count
       FROM user_events ue
       WHERE ue.created_at >= ${since} AND ue.user_id IS NOT NULL
       ${drizzleSql.raw(adminClause)}
-      GROUP BY TO_CHAR(ue.created_at, 'YYYY-MM-DD')
+      GROUP BY TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
       ORDER BY date ASC
     `);
-    return (rows.rows as any[]).map(r => ({ date: r.date, count: Number(r.count) }));
+    const dataMap = new Map<string, number>(
+      (rows.rows as any[]).map(r => [r.date as string, Number(r.count)])
+    );
+    const result: { date: string; count: number }[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const brt = new Date(d.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+      const dateStr = `${brt.getFullYear()}-${String(brt.getMonth() + 1).padStart(2, "0")}-${String(brt.getDate()).padStart(2, "0")}`;
+      result.push({ date: dateStr, count: dataMap.get(dateStr) ?? 0 });
+    }
+    return result;
   }
 }
 

@@ -1254,30 +1254,53 @@ export default function Admin() {
             </span>
           </button>
 
-          {analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-3">Utilizadores ativos por dia</p>
-              <div className="flex items-end gap-0.5 h-16">
-                {analyticsData.dailyActive.map((d, i) => {
-                  const max = Math.max(...analyticsData.dailyActive.map(x => x.count));
-                  const pct = max > 0 ? (d.count / max) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
-                      <div
-                        className="w-full rounded-sm bg-primary/70 hover:bg-primary transition-colors"
-                        style={{ height: `${Math.max(pct, 4)}%` }}
-                        title={`${d.date}: ${d.count}`}
-                      />
+          {analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (() => {
+            const max = Math.max(...analyticsData.dailyActive.map(x => x.count), 1);
+            const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+            const total = analyticsData.dailyActive.reduce((s, d) => s + d.count, 0);
+            const todayCount = analyticsData.dailyActive.find(d => d.date === today)?.count ?? 0;
+            return (
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos por dia</p>
+                  <div className="flex gap-3 text-right">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{todayCount}</p>
+                      <p className="text-[9px] text-muted-foreground">hoje</p>
                     </div>
-                  );
-                })}
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{total}</p>
+                      <p className="text-[9px] text-muted-foreground">total {analyticsDays}d</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-end gap-px h-20">
+                  {analyticsData.dailyActive.map((d, i) => {
+                    const pct = (d.count / max) * 100;
+                    const isToday = d.date === today;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center group relative" style={{ height: "100%", justifyContent: "flex-end" }}>
+                        {d.count > 0 && (
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-foreground text-background text-[8px] px-1 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                            {d.date.slice(5)}: {d.count}
+                          </div>
+                        )}
+                        <div
+                          className={`w-full rounded-sm transition-colors ${isToday ? "bg-primary" : d.count === 0 ? "bg-muted/40" : "bg-primary/60 hover:bg-primary/80"}`}
+                          style={{ height: `${d.count === 0 ? 2 : Math.max(pct, 6)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground mt-1.5">
+                  <span>{analyticsData.dailyActive[0]?.date.slice(5)}</span>
+                  <span className="text-primary font-medium">hoje</span>
+                  <span>{analyticsData.dailyActive[analyticsData.dailyActive.length - 1]?.date.slice(5)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
-                <span>{analyticsData.dailyActive[0]?.date.slice(5)}</span>
-                <span>{analyticsData.dailyActive[analyticsData.dailyActive.length - 1]?.date.slice(5)}</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3">Funcionalidades mais usadas</p>
