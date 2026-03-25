@@ -2867,14 +2867,14 @@ export async function processAutoNotifications() {
         await storage.createAutoNotificationLog(user.id, config.type);
         await storage.createAutoNotificationLog(user.id, "__any__cooldown__");
         sentCount++;
-        log(`[auto-notif] sent '${config.type}' to user ${user.id.slice(0, 8)} at Brazil hour ${brazilHour}`);
+        console.log(`[auto-notif] sent '${config.type}' to user ${user.id.slice(0, 8)} at Brazil hour ${brazilHour}`);
       }
       break;
     }
   }
 
   if (sentCount > 0) {
-    log(`[auto-notif] cycle complete: sent ${sentCount} notification(s) at Brazil hour ${brazilHour}`);
+    console.log(`[auto-notif] cycle complete: sent ${sentCount} notification(s) at Brazil hour ${brazilHour}`);
   }
 }
 

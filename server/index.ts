@@ -153,7 +153,7 @@ app.use((req, res, next) => {
         .then(() => log("Auto notifications seeded"))
         .catch((err) => log(`Auto notification seed error: ${err}`));
 
-      setInterval(async () => {
+      const runNotificationCycle = async () => {
         try {
           const dueNotifs = await storage.getDueNotifications();
           if (dueNotifs.length > 0) {
@@ -197,7 +197,10 @@ app.use((req, res, next) => {
         } catch (err) {
           log(`Auto notification error: ${err}`);
         }
-      }, 5 * 60 * 1000);
+      };
+
+      setTimeout(runNotificationCycle, 10 * 1000);
+      setInterval(runNotificationCycle, 60 * 1000);
     },
   );
 })();
