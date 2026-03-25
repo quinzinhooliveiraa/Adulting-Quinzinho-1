@@ -27,6 +27,7 @@ interface AdminUser {
   isMasterAdmin?: boolean;
   lastActiveAt: string | null;
   pwaInstalled: boolean;
+  trialBonusClaimed?: boolean;
 }
 
 const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
@@ -97,6 +98,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const [transferError, setTransferError] = useState("");
   const [showGrantPremium, setShowGrantPremium] = useState(false);
   const [grantDays, setGrantDays] = useState(30);
+  const [grantingBonus, setGrantingBonus] = useState(false);
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
@@ -304,6 +306,24 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                         data-testid={`button-end-trial-${user.id}`}
                       >
                         <XCircle size={12} /> Encerrar Trial
+                      </button>
+                    )}
+                    {!user.trialBonusClaimed && (
+                      <button
+                        disabled={grantingBonus}
+                        onClick={async () => {
+                          setGrantingBonus(true);
+                          try {
+                            await fetch(`/api/admin/users/${user.id}/grant-trial-bonus`, { method: "POST", credentials: "include" });
+                            queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                          } finally {
+                            setGrantingBonus(false);
+                          }
+                        }}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 hover:bg-green-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                        data-testid={`button-grant-bonus-${user.id}`}
+                      >
+                        <Star size={12} /> {grantingBonus ? "..." : "+16 dias bónus"}
                       </button>
                     )}
                   </>

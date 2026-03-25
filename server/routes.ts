@@ -1109,6 +1109,7 @@ export async function registerRoutes(
           isMasterAdmin: u.email === ADMIN_EMAIL,
           lastActiveAt: u.lastActiveAt,
           pwaInstalled: u.pwaInstalled,
+          trialBonusClaimed: u.trialBonusClaimed,
         };
       });
       res.json(usersWithStatus);
@@ -1196,6 +1197,31 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Dados inválidos" });
       }
       res.status(500).json({ message: "Erro ao atualizar usuário" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/grant-trial-bonus", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "Utilizador não encontrado" });
+
+      const now = Date.now();
+      const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
+        ? new Date(user.trialEndsAt)
+        : new Date(now);
+      const newTrialEnd = new Date(baseDate.getTime() + 16 * 24 * 60 * 60 * 1000);
+
+      const updated = await storage.updateUser(userId, {
+        trialEndsAt: newTrialEnd,
+        trialBonusClaimed: true,
+      });
+      if (!updated) return res.status(500).json({ message: "Erro ao atualizar" });
+
+      console.log(`[admin] Granted +16 trial days to ${user.email}, now until ${newTrialEnd.toISOString()}`);
+      res.json({ ok: true, trialEndsAt: updated.trialEndsAt, trialBonusClaimed: updated.trialBonusClaimed });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao conceder bónus" });
     }
   });
 
