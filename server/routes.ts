@@ -2833,6 +2833,35 @@ const AUTO_NOTIFICATION_DEFAULTS = [
   },
 ];
 
+export async function recoverMissedTrialBonuses() {
+  try {
+    const { db } = await import("./db");
+    const { sql } = await import("drizzle-orm");
+    const result = await db.execute(
+      sql`SELECT customer, metadata FROM stripe.checkout_sessions
+          WHERE mode = 'setup' AND status = 'complete'
+          AND metadata->>'purpose' = 'trial_bonus'`
+    );
+    const rows = result.rows as { customer: string; metadata: any }[];
+    let fixed = 0;
+    for (const row of rows) {
+      const user = await storage.getUserByStripeCustomerId(row.customer);
+      if (!user || user.trialBonusClaimed) continue;
+      const now = Date.now();
+      const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
+        ? new Date(user.trialEndsAt)
+        : new Date(now);
+      const newTrialEnd = new Date(baseDate.getTime() + 16 * 24 * 60 * 60 * 1000);
+      await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+      console.log(`[recover] Granted +16 days to ${user.email}, trial now until ${newTrialEnd.toISOString()}`);
+      fixed++;
+    }
+    if (fixed > 0) console.log(`[recover] Fixed ${fixed} user(s) with missed trial bonus`);
+  } catch (err: any) {
+    console.error(`[recover] Error recovering missed bonuses: ${err.message}`);
+  }
+}
+
 export async function seedAutoNotifications() {
   for (const config of AUTO_NOTIFICATION_DEFAULTS) {
     const existing = await storage.getAutoNotificationConfig(config.type);

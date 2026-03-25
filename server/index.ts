@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes, seedAutoNotifications, processAutoNotifications } from "./routes";
+import { registerRoutes, seedAutoNotifications, processAutoNotifications, recoverMissedTrialBonuses } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
@@ -152,6 +152,9 @@ app.use((req, res, next) => {
       seedAutoNotifications()
         .then(() => log("Auto notifications seeded"))
         .catch((err) => log(`Auto notification seed error: ${err}`));
+
+      recoverMissedTrialBonuses()
+        .catch((err) => log(`Recover trial bonus error: ${err}`));
 
       const runNotificationCycle = async () => {
         try {
