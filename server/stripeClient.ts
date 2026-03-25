@@ -17,5 +17,5 @@ export async function getStripeSync(): Promise<StripeSync> {
   const apiKey = getStripeKey();
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL required");
-  return new StripeSync({ stripeSecretKey: apiKey, databaseUrl });
+  return new StripeSync({ stripeSecretKey: apiKey, databaseUrl, autoExpandLists: false });
 }

@@ -2823,27 +2823,41 @@ const AUTO_NOTIFICATION_DEFAULTS = [
 
 export async function recoverMissedTrialBonuses() {
   try {
-    const { db } = await import("./db");
-    const { sql } = await import("drizzle-orm");
-    const result = await db.execute(
-      sql`SELECT customer, metadata FROM stripe.checkout_sessions
-          WHERE mode = 'setup' AND status = 'complete'
-          AND metadata->>'purpose' = 'trial_bonus'`
-    );
-    const rows = result.rows as { customer: string; metadata: any }[];
+    const { getUncachableStripeClient } = await import("./stripeClient");
+    const stripe = await getUncachableStripeClient();
+    let hasMore = true;
+    let startingAfter: string | undefined;
     let fixed = 0;
-    for (const row of rows) {
-      const user = await storage.getUserByStripeCustomerId(row.customer);
-      if (!user || user.trialBonusClaimed) continue;
-      const now = Date.now();
-      const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
-        ? new Date(user.trialEndsAt)
-        : new Date(now);
-      const newTrialEnd = new Date(baseDate.getTime() + 16 * 24 * 60 * 60 * 1000);
-      await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
-      console.log(`[recover] Granted +16 days to ${user.email}, trial now until ${newTrialEnd.toISOString()}`);
-      fixed++;
+
+    while (hasMore) {
+      const sessions = await stripe.checkout.sessions.list({
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+
+      for (const session of sessions.data) {
+        if (session.mode !== "setup" || session.status !== "complete") continue;
+        if ((session.metadata as any)?.purpose !== "trial_bonus") continue;
+        const customerId = session.customer as string;
+        if (!customerId) continue;
+        const user = await storage.getUserByStripeCustomerId(customerId);
+        if (!user || user.trialBonusClaimed) continue;
+        const now = Date.now();
+        const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
+          ? new Date(user.trialEndsAt)
+          : new Date(now);
+        const newTrialEnd = new Date(baseDate.getTime() + 16 * 24 * 60 * 60 * 1000);
+        await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+        console.log(`[recover] Granted +16 days to ${user.email}, trial now until ${newTrialEnd.toISOString()}`);
+        fixed++;
+      }
+
+      hasMore = sessions.has_more;
+      if (hasMore && sessions.data.length > 0) {
+        startingAfter = sessions.data[sessions.data.length - 1].id;
+      }
     }
+
     if (fixed > 0) console.log(`[recover] Fixed ${fixed} user(s) with missed trial bonus`);
   } catch (err: any) {
     console.error(`[recover] Error recovering missed bonuses: ${err.message}`);

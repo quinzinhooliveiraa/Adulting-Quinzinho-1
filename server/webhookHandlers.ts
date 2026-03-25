@@ -1,4 +1,4 @@
-import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
+import { getUncachableStripeClient } from "./stripeClient";
 import { storage } from "./storage";
 import Stripe from "stripe";
 import { notifyAdminNewSubscription, notifyAdminCardAdded, notifyAdminRenewal } from "./adminNotify";
@@ -23,12 +23,6 @@ export class WebhookHandlers {
       console.error(`[stripe webhook] Error handling event ${event.type}:`, err.message);
     }
 
-    try {
-      const sync = await getStripeSync();
-      await sync.processWebhook(payload, signature);
-    } catch (err: any) {
-      console.error(`[stripe sync] Non-critical sync error for ${event.type}:`, err.message);
-    }
   }
 
   static async handleSubscriptionEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
