@@ -14,9 +14,6 @@ export class WebhookHandlers {
       );
     }
 
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
-
     const stripe = await getUncachableStripeClient();
     const event = JSON.parse(payload.toString()) as Stripe.Event;
 
@@ -24,6 +21,13 @@ export class WebhookHandlers {
       await WebhookHandlers.handleSubscriptionEvent(event, stripe);
     } catch (err: any) {
       console.error(`[stripe webhook] Error handling event ${event.type}:`, err.message);
+    }
+
+    try {
+      const sync = await getStripeSync();
+      await sync.processWebhook(payload, signature);
+    } catch (err: any) {
+      console.error(`[stripe sync] Non-critical sync error for ${event.type}:`, err.message);
     }
   }
 
