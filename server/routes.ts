@@ -2795,17 +2795,22 @@ export async function seedAutoNotifications() {
 const AUTO_NOTIFICATION_PRIORITY: string[] = [
   "streak_risk",
   "reengagement",
-  "journey_nudge",
+  "daily_reminder",
   "morning_prompt",
+  "daily_motivation",
+  "journey_nudge",
   "evening_reflection",
   "daily_reflection",
   "mood_checkin",
   "streak_celebration",
-  "daily_motivation",
-  "daily_reminder",
 ];
 
 export async function processAutoNotifications() {
+  const brazilHour = getBrazilHour();
+  if (brazilHour < 7 || brazilHour >= 23) {
+    return;
+  }
+
   const configs = await storage.getAutoNotificationConfigs();
   const activeConfigs = configs.filter(c => c.isActive);
   if (activeConfigs.length === 0) return;
@@ -2826,6 +2831,7 @@ export async function processAutoNotifications() {
 
   const allUsers = await storage.getAllUsers();
   const activeUsers = allUsers.filter(u => u.isActive);
+  let sentCount = 0;
 
   for (const user of activeUsers) {
     const subs = await storage.getPushSubscriptions(user.id);
@@ -2844,21 +2850,31 @@ export async function processAutoNotifications() {
       const result = await buildAutoNotificationBody(config, user.id);
       const payload = JSON.stringify({ title: config.title, body: result.body, url: result.url });
 
+      let delivered = false;
       for (const sub of subs) {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
             payload
           );
+          delivered = true;
         } catch {
           await storage.deletePushSubscription(user.id, sub.endpoint);
         }
       }
 
-      await storage.createAutoNotificationLog(user.id, config.type);
-      await storage.createAutoNotificationLog(user.id, "__any__cooldown__");
+      if (delivered) {
+        await storage.createAutoNotificationLog(user.id, config.type);
+        await storage.createAutoNotificationLog(user.id, "__any__cooldown__");
+        sentCount++;
+        log(`[auto-notif] sent '${config.type}' to user ${user.id.slice(0, 8)} at Brazil hour ${brazilHour}`);
+      }
       break;
     }
+  }
+
+  if (sentCount > 0) {
+    log(`[auto-notif] cycle complete: sent ${sentCount} notification(s) at Brazil hour ${brazilHour}`);
   }
 }
 
