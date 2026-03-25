@@ -2781,6 +2781,14 @@ const AUTO_NOTIFICATION_DEFAULTS = [
     triggerHours: 24,
     isActive: true,
   },
+  {
+    type: "journey_start",
+    title: "O teu próximo passo está aqui 🌱",
+    body: "Ainda não começaste nenhuma jornada. Escolhe uma — é só 10 minutos por dia.",
+    url: "/journeys",
+    triggerHours: 48,
+    isActive: true,
+  },
 ];
 
 export async function seedAutoNotifications() {
@@ -2798,6 +2806,7 @@ const AUTO_NOTIFICATION_PRIORITY: string[] = [
   "daily_reminder",
   "morning_prompt",
   "daily_motivation",
+  "journey_start",
   "journey_nudge",
   "evening_reflection",
   "daily_reflection",
@@ -2973,10 +2982,22 @@ async function checkAutoNotificationCondition(type: string, userId: string): Pro
       const daysSince = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince >= 5;
     }
+    case "journey_start": {
+      const progress = await storage.getJourneyProgress(userId);
+      return progress.length === 0;
+    }
     default:
       return false;
   }
 }
+
+const JOURNEY_START_MESSAGES = [
+  "Escolhe a tua primeira jornada de 30 dias. Cada grande mudança começa com um pequeno passo 🌱",
+  "A Casa dos 20 tem 6 jornadas de autoconhecimento para ti. Qual faz mais sentido agora? 💛",
+  "30 dias. 10 minutos por dia. Uma jornada para te conheceres melhor. Começa hoje 🚀",
+  "Ainda não escolheste a tua jornada. Não há momento perfeito — há o momento presente 🌿",
+  "Autoconhecimento, Propósito, Relações, Ansiedade... Uma das jornadas foi feita para o que sentes agora.",
+];
 
 async function buildAutoNotificationBody(config: { type: string; body: string; url: string }, userId: string): Promise<{ body: string; url: string }> {
   let body = config.body;
@@ -2998,6 +3019,12 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
     for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
     const index = Math.abs(seed + 7) % DEFAULT_REMINDERS.length;
     body = DEFAULT_REMINDERS[index];
+  }
+
+  if (config.type === "journey_start") {
+    const logs = await storage.getAutoNotificationLog(userId, "journey_start", 99999);
+    const seed = userId.charCodeAt(0) + (logs ? 1 : 0) + Math.floor(Date.now() / (48 * 60 * 60 * 1000));
+    body = JOURNEY_START_MESSAGES[Math.abs(seed) % JOURNEY_START_MESSAGES.length];
   }
 
   if (config.type === "morning_prompt") {
