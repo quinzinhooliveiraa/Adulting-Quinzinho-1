@@ -2449,20 +2449,8 @@ REGRAS:
       const user = await storage.getUser(userId);
       if (!user) return res.status(401).json({ error: "Não autenticado" });
 
-      const updateData: any = { pwaInstalled: true };
-
-      if (!user.trialBonusClaimed) {
-        const now = Date.now();
-        const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
-          ? new Date(user.trialEndsAt)
-          : new Date(now);
-        updateData.trialEndsAt = new Date(baseDate.getTime() + 16 * 24 * 60 * 60 * 1000);
-        updateData.trialBonusClaimed = true;
-        console.log(`[pwa] Auto-granted +16 trial days to ${user.email}, now until ${updateData.trialEndsAt.toISOString()}`);
-      }
-
-      const updated = await storage.updateUser(userId, updateData);
-      res.json({ ok: true, bonusGranted: !user.trialBonusClaimed, trialEndsAt: updated?.trialEndsAt });
+      await storage.updateUser(userId, { pwaInstalled: true });
+      res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Erro" });
     }
