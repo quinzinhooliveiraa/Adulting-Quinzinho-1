@@ -123,6 +123,7 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
 }) {
   const realChapters = chapters.filter(c => c.pageType === "chapter");
   const frontMatter = chapters.filter(c => c.pageType === "front-matter");
+  const epilogues = chapters.filter(c => c.pageType === "epilogue");
 
   return (
     <div className="flex-1 overflow-y-auto px-6 pb-12 bk-bg">
@@ -175,6 +176,22 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
           );
         })}
       </div>
+
+      {/* Epilogue */}
+      {epilogues.length > 0 && (
+        <div className="mt-6">
+          {epilogues.map((ch) => {
+            const idx = chapters.findIndex(c => c.id === ch.id);
+            return (
+              <button key={ch.id} onClick={() => onSelect(idx)}
+                className="w-full flex items-baseline justify-between py-2.5 border-b bk-sep group active:opacity-60">
+                <span className="bk-serif text-sm italic bk-ink group-hover:bk-accent">{ch.title}</span>
+                <span className="text-[10px] font-mono bk-muted ml-2">—</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -193,7 +210,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   onGoToChapter?: (idx: number) => void;
 }) {
   const canRead = purchased || chapter.isPreview;
-  const isFrontMatter = chapter.pageType === "front-matter";
+  const isFrontMatter = chapter.pageType === "front-matter" || chapter.pageType === "epilogue";
 
   const { data, isLoading } = useQuery<{ content: string }>({
     queryKey: ["/api/book/chapters", chapter.id, "content"],
@@ -253,8 +270,9 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 
   // Special Sumário rendering — dynamic TOC from chapters list
   if (rawContent === "__TOC__" && allChapters) {
-    const regularChapters = allChapters.filter(c => c.pageType === "chapter");
     const fmChapters = allChapters.filter(c => c.pageType === "front-matter" && c.title !== "Sumário");
+    const regularChapters = allChapters.filter(c => c.pageType === "chapter");
+    const epilogueChapters = allChapters.filter(c => c.pageType === "epilogue");
     return (
       <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
         <div className="max-w-[62ch] mx-auto px-7 pb-16">
@@ -289,6 +307,17 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
                   style={{ color: "var(--bk-accent)" }}>{ch.order}</span>
                 <span className="bk-serif text-sm bk-ink leading-snug">{ch.title}</span>
                 {isLocked && <LockKeyhole size={11} className="shrink-0 mt-1 ml-auto bk-muted" />}
+              </button>
+            );
+          })}
+          {/* Epilogue entries (Mensagem ao Leitor) */}
+          {epilogueChapters.map(ch => {
+            const idx = allChapters.indexOf(ch);
+            return (
+              <button key={ch.id} onClick={() => onGoToChapter?.(idx)}
+                className="w-full flex items-center gap-3 py-3 border-b bk-sep text-left active:opacity-60 group">
+                <BookMarked size={13} className="shrink-0 opacity-50" style={{ color: "var(--bk-accent)" }} />
+                <span className="bk-serif text-sm bk-ink italic">{ch.title}</span>
               </button>
             );
           })}
@@ -500,7 +529,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
   function pageLabel() {
     if (!chapter) return "";
-    if (chapter.pageType === "front-matter") return chapter.title;
+    if (chapter.pageType === "front-matter" || chapter.pageType === "epilogue") return chapter.title;
     const pdfPageNum = chapter.pdfPage != null ? chapter.pdfPage + subPage : null;
     return pdfPageNum ? `Página ${pdfPageNum}` : `Cap. ${chapter.order}`;
   }
@@ -807,7 +836,7 @@ export default function Book() {
               <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
                 {sortedChapters.map((chapter, idx) => {
                   const isLocked = !purchased && !chapter.isPreview;
-                  const isFM = chapter.pageType === "front-matter";
+                  const isFM = chapter.pageType === "front-matter" || chapter.pageType === "epilogue";
                   return (
                     <button key={chapter.id} onClick={() => openChapter(idx)}
                       data-testid={`chapter-read-${chapter.id}`}
