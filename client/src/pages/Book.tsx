@@ -216,24 +216,23 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
 
         {/* Body text */}
         {isFrontMatter && chapter.tag === "DEDICATÓRIA" ? (
-          /* Dedication: centered italic */
-          <div className="text-center space-y-4 py-4">
-            {content.split("\n\n").map((para, i) => (
-              <p key={i} className="bk-serif text-base italic bk-ink leading-relaxed">{para}</p>
-            ))}
-          </div>
+          /* Dedication: centered italic, pre-wrap preserves line breaks */
+          <p className="bk-serif text-base italic bk-ink leading-relaxed text-center"
+            style={{ whiteSpace: "pre-wrap" }}>
+            {content}
+          </p>
         ) : (
-          /* Regular prose */
-          <div className="space-y-0">
-            {content.split("\n\n").map((para, i) => (
-              para.trim() ? (
-                <p key={i} className="bk-serif bk-ink leading-[1.95] mb-5"
-                  style={{ fontSize: "16.5px", textAlign: "justify", hyphens: "auto", letterSpacing: "0.01em" } as React.CSSProperties}>
-                  {para.trim()}
-                </p>
-              ) : <div key={i} className="h-3" />
-            ))}
-          </div>
+          /* Regular prose — pre-wrap keeps every \n exactly as in the PDF */
+          <p className="bk-serif bk-ink"
+            style={{
+              fontSize: "16.5px",
+              lineHeight: "1.95",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              letterSpacing: "0.01em",
+            } as React.CSSProperties}>
+            {content}
+          </p>
         )}
 
         {/* End-of-page ornament */}
