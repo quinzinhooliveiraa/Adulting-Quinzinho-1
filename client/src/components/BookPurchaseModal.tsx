@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, BookOpen, CreditCard, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
+import { X, BookOpen, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface BookPurchaseModalProps {
@@ -16,7 +21,7 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [cardReady, setCardReady] = useState(false);
+  const [ready, setReady] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,28 +30,17 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
     setLoading(true);
     setError("");
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) return;
-
     try {
-      const res = await fetch("/api/book/create-payment-intent", {
-        method: "POST",
-        credentials: "include",
+      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: window.location.href,
+        },
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Erro ao iniciar pagamento.");
-        setLoading(false);
-        return;
-      }
-
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-        data.clientSecret,
-        { payment_method: { card: cardElement } }
-      );
 
       if (stripeError) {
-        setError(stripeError.message || "Erro no pagamento. Verifica os dados do cartão.");
+        setError(stripeError.message || "Erro no pagamento. Verifica os dados.");
         setLoading(false);
         return;
       }
@@ -66,6 +60,7 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
         }
         setSuccess(true);
         queryClient.invalidateQueries({ queryKey: ["/api/book/purchase-status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/book/chapters"] });
         setTimeout(() => onSuccess(), 1800);
       } else {
         setError("Pagamento não confirmado. Tenta novamente.");
@@ -104,33 +99,26 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
           </div>
         </div>
 
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4 flex items-center justify-between">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-5 flex items-center justify-between">
           <span className="text-sm text-foreground font-medium">A Casa dos 20</span>
           <span className="text-base font-bold text-primary">{priceLabel}</span>
         </div>
 
-        <div className="mb-2">
-          <label className="text-xs font-medium text-muted-foreground mb-2 block">Dados do cartão</label>
-          <div className="border border-border rounded-xl px-4 py-3.5 bg-background focus-within:border-foreground/40 transition-colors">
-            <CardElement
-              onChange={(e) => setCardReady(e.complete)}
-              options={{
-                style: {
-                  base: {
-                    fontSize: "16px",
-                    color: "var(--foreground)",
-                    "::placeholder": { color: "var(--muted-foreground)" },
-                    fontFamily: "inherit",
-                  },
-                  invalid: { color: "#ef4444" },
-                },
-                hidePostalCode: true,
-              }}
-            />
-          </div>
+        <div className="mb-4">
+          <PaymentElement
+            onReady={() => setReady(true)}
+            options={{
+              layout: "tabs",
+              paymentMethodOrder: ["apple_pay", "google_pay", "card"],
+              wallets: {
+                applePay: "auto",
+                googlePay: "auto",
+              },
+            }}
+          />
         </div>
 
-        <div className="flex items-center gap-1.5 mt-2 mb-5">
+        <div className="flex items-center gap-1.5 mb-4">
           <Lock size={11} className="text-muted-foreground shrink-0" />
           <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe · os teus dados nunca passam pelos nossos servidores</p>
         </div>
@@ -150,11 +138,10 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
 
         <button
           type="submit"
-          disabled={loading || !stripe || !cardReady}
+          disabled={loading || !stripe || !ready}
           data-testid="btn-confirm-book-purchase"
-          className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50"
         >
-          <CreditCard size={18} />
           {loading ? "A processar..." : `Comprar por ${priceLabel}`}
         </button>
 
@@ -173,17 +160,39 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
 
 export default function BookPurchaseModal({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps) {
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
-  const [configError, setConfigError] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    fetch("/api/stripe/config", { credentials: "include" })
+    // Fetch Stripe key and create payment intent in parallel
+    const keyFetch = fetch("/api/stripe/config", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        if (d.publishableKey) setStripePromise(loadStripe(d.publishableKey));
-        else setConfigError("Stripe não disponível de momento.");
+        if (d.publishableKey) return loadStripe(d.publishableKey);
+        throw new Error("Stripe não configurado.");
+      });
+
+    const intentFetch = fetch("/api/book/create-payment-intent", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.clientSecret) throw new Error(d.error || "Erro ao criar pagamento.");
+        return d;
+      });
+
+    Promise.all([keyFetch, intentFetch])
+      .then(([stripeInst, intentData]) => {
+        setStripePromise(Promise.resolve(stripeInst));
+        setClientSecret(intentData.clientSecret);
       })
-      .catch(() => setConfigError("Erro de ligação."));
+      .catch((err) => setLoadError(err.message || "Erro de ligação."));
   }, []);
+
+  const isDark =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark");
 
   return (
     <div
@@ -204,17 +213,33 @@ export default function BookPurchaseModal({ priceLabel, onSuccess, onClose }: Bo
           <X size={18} />
         </button>
 
-        {configError ? (
+        {loadError ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground">{configError}</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
           </div>
-        ) : !stripePromise ? (
+        ) : !clientSecret || !stripePromise ? (
           <div className="px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground animate-pulse">A carregar...</p>
           </div>
         ) : (
-          <Elements stripe={stripePromise}>
-            <PaymentForm priceLabel={priceLabel} onSuccess={onSuccess} onClose={onClose} />
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: isDark ? "night" : "stripe",
+                variables: {
+                  borderRadius: "12px",
+                  fontSizeBase: "15px",
+                },
+              },
+            }}
+          >
+            <PaymentForm
+              priceLabel={priceLabel}
+              onSuccess={onSuccess}
+              onClose={onClose}
+            />
           </Elements>
         )}
       </div>

@@ -1224,7 +1224,7 @@ export async function registerRoutes(
         currency: "brl",
         customer: customerId,
         metadata: { userId: user.id, product: "book_acasados20" },
-        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+        automatic_payment_methods: { enabled: true },
       });
       res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
     } catch (err: any) {
