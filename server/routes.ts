@@ -1187,7 +1187,9 @@ export async function registerRoutes(
       const id = Number(req.params.id);
       const chapter = await storage.getBookChapter(id);
       if (!chapter) return res.status(404).json({ error: "Capítulo não encontrado" });
-      if (!chapter.isPreview) {
+      const user = await storage.getUser(req.session.userId!);
+      const isAdmin = user?.role === "admin";
+      if (!chapter.isPreview && !isAdmin) {
         const purchase = await storage.getUserBookPurchase(req.session.userId!);
         if (!purchase) return res.status(403).json({ error: "Compra necessária" });
       }
@@ -1199,6 +1201,11 @@ export async function registerRoutes(
 
   app.get("/api/book/purchase-status", requireAuth, async (req: Request, res: Response) => {
     try {
+      const user = await storage.getUser(req.session.userId!);
+      const isAdmin = user?.role === "admin";
+      if (isAdmin) {
+        return res.json({ purchased: true, purchasedAt: null, pricesCents: BOOK_PRICE_CENTS });
+      }
       const purchase = await storage.getUserBookPurchase(req.session.userId!);
       res.json({ purchased: !!purchase, purchasedAt: purchase?.createdAt || null, pricesCents: BOOK_PRICE_CENTS });
     } catch {
