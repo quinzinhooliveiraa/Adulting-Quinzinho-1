@@ -182,13 +182,15 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
 /* ─────────────────────────────────────────────────────────────────
    CHAPTER PAGE  (fetches content)
 ───────────────────────────────────────────────────────────────── */
-function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSubPageCount }: {
+function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSubPageCount, allChapters, onGoToChapter }: {
   chapter: Chapter;
   purchased: boolean;
   onBuy: () => void;
   animClass: string;
   subPage: number;
   onActualSubPageCount: (n: number) => void;
+  allChapters?: Chapter[];
+  onGoToChapter?: (idx: number) => void;
 }) {
   const canRead = purchased || chapter.isPreview;
   const isFrontMatter = chapter.pageType === "front-matter";
@@ -207,7 +209,10 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 
   // Report actual sub-page count to parent
   useEffect(() => {
-    if (data && pdfPages.length > 0) {
+    if (!data) return;
+    if (rawContent === "__TOC__") {
+      onActualSubPageCount(1);
+    } else if (pdfPages.length > 0) {
       onActualSubPageCount(pdfPages.length);
     }
   }, [data?.content]);
@@ -245,6 +250,52 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
       </div>
     </div>
   );
+
+  // Special Sumário rendering — dynamic TOC from chapters list
+  if (rawContent === "__TOC__" && allChapters) {
+    const regularChapters = allChapters.filter(c => c.pageType === "chapter");
+    const fmChapters = allChapters.filter(c => c.pageType === "front-matter" && c.title !== "Sumário");
+    return (
+      <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+        <div className="max-w-[62ch] mx-auto px-7 pb-16">
+          <div className="pt-14 pb-8 text-center">
+            <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">Sumário</h2>
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+              <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
+              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+            </div>
+          </div>
+          {/* Front-matter entries (Introdução, Dedicatória) */}
+          {fmChapters.map(ch => {
+            const idx = allChapters.indexOf(ch);
+            return (
+              <button key={ch.id} onClick={() => onGoToChapter?.(idx)}
+                className="w-full flex items-center gap-3 py-3 border-b bk-sep text-left active:opacity-60 group">
+                <BookMarked size={13} className="shrink-0 opacity-50" style={{ color: "var(--bk-accent)" }} />
+                <span className="bk-serif text-sm bk-ink italic">{ch.title}</span>
+              </button>
+            );
+          })}
+          {/* Chapter entries */}
+          {regularChapters.map(ch => {
+            const idx = allChapters.indexOf(ch);
+            const isLocked = !purchased && !ch.isPreview;
+            return (
+              <button key={ch.id} onClick={() => !isLocked && onGoToChapter?.(idx)}
+                disabled={isLocked}
+                className="w-full flex items-start gap-3 py-3 border-b bk-sep text-left disabled:opacity-40 active:opacity-60 group">
+                <span className="text-[10px] font-mono font-bold shrink-0 mt-0.5 w-5 text-right"
+                  style={{ color: "var(--bk-accent)" }}>{ch.order}</span>
+                <span className="bk-serif text-sm bk-ink leading-snug">{ch.title}</span>
+                {isLocked && <LockKeyhole size={11} className="shrink-0 mt-1 ml-auto bk-muted" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
@@ -497,6 +548,8 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
           animClass={animClass}
           subPage={subPage}
           onActualSubPageCount={handleActualSubPageCount}
+          allChapters={chapters}
+          onGoToChapter={goToChapter}
         />
       ) : null}
 
@@ -742,7 +795,7 @@ export default function Book() {
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-semibold text-foreground">Ver Índice Completo</p>
-                <p className="text-xs text-muted-foreground">{sortedChapters.filter(c=>c.pageType==="chapter").length} capítulos · introdução · dedicatória</p>
+                <p className="text-xs text-muted-foreground">{sortedChapters.filter(c=>c.pageType==="chapter").length} capítulos · sumário · introdução · dedicatória</p>
               </div>
               <ChevronRight size={16} className="text-muted-foreground" />
             </button>
