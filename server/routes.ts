@@ -1723,6 +1723,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/analytics/hourly", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const excludeAdmins = req.query.excludeAdmins === "true";
+      const date = req.query.date as string || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+      const hourly = await storage.getHourlyActiveUsers(date, excludeAdmins);
+      res.json(hourly);
+    } catch (err: any) {
+      console.log("[analytics/hourly] error:", err?.message);
+      res.status(500).json({ error: "Erro ao buscar dados por hora" });
+    }
+  });
+
   app.get("/api/admin/top-users", requireAdmin, async (req: Request, res: Response) => {
     try {
       const days = Number(req.query.days) || 30;

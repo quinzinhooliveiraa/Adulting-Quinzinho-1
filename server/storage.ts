@@ -127,6 +127,7 @@ export interface IStorage {
   getEventCounts(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ event: string; count: number }[]>;
   getDailyActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]>;
   getTopActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string, limit?: number): Promise<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>;
+  getHourlyActiveUsers(date: string, excludeAdmins?: boolean): Promise<{ hour: number; count: number }[]>;
 
   getBookChapters(): Promise<Omit<BookChapter, "content">[]>;
   getBookChapter(id: number): Promise<BookChapter | undefined>;
@@ -644,6 +645,24 @@ export class DatabaseStorage implements IStorage {
       avatarUrl: r.avatar_url || null,
       count: Number(r.count),
     }));
+  }
+
+  async getHourlyActiveUsers(date: string, excludeAdmins: boolean = false): Promise<{ hour: number; count: number }[]> {
+    const adminClause = excludeAdmins ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')` : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT EXTRACT(HOUR FROM ue.created_at AT TIME ZONE 'America/Sao_Paulo')::int AS hour,
+             COUNT(DISTINCT ue.user_id) as count
+      FROM user_events ue
+      WHERE DATE(ue.created_at AT TIME ZONE 'America/Sao_Paulo') = ${date}
+        AND ue.user_id IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY EXTRACT(HOUR FROM ue.created_at AT TIME ZONE 'America/Sao_Paulo')
+      ORDER BY hour ASC
+    `);
+    const dataMap = new Map<number, number>(
+      (rows.rows as any[]).map(r => [Number(r.hour), Number(r.count)])
+    );
+    return Array.from({ length: 24 }, (_, h) => ({ hour: h, count: dataMap.get(h) ?? 0 }));
   }
 
   async getBookChapters(): Promise<Omit<BookChapter, "content">[]> {

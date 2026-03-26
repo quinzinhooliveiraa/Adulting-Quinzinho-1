@@ -731,6 +731,15 @@ export default function Admin() {
   });
   const topUsers = Array.isArray(topUsersRaw) ? topUsersRaw : [];
 
+  const todayDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const { data: hourlyDataRaw } = useQuery<{ hour: number; count: number }[]>({
+    queryKey: ["/api/admin/analytics/hourly", todayDateStr, excludeAdmins],
+    queryFn: () => fetch(`/api/admin/analytics/hourly?date=${todayDateStr}&excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "analytics" && analyticsDays === 1 && !isCustomRange,
+    refetchInterval: 60_000,
+  });
+  const hourlyData: { hour: number; count: number }[] = Array.isArray(hourlyDataRaw) ? hourlyDataRaw : [];
+
   const { data: demographics } = useQuery<{
     total: number;
     withAge: number;
@@ -1359,7 +1368,73 @@ export default function Admin() {
             </span>
           </button>
 
-          {analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (() => {
+          {/* Hourly chart — only when "Hoje" is selected */}
+          {!isCustomRange && analyticsDays === 1 && (() => {
+            const totalToday = hourlyData.reduce((s, h) => s + h.count, 0);
+            const maxCount = Math.max(...hourlyData.map(h => h.count), 1);
+            const peakHour = hourlyData.reduce((best, h) => h.count > best.count ? h : best, hourlyData[0] ?? { hour: 0, count: 0 });
+            const nowBrt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+            const currentHour = nowBrt.getHours();
+            const fmt = (h: number) => `${String(h).padStart(2, "0")}h`;
+            const labelHours = [0, 3, 6, 9, 12, 15, 18, 21];
+            return (
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos — hoje por hora</p>
+                    {peakHour.count > 0 && (
+                      <p className="text-[10px] text-primary font-medium mt-0.5">
+                        Pico às {fmt(peakHour.hour)} · {peakHour.count} utilizador{peakHour.count !== 1 ? "es" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-foreground">{totalToday}</p>
+                    <p className="text-[9px] text-muted-foreground">total hoje</p>
+                  </div>
+                </div>
+                <div className="flex items-end gap-px h-24">
+                  {hourlyData.map((h) => {
+                    const pct = (h.count / maxCount) * 100;
+                    const isPeak = h.count > 0 && h.count === peakHour.count;
+                    const isCurrent = h.hour === currentHour;
+                    const isFuture = h.hour > currentHour;
+                    return (
+                      <div key={h.hour} className="flex-1 flex flex-col items-center group relative" style={{ height: "100%", justifyContent: "flex-end" }}>
+                        {h.count > 0 && (
+                          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-foreground text-background text-[8px] px-1 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                            {fmt(h.hour)}: {h.count}
+                          </div>
+                        )}
+                        <div
+                          className={`w-full rounded-t-[2px] transition-colors ${
+                            isPeak
+                              ? "bg-primary ring-1 ring-primary/40"
+                              : isCurrent
+                              ? "bg-primary/70"
+                              : isFuture || h.count === 0
+                              ? "bg-muted/30"
+                              : "bg-primary/45 hover:bg-primary/65"
+                          }`}
+                          style={{ height: `${h.count === 0 ? 2 : Math.max(pct, 6)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground mt-1.5 px-0">
+                  {hourlyData.map((h) => (
+                    <span key={h.hour} className={`flex-1 text-center ${labelHours.includes(h.hour) ? (h.hour === peakHour.hour && peakHour.count > 0 ? "text-primary font-bold" : "text-muted-foreground") : "opacity-0 select-none"}`} style={{ fontSize: "8px" }}>
+                      {labelHours.includes(h.hour) ? fmt(h.hour) : "."}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Daily chart — all periods except "Hoje" */}
+          {(isCustomRange || analyticsDays !== 1) && analyticsData?.dailyActive && analyticsData.dailyActive.length > 0 && (() => {
             const max = Math.max(...analyticsData.dailyActive.map(x => x.count), 1);
             const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
             const total = analyticsData.dailyActive.reduce((s, d) => s + d.count, 0);
