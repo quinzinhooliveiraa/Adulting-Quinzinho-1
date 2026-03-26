@@ -669,7 +669,7 @@ export class DatabaseStorage implements IStorage {
 
   async getBookChapters(): Promise<Omit<BookChapter, "content">[]> {
     const rows = await db
-      .select({ id: bookChapters.id, order: bookChapters.order, title: bookChapters.title, tag: bookChapters.tag, excerpt: bookChapters.excerpt, isPreview: bookChapters.isPreview, createdAt: bookChapters.createdAt })
+      .select({ id: bookChapters.id, order: bookChapters.order, title: bookChapters.title, tag: bookChapters.tag, excerpt: bookChapters.excerpt, isPreview: bookChapters.isPreview, pageType: bookChapters.pageType, createdAt: bookChapters.createdAt })
       .from(bookChapters)
       .orderBy(bookChapters.order);
     return rows;
