@@ -1043,6 +1043,90 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/stripe/config", requireAuth, async (_req: Request, res: Response) => {
+    const key = process.env.STRIPE_PUBLISHABLE_KEY;
+    if (!key) return res.status(500).json({ message: "Stripe não configurado" });
+    res.json({ publishableKey: key });
+  });
+
+  app.post("/api/stripe/create-setup-intent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+      if (user.trialBonusClaimed) return res.status(400).json({ message: "Já reclamaste o teu bónus!" });
+
+      const stripe = await getUncachableStripeClient();
+
+      let customerId = user.stripeCustomerId;
+      if (customerId) {
+        try { await stripe.customers.retrieve(customerId); } catch { customerId = null; }
+      }
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
+        });
+        customerId = customer.id;
+        await storage.updateUser(user.id, { stripeCustomerId: customerId });
+      }
+
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        metadata: { purpose: "trial_bonus", userId: user.id },
+      });
+
+      res.json({ clientSecret: setupIntent.client_secret });
+    } catch (error: any) {
+      console.error("Create-setup-intent error:", error);
+      res.status(500).json({ message: "Erro ao iniciar registo do cartão" });
+    }
+  });
+
+  app.post("/api/stripe/confirm-bonus", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+      if (user.trialBonusClaimed) return res.status(400).json({ message: "Bónus já reclamado." });
+
+      const { setupIntentId } = req.body;
+      if (!setupIntentId) return res.status(400).json({ message: "setupIntentId obrigatório" });
+
+      const stripe = await getUncachableStripeClient();
+      const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+
+      if (setupIntent.status !== "succeeded") {
+        return res.status(400).json({ message: "Cartão não confirmado. Tenta novamente." });
+      }
+      if (setupIntent.metadata?.purpose !== "trial_bonus") {
+        return res.status(400).json({ message: "Intent inválido." });
+      }
+      const customerId = setupIntent.customer as string;
+      const dbUser = await storage.getUserByStripeCustomerId(customerId);
+      if (!dbUser || dbUser.id !== user.id) {
+        return res.status(403).json({ message: "Não autorizado." });
+      }
+
+      const now = Date.now();
+      const baseDate = user.trialEndsAt && new Date(user.trialEndsAt).getTime() > now
+        ? new Date(user.trialEndsAt)
+        : new Date(now);
+      const daysToAdd = user.trialEndsAt ? 16 : 30;
+      const newTrialEnd = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+      console.log(`[stripe] confirm-bonus: ${user.email} +${daysToAdd} dias, trial até ${newTrialEnd.toISOString()}`);
+
+      const { notifyAdminCardAdded } = await import("./adminNotify");
+      notifyAdminCardAdded(user.name, user.email).catch(() => {});
+
+      res.json({ success: true, newTrialEnd: newTrialEnd.toISOString() });
+    } catch (error: any) {
+      console.error("Confirm-bonus error:", error);
+      res.status(500).json({ message: "Erro ao confirmar bónus" });
+    }
+  });
+
   app.post("/api/stripe/portal", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);
