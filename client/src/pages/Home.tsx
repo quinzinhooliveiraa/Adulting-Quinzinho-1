@@ -156,7 +156,8 @@ export default function Home() {
   }, [latestCheckin]);
 
   const { greeting, userName } = useMemo(() => {
-    const hour = new Date().getHours();
+    const brDate = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const hour = brDate.getHours();
     const displayName = user?.name || localStorage.getItem("casa-dos-20-user-name") || "";
     const nameStr = displayName ? `, ${displayName.split(' ')[0]}` : "";
     
@@ -167,9 +168,9 @@ export default function Home() {
     return { greeting: g, userName: nameStr };
   }, [user]);
 
-  // Deterministic daily seed based on today's date
+  // Deterministic daily seed based on today's date (Brazil timezone)
   const todayDateSeed = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
     let seed = 0;
     for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
     return Math.abs(seed);
@@ -495,9 +496,9 @@ export default function Home() {
   const currentTip = useMemo(() => {
     if (!mood) return "";
     const options = moodTips[mood];
-    const now = new Date();
-    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-    const seed = dayOfYear + now.getHours();
+    const brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const dayOfYear = Math.floor((brNow.getTime() - new Date(brNow.getFullYear(), 0, 0).getTime()) / 86400000);
+    const seed = dayOfYear + brNow.getHours();
     return options[seed % options.length];
   }, [mood]);
 
