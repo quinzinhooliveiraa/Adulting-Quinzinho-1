@@ -300,3 +300,31 @@ export const DEFAULT_REMINDERS = [
   "Você já foi mais corajoso do que imagina. Vai ser de novo.",
   "Hoje e sempre: você importa.",
 ];
+
+export const THEMED_REMINDERS: Record<string, string[]> = {
+  ansiedade: [
+    "Respire. O futuro ainda não chegou e você não precisa resolver tudo hoje.",
+    "Sua ansiedade é um sinal de que você se importa, mas ela não é uma previsão do futuro.",
+    "Está tudo bem não estar bem o tempo todo. Acolha seu sentir."
+  ],
+  identidade: [
+    "Você é muito mais do que suas conquistas ou o seu cargo. Sua essência é única.",
+    "Não se compare com o palco dos outros. Sua jornada tem o seu próprio ritmo.",
+    "A pessoa que você está se tornando é mais importante do que a que você costumava ser."
+  ],
+  solidão: [
+    "A solitude é o encontro consigo mesmo. Aproveite esse espaço para se ouvir.",
+    "Estar sozinho não significa estar desamparado. É um momento de recarregar.",
+    "Sua própria companhia é preciosa. Cultive o amor por quem você é no silêncio."
+  ],
+  propósito: [
+    "O propósito não é um destino, é a forma como você caminha todos os dias.",
+    "Pequenas ações alinhadas com seus valores valem mais do que grandes metas vazias.",
+    "Confie no processo. Suas buscas estão te levando exatamente onde você precisa estar."
+  ],
+  crescimento: [
+    "Crescer dói, mas estagnar dói muito mais. Orgulhe-se de quão longe você chegou.",
+    "Cada desafio superado é um degrau na construção da sua melhor versão.",
+    "O amadurecimento é um processo lento. Seja gentil com o seu tempo."
+  ]
+};

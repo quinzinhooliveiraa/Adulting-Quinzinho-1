@@ -10,7 +10,7 @@ import { pool, db } from "./db";
 import { insertJournalEntrySchema, insertMoodCheckinSchema, type User } from "@shared/schema";
 import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
-import { DEFAULT_REMINDERS } from "@shared/reminders";
+import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
@@ -3174,8 +3174,19 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
     const today = new Date().toISOString().split('T')[0];
     let seed = 0;
     for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
-    const index = Math.abs(seed + 7) % DEFAULT_REMINDERS.length;
-    body = DEFAULT_REMINDERS[index];
+    const todaySeed = Math.abs(seed);
+
+    // Use themed reminder if user's latest check-in has a matching tag (same logic as Home.tsx)
+    const latestCheckin = await storage.getLatestCheckin(userId);
+    const tags: string[] = latestCheckin?.tags ?? [];
+    const themedTags = tags.filter(t => THEMED_REMINDERS[t]);
+    if (themedTags.length > 0) {
+      const tag = themedTags[todaySeed % themedTags.length];
+      const options = THEMED_REMINDERS[tag];
+      body = options[(todaySeed >> 3) % options.length];
+    } else {
+      body = DEFAULT_REMINDERS[todaySeed % DEFAULT_REMINDERS.length];
+    }
   }
 
   if (config.type === "journey_start") {
