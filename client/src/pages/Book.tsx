@@ -18,6 +18,55 @@ type Chapter = {
   pageType: string;
 };
 
+/**
+ * Converts raw PDF-imported text into clean paragraphs.
+ * Handles two formats:
+ *  1. Paragraphs separated by \n\n (some chapters)
+ *  2. Only single \n line-wraps, paragraphs detected by sentence-end + capital-start
+ */
+function processContent(raw: string): string[] {
+  if (!raw.trim()) return [];
+
+  if (raw.includes("\n\n")) {
+    // Format 1: explicit paragraph breaks
+    return raw
+      .split(/\n\n+/)
+      .map(block =>
+        block.split("\n")
+          .map(l => l.trim())
+          .filter(l => l.length > 0)
+          .join(" ")
+      )
+      .filter(p => p.trim().length > 0);
+  }
+
+  // Format 2: only single \n — join PDF-wrapped lines into paragraphs
+  // A new paragraph starts when the previous line ends with sentence punctuation
+  // AND the next line starts with a capital (or special) letter
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const paragraphs: string[] = [];
+  let current = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    current = current ? current + " " + line : line;
+
+    const next = lines[i + 1];
+    if (!next) { paragraphs.push(current); break; }
+
+    const endsWithPunct = /[.!?]["»"']?$/.test(line);
+    const nextStartsCap  = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ""—]/.test(next);
+
+    if (endsWithPunct && nextStartsCap) {
+      paragraphs.push(current);
+      current = "";
+    }
+  }
+
+  if (current.trim()) paragraphs.push(current.trim());
+  return paragraphs.filter(p => p.length > 0);
+}
+
 type PurchaseStatus = {
   purchased: boolean;
   purchasedAt: string | null;
@@ -215,25 +264,37 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
         )}
 
         {/* Body text */}
-        {isFrontMatter && chapter.tag === "DEDICATÓRIA" ? (
-          /* Dedication: centered italic, pre-wrap preserves line breaks */
-          <p className="bk-serif text-base italic bk-ink leading-relaxed text-center"
-            style={{ whiteSpace: "pre-wrap" }}>
-            {content}
-          </p>
-        ) : (
-          /* Regular prose — pre-wrap keeps every \n exactly as in the PDF */
-          <p className="bk-serif bk-ink"
-            style={{
-              fontSize: "16.5px",
-              lineHeight: "1.95",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              letterSpacing: "0.01em",
-            } as React.CSSProperties}>
-            {content}
-          </p>
-        )}
+        {(() => {
+          const paras = processContent(content);
+
+          if (isFrontMatter && chapter.tag === "DEDICATÓRIA") {
+            return (
+              <div className="py-4 space-y-5 text-center">
+                {paras.map((p, i) => (
+                  <p key={i} className="bk-serif text-base italic bk-ink leading-relaxed">{p}</p>
+                ))}
+              </div>
+            );
+          }
+
+          return (
+            <div className="pt-2 pb-2">
+              {paras.map((p, i) => (
+                <p key={i} className="bk-serif bk-ink mb-5 last:mb-0"
+                  style={{
+                    fontSize: "16.5px",
+                    lineHeight: "1.92",
+                    textAlign: "justify",
+                    hyphens: "auto",
+                    letterSpacing: "0.008em",
+                    textIndent: i === 0 ? "0" : "1.5em",
+                  } as React.CSSProperties}>
+                  {p}
+                </p>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* End-of-page ornament */}
         <div className="flex items-center justify-center gap-2 mt-12 opacity-25">
