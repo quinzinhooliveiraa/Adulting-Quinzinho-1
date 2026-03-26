@@ -1032,7 +1032,7 @@ export async function registerRoutes(
         currency: "brl",
         consent_collection: { terms_of_service: "none" },
         custom_text: {
-          submit: { message: "O teu cartão só será cobrado quando o trial terminar, se decidires assinar." },
+          submit: { message: "✅ Nenhuma cobrança hoje. Estás apenas a guardar o cartão para ativar os 30 dias grátis. Só pagas se quiseres continuar depois do trial." },
         },
       } as any);
 

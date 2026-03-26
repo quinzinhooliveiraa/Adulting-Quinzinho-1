@@ -165,13 +165,12 @@ export default function Premium() {
               className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-500/5 hover:bg-green-500/10 transition-colors text-left"
               data-testid="button-activate-trial"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Gift className="w-6 h-6 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-lg">Ganhar 30 dias grátis</p>
-                    <p className="text-muted-foreground text-sm">Sem custos durante o período grátis</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <Gift className="w-6 h-6 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-lg">Ganhar 30 dias grátis</p>
+                  <p className="text-muted-foreground text-sm">Registas o cartão — <span className="font-medium text-green-600">sem qualquer cobrança agora</span></p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Só pagas após os 30 dias, se quiseres continuar</p>
                 </div>
               </div>
               {loading === "bonus" && (

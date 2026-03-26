@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, ShieldCheck } from "lucide-react";
+import { X, ShieldCheck, CreditCard, Gift, ChevronRight } from "lucide-react";
 
 interface WelcomeTrialModalProps {
   userId: string;
@@ -59,20 +59,52 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
           <X size={18} />
         </button>
 
-        <div className="px-6 pt-7 pb-2">
+        <div className="px-6 pt-7 pb-3">
           <p className="text-3xl mb-3">🎁</p>
           <h2 className="text-xl font-bold font-serif text-foreground mb-1">
             Ganha mais 16 dias grátis
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Ativa agora e fica com <strong className="text-foreground">30 dias grátis</strong> no total — sem pagar nada.
+            Regista o cartão para ficares com <strong className="text-foreground">30 dias grátis</strong> no total.
           </p>
         </div>
 
-        <div className="px-6 pb-2 pt-4 space-y-3">
-          <div className="flex items-start gap-2">
-            <ShieldCheck size={14} className="text-green-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-muted-foreground">Sem custos durante os 30 dias. Só pagas se quiseres continuar depois.</p>
+        <div className="px-6 pb-1">
+          <div className="bg-muted/50 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center shrink-0">
+                <CreditCard size={14} className="text-foreground/60" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">Registas o cartão</p>
+                <p className="text-[11px] text-muted-foreground">Guardado em segurança — <strong className="text-foreground">sem qualquer cobrança agora</strong></p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center shrink-0">
+                <Gift size={14} className="text-foreground/60" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">Recebes 30 dias grátis</p>
+                <p className="text-[11px] text-muted-foreground">O trial passa de 14 para 30 dias completos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center shrink-0">
+                <ChevronRight size={14} className="text-foreground/60" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">Decides depois</p>
+                <p className="text-[11px] text-muted-foreground">Só pagas se quiseres continuar após os 30 dias</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 pt-3 space-y-2">
+          <div className="flex items-center gap-1.5 justify-center mb-1">
+            <ShieldCheck size={12} className="text-green-500 shrink-0" />
+            <p className="text-[11px] text-muted-foreground">Nenhuma cobrança hoje. Cancela a qualquer momento.</p>
           </div>
 
           {error && (
@@ -85,8 +117,8 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
             className="w-full py-3.5 rounded-2xl bg-foreground text-background font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2"
             data-testid="btn-claim-bonus"
           >
-            <span className="text-lg">🎁</span>
-            {loading ? "A ativar..." : "Ganhar 30 dias grátis"}
+            <CreditCard size={18} />
+            {loading ? "A redirecionar..." : "Registar cartão e ganhar 30 dias"}
           </button>
 
           <button
