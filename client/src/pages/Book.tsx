@@ -290,6 +290,25 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 
         {/* Body text — exact PDF page content */}
         {(() => {
+          // Detect spaced-letter title page: "M E N S A G E M A O L E I T O R"
+          const isSpacedTitle = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ](\s[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ])*$/.test(pageText.trim());
+
+          if (isSpacedTitle) {
+            return (
+              <div className="flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
+                <p className="bk-serif font-bold bk-accent text-center"
+                  style={{ fontSize: "13px", letterSpacing: "0.35em", lineHeight: "3", opacity: 0.85 }}>
+                  {pageText.trim()}
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-8 opacity-25">
+                  <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+                  <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+                  <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+                </div>
+              </div>
+            );
+          }
+
           const paras = processContent(pageText);
 
           if (isFrontMatter && chapter.tag === "DEDICATÓRIA") {

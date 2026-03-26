@@ -42,7 +42,9 @@ function cleanPage(text: string): string {
     // Skip spaced-letter uppercase chapter titles:
     // e.g. "É N O R M A L S E P E R D E R ..."
     // Pattern: letter, space, letter, space ... (at least 4 such groups)
-    if (/^([A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ]\s){4,}/.test(t)) continue;
+    // spaced-letter noise (any case): "M E N S A G E M" or "U m a J o r n a d a"
+    // Pattern: single non-space char + space, repeated 4+ times
+    if (/^(\S\s){4,}\S?$/.test(t.trim())) continue;
 
     // Skip short ALL-CAPS lines that look like partial spaced titles
     // e.g. "V O L T A", "A M O R", "D E V O L T A"
