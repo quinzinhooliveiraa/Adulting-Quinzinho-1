@@ -249,6 +249,7 @@ export const bookChapters = pgTable("book_chapters", {
   content: text("content").notNull().default(""),
   isPreview: boolean("is_preview").notNull().default(false),
   pageType: text("page_type").notNull().default("chapter"),
+  pdfPage: integer("pdf_page"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

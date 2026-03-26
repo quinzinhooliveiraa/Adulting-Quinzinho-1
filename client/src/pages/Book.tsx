@@ -16,6 +16,7 @@ type Chapter = {
   excerpt: string | null;
   isPreview: boolean;
   pageType: string;
+  pdfPage: number | null;
 };
 
 /**
@@ -163,10 +164,13 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
                   {ch.title.length > 55 ? ch.title.substring(0, 55) + "…" : ch.title}
                 </span>
               </div>
-              {locked && <LockKeyhole size={10} className="bk-muted ml-2 shrink-0" />}
-              {ch.isPreview && !locked && (
-                <span className="text-[8px] ml-2 px-1.5 py-0.5 rounded-full shrink-0 font-semibold" style={{ background: "var(--bk-accent-light)", color: "var(--bk-accent)" }}>Grátis</span>
-              )}
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                {ch.pdfPage && <span className="text-[9px] font-mono bk-muted">{ch.pdfPage}</span>}
+                {locked && <LockKeyhole size={10} className="bk-muted" />}
+                {ch.isPreview && !locked && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "var(--bk-accent-light)", color: "var(--bk-accent)" }}>Grátis</span>
+                )}
+              </div>
             </button>
           );
         })}
@@ -178,14 +182,17 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
 /* ─────────────────────────────────────────────────────────────────
    CHAPTER PAGE  (fetches content)
 ───────────────────────────────────────────────────────────────── */
-function ChapterPage({ chapter, purchased, onBuy, animClass }: {
+function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, subPageCount }: {
   chapter: Chapter;
   purchased: boolean;
   onBuy: () => void;
   animClass: string;
+  subPage: number;
+  subPageCount: number;
 }) {
   const canRead = purchased || chapter.isPreview;
   const isFrontMatter = chapter.pageType === "front-matter";
+  const currentPdfPage = chapter.pdfPage != null ? chapter.pdfPage + subPage : null;
 
   const { data, isLoading } = useQuery<{ content: string }>({
     queryKey: ["/api/book/chapters", chapter.id, "content"],
@@ -265,7 +272,10 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
 
         {/* Body text */}
         {(() => {
-          const paras = processContent(content);
+          const allParas = processContent(content);
+          // Distribute paragraphs evenly across sub-pages
+          const perPage = Math.max(1, Math.ceil(allParas.length / subPageCount));
+          const paras = allParas.slice(subPage * perPage, (subPage + 1) * perPage);
 
           if (isFrontMatter && chapter.tag === "DEDICATÓRIA") {
             return (
@@ -287,7 +297,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
                     textAlign: "justify",
                     hyphens: "auto",
                     letterSpacing: "0.008em",
-                    textIndent: i === 0 ? "0" : "1.5em",
+                    textIndent: i === 0 && subPage === 0 ? "0" : "1.5em",
                   } as React.CSSProperties}>
                   {p}
                 </p>
@@ -295,6 +305,13 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
             </div>
           );
         })()}
+
+        {/* PDF page number at bottom */}
+        {currentPdfPage && (
+          <div className="flex items-center justify-center mt-8 mb-2">
+            <span className="text-[10px] font-mono bk-muted">{currentPdfPage}</span>
+          </div>
+        )}
 
         {/* End-of-page ornament */}
         <div className="flex items-center justify-center gap-2 mt-12 opacity-25">
@@ -312,9 +329,6 @@ function ChapterPage({ chapter, purchased, onBuy, animClass }: {
 /* ─────────────────────────────────────────────────────────────────
    BOOK READER  (full-screen overlay)
 ───────────────────────────────────────────────────────────────── */
-// Virtual page type for TOC
-const TOC_ID = -999;
-
 function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   chapters: Chapter[];
   startIdx: number;
@@ -322,28 +336,53 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   onClose: () => void;
   onBuy: () => void;
 }) {
-  // Pages: [TOC virtual, ...sorted chapters]
-  const pages = chapters; // already sorted by order, front matter first
-  const totalPages = pages.length + 1; // +1 for TOC
+  // Compute how many sub-pages (PDF pages) each chapter occupies
+  // sub-page count = next chapter's pdfPage - this chapter's pdfPage (min 1)
+  const subPageCounts = chapters.map((ch, i) => {
+    if (!ch.pdfPage) return 1;
+    const next = chapters[i + 1]?.pdfPage;
+    if (!next) return Math.max(1, 176 - ch.pdfPage + 1); // last chapter ends ~p176
+    return Math.max(1, next - ch.pdfPage);
+  });
 
-  // currentPage: 0 = TOC, 1..n = pages[0..n-1]
-  const [currentPage, setCurrentPage] = useState(startIdx + 1); // +1 because page 0 is TOC
-  const [animClass, setAnimClass] = useState("");
-  const [showToc, setShowToc] = useState(false);
+  // chapterIdx: 0..n-1 (no TOC as default view; TOC is overlay only)
+  const [chapterIdx, setChapterIdx] = useState(startIdx);
+  const [subPage, setSubPage]       = useState(0);
+  const [animClass, setAnimClass]   = useState("");
+  const [showToc, setShowToc]       = useState(false);
   const touchStartX = useRef<number | null>(null);
 
-  const isToc = currentPage === 0;
-  const chapter = isToc ? null : pages[currentPage - 1];
-  const hasPrev = currentPage > 0;
-  const hasNext = currentPage < totalPages - 1;
-  const progress = Math.round((currentPage / (totalPages - 1)) * 100);
+  const chapter       = chapters[chapterIdx];
+  const subPageCount  = subPageCounts[chapterIdx] ?? 1;
+  const hasPrev = chapterIdx > 0 || subPage > 0;
+  const hasNext = chapterIdx < chapters.length - 1 || subPage < subPageCount - 1;
+
+  // Absolute page number for progress bar (across all sub-pages of all chapters)
+  const totalSubPages = subPageCounts.reduce((a, b) => a + b, 0);
+  const absPage = subPageCounts.slice(0, chapterIdx).reduce((a, b) => a + b, 0) + subPage;
+  const progress = totalSubPages > 1 ? Math.round((absPage / (totalSubPages - 1)) * 100) : 100;
 
   function navigate(dir: "prev" | "next") {
-    const nextPage = dir === "next" ? currentPage + 1 : currentPage - 1;
-    if (nextPage < 0 || nextPage >= totalPages) return;
-    setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
-    setCurrentPage(nextPage);
+    const anim = dir === "next" ? "pg-enter-right" : "pg-enter-left";
+    setAnimClass(anim);
     setTimeout(() => setAnimClass(""), 220);
+
+    if (dir === "next") {
+      if (subPage < subPageCount - 1) {
+        setSubPage(p => p + 1);
+      } else if (chapterIdx < chapters.length - 1) {
+        setChapterIdx(i => i + 1);
+        setSubPage(0);
+      }
+    } else {
+      if (subPage > 0) {
+        setSubPage(p => p - 1);
+      } else if (chapterIdx > 0) {
+        const prevIdx = chapterIdx - 1;
+        setChapterIdx(prevIdx);
+        setSubPage(subPageCounts[prevIdx] - 1);
+      }
+    }
   }
 
   function handleTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX; }
@@ -356,16 +395,17 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
   function goToChapter(idx: number) {
     setAnimClass("pg-enter-right");
-    setCurrentPage(idx + 1);
     setTimeout(() => setAnimClass(""), 220);
+    setChapterIdx(idx);
+    setSubPage(0);
     setShowToc(false);
   }
 
   function pageLabel() {
-    if (isToc) return "Índice";
-    const ch = pages[currentPage - 1];
-    if (ch.pageType === "front-matter") return ch.title;
-    return `Cap. ${ch.order}`;
+    if (!chapter) return "";
+    if (chapter.pageType === "front-matter") return chapter.title;
+    const pdfPageNum = chapter.pdfPage != null ? chapter.pdfPage + subPage : null;
+    return pdfPageNum ? `Página ${pdfPageNum}` : `Cap. ${chapter.order}`;
   }
 
   return (
@@ -397,16 +437,21 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
             <h2 className="bk-serif text-lg bk-ink font-bold">Índice</h2>
             <button onClick={() => setShowToc(false)} className="p-1.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
           </div>
-          <TocPage chapters={pages} purchased={purchased}
+          <TocPage chapters={chapters} purchased={purchased}
             onSelect={goToChapter} onBuy={() => { setShowToc(false); onBuy(); }} />
         </div>
       )}
 
       {/* Page content */}
-      {isToc ? (
-        <TocPage chapters={pages} purchased={purchased} onSelect={goToChapter} onBuy={onBuy} />
-      ) : chapter ? (
-        <ChapterPage chapter={chapter} purchased={purchased} onBuy={onBuy} animClass={animClass} />
+      {chapter ? (
+        <ChapterPage
+          chapter={chapter}
+          purchased={purchased}
+          onBuy={onBuy}
+          animClass={animClass}
+          subPage={subPage}
+          subPageCount={subPageCount}
+        />
       ) : null}
 
       {/* Bottom navigation */}
@@ -416,7 +461,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
           className="flex items-center gap-1 text-sm disabled:opacity-20 active:opacity-50 transition-opacity bk-muted">
           <ChevronLeft size={16} /> Anterior
         </button>
-        <p className="text-[10px] bk-muted font-mono">{pageLabel()} · {currentPage + 1}/{totalPages}</p>
+        <p className="text-[10px] bk-muted font-mono">{pageLabel()}</p>
         <button onClick={() => navigate("next")} disabled={!hasNext}
           data-testid="btn-next-chapter"
           className="flex items-center gap-1 text-sm font-semibold disabled:opacity-20 active:opacity-50 transition-opacity"
