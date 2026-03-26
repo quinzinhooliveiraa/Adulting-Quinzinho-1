@@ -6,7 +6,7 @@ import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Onboarding from "@/components/Onboarding";
-import { DAILY_REFLECTIONS } from "./Book";
+import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { getLastCheckIn, recommendContent, RecommendedContent, saveCheckIn, analyzeCheckIn } from "@/utils/intelligentRecommendation";
 import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";

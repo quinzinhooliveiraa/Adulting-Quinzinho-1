@@ -1,4 +1,4 @@
-import { DAILY_REFLECTIONS } from "@/pages/Book";
+import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 
 export interface CheckIn {
   date: string;

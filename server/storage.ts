@@ -39,6 +39,11 @@ import {
   type Coupon,
   type InsertCoupon,
   type CouponUse,
+  bookChapters,
+  bookPurchases,
+  type BookChapter,
+  type InsertBookChapter,
+  type BookPurchase,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -122,6 +127,15 @@ export interface IStorage {
   getEventCounts(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ event: string; count: number }[]>;
   getDailyActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]>;
   getTopActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string, limit?: number): Promise<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>;
+
+  getBookChapters(): Promise<Omit<BookChapter, "content">[]>;
+  getBookChapter(id: number): Promise<BookChapter | undefined>;
+  createBookChapter(data: InsertBookChapter): Promise<BookChapter>;
+  updateBookChapter(id: number, data: Partial<InsertBookChapter>): Promise<BookChapter | undefined>;
+  deleteBookChapter(id: number): Promise<boolean>;
+  getUserBookPurchase(userId: string): Promise<BookPurchase | undefined>;
+  createBookPurchase(userId: string, paymentIntentId: string, amountCents: number): Promise<BookPurchase>;
+  getBookPurchases(): Promise<{ userId: string; name: string; email: string; amountCents: number; createdAt: Date }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -629,6 +643,60 @@ export class DatabaseStorage implements IStorage {
       email: r.email || "",
       avatarUrl: r.avatar_url || null,
       count: Number(r.count),
+    }));
+  }
+
+  async getBookChapters(): Promise<Omit<BookChapter, "content">[]> {
+    const rows = await db
+      .select({ id: bookChapters.id, order: bookChapters.order, title: bookChapters.title, tag: bookChapters.tag, excerpt: bookChapters.excerpt, isPreview: bookChapters.isPreview, createdAt: bookChapters.createdAt })
+      .from(bookChapters)
+      .orderBy(bookChapters.order);
+    return rows;
+  }
+
+  async getBookChapter(id: number): Promise<BookChapter | undefined> {
+    const [row] = await db.select().from(bookChapters).where(eq(bookChapters.id, id));
+    return row;
+  }
+
+  async createBookChapter(data: InsertBookChapter): Promise<BookChapter> {
+    const [row] = await db.insert(bookChapters).values(data).returning();
+    return row;
+  }
+
+  async updateBookChapter(id: number, data: Partial<InsertBookChapter>): Promise<BookChapter | undefined> {
+    const [row] = await db.update(bookChapters).set(data).where(eq(bookChapters.id, id)).returning();
+    return row;
+  }
+
+  async deleteBookChapter(id: number): Promise<boolean> {
+    const result = await db.delete(bookChapters).where(eq(bookChapters.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getUserBookPurchase(userId: string): Promise<BookPurchase | undefined> {
+    const [row] = await db.select().from(bookPurchases).where(eq(bookPurchases.userId, userId));
+    return row;
+  }
+
+  async createBookPurchase(userId: string, paymentIntentId: string, amountCents: number): Promise<BookPurchase> {
+    const [row] = await db.insert(bookPurchases).values({ userId, stripePaymentIntentId: paymentIntentId, amountCents }).returning();
+    return row;
+  }
+
+  async getBookPurchases(): Promise<{ userId: string; name: string; email: string; amountCents: number; createdAt: Date }[]> {
+    const rows = await db.execute(drizzleSql`
+      SELECT bp.user_id, u.name, u.email, bp.amount_cents, bp.created_at
+      FROM book_purchases bp
+      JOIN users u ON bp.user_id = u.id
+      ORDER BY bp.created_at DESC
+    `);
+    return (rows.rows as any[]).map(r => ({
+      userId: r.user_id,
+      name: r.name || "",
+      email: r.email || "",
+      amountCents: Number(r.amount_cents),
+      createdAt: new Date(r.created_at),
     }));
   }
 }

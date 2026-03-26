@@ -7,7 +7,7 @@ import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
-import { insertJournalEntrySchema, insertMoodCheckinSchema, type User } from "@shared/schema";
+import { insertJournalEntrySchema, insertMoodCheckinSchema, type User, bookChapters } from "@shared/schema";
 import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
@@ -1168,6 +1168,139 @@ export async function registerRoutes(
       res.json({ subscription: result.rows[0] || null });
     } catch (error) {
       res.json({ subscription: null });
+    }
+  });
+
+  const BOOK_PRICE_CENTS = 1990;
+
+  app.get("/api/book/chapters", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const chapters = await storage.getBookChapters();
+      res.json(chapters);
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar capítulos" });
+    }
+  });
+
+  app.get("/api/book/chapters/:id/content", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const chapter = await storage.getBookChapter(id);
+      if (!chapter) return res.status(404).json({ error: "Capítulo não encontrado" });
+      if (!chapter.isPreview) {
+        const purchase = await storage.getUserBookPurchase(req.session.userId!);
+        if (!purchase) return res.status(403).json({ error: "Compra necessária" });
+      }
+      res.json({ content: chapter.content });
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar conteúdo" });
+    }
+  });
+
+  app.get("/api/book/purchase-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const purchase = await storage.getUserBookPurchase(req.session.userId!);
+      res.json({ purchased: !!purchase, purchasedAt: purchase?.createdAt || null, pricesCents: BOOK_PRICE_CENTS });
+    } catch {
+      res.status(500).json({ error: "Erro ao verificar compra" });
+    }
+  });
+
+  app.post("/api/book/create-payment-intent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ error: "Não autenticado" });
+      const existing = await storage.getUserBookPurchase(user.id);
+      if (existing) return res.status(400).json({ error: "Livro já comprado" });
+      const stripe = await getUncachableStripeClient();
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({ email: user.email, name: user.name });
+        customerId = customer.id;
+        await storage.updateUser(user.id, { stripeCustomerId: customerId });
+      }
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: BOOK_PRICE_CENTS,
+        currency: "brl",
+        customer: customerId,
+        metadata: { userId: user.id, product: "book_acasados20" },
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+      });
+      res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+    } catch (err: any) {
+      console.log("[book] create-payment-intent error:", err?.message);
+      res.status(500).json({ error: "Erro ao criar pagamento" });
+    }
+  });
+
+  app.post("/api/book/confirm-purchase", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { paymentIntentId } = req.body;
+      if (!paymentIntentId) return res.status(400).json({ error: "paymentIntentId obrigatório" });
+      const existing = await storage.getUserBookPurchase(req.session.userId!);
+      if (existing) return res.json({ ok: true, alreadyOwned: true });
+      const stripe = await getUncachableStripeClient();
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (pi.status !== "succeeded") return res.status(400).json({ error: "Pagamento não confirmado" });
+      if (pi.metadata?.userId !== req.session.userId) return res.status(403).json({ error: "Pagamento inválido" });
+      await storage.createBookPurchase(req.session.userId!, paymentIntentId, pi.amount);
+      console.log(`[book] Compra registada: ${req.session.userId} — ${pi.amount}c`);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.log("[book] confirm-purchase error:", err?.message);
+      res.status(500).json({ error: "Erro ao confirmar compra" });
+    }
+  });
+
+  app.get("/api/admin/book/chapters", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const rows = await db.select().from(bookChapters).orderBy(bookChapters.order);
+      res.json(rows);
+    } catch {
+      res.status(500).json({ error: "Erro" });
+    }
+  });
+
+  app.post("/api/admin/book/chapters", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { order, title, tag, excerpt, content, isPreview } = req.body;
+      if (!title || content === undefined) return res.status(400).json({ error: "title e content são obrigatórios" });
+      const chapter = await storage.createBookChapter({ order: order || 1, title, tag: tag || null, excerpt: excerpt || null, content, isPreview: isPreview || false });
+      res.json(chapter);
+    } catch {
+      res.status(500).json({ error: "Erro ao criar capítulo" });
+    }
+  });
+
+  app.patch("/api/admin/book/chapters/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const { order, title, tag, excerpt, content, isPreview } = req.body;
+      const updated = await storage.updateBookChapter(id, { order, title, tag, excerpt, content, isPreview });
+      if (!updated) return res.status(404).json({ error: "Capítulo não encontrado" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Erro ao actualizar capítulo" });
+    }
+  });
+
+  app.delete("/api/admin/book/chapters/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const ok = await storage.deleteBookChapter(id);
+      if (!ok) return res.status(404).json({ error: "Capítulo não encontrado" });
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Erro ao apagar capítulo" });
+    }
+  });
+
+  app.get("/api/admin/book/purchases", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const purchases = await storage.getBookPurchases();
+      res.json(purchases);
+    } catch {
+      res.status(500).json({ error: "Erro" });
     }
   });
 

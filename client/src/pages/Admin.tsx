@@ -5,7 +5,8 @@ import {
   ChevronLeft, Users, Crown, Shield, UserPlus, Ban, Check,
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
-  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp
+  Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp,
+  BookOpen, Lock, ChevronRight, ChevronUp, Pencil
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -672,7 +673,11 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics" | "livro">("users");
+  const [bookEditId, setBookEditId] = useState<number | null>(null);
+  const [bookForm, setBookForm] = useState({ order: 1, title: "", tag: "", excerpt: "", content: "", isPreview: false });
+  const [bookFormOpen, setBookFormOpen] = useState(false);
+  const [bookExpandedId, setBookExpandedId] = useState<number | null>(null);
   const [analyticsDays, setAnalyticsDays] = useState(30);
   const [excludeAdmins, setExcludeAdmins] = useState(true);
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
@@ -741,6 +746,18 @@ export default function Admin() {
   const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
     queryKey: ["/api/admin/push-status"],
     refetchOnWindowFocus: true,
+  });
+
+  const { data: adminBookChapters = [], refetch: refetchBookChapters } = useQuery<{ id: number; order: number; title: string; tag: string | null; excerpt: string | null; content: string; isPreview: boolean }[]>({
+    queryKey: ["/api/admin/book/chapters"],
+    queryFn: () => fetch("/api/admin/book/chapters", { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "livro",
+  });
+
+  const { data: bookPurchases = [] } = useQuery<{ userId: string; name: string; email: string; amountCents: number; createdAt: string }[]>({
+    queryKey: ["/api/admin/book/purchases"],
+    queryFn: () => fetch("/api/admin/book/purchases", { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "livro",
   });
 
   const notifyPrefsMutation = useMutation({
@@ -949,13 +966,14 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-6 gap-1">
         {([
           { id: "users", icon: <Users size={14} />, label: "Usuários" },
           { id: "analytics", icon: <TrendingUp size={14} />, label: "Analytics" },
           { id: "feedback", icon: <MessageSquare size={14} />, label: "Chamados", badge: openFeedbackCount },
           { id: "push", icon: <Send size={14} />, label: "Push" },
           { id: "coupons", icon: <Ticket size={14} />, label: "Cupões" },
+          { id: "livro", icon: <BookOpen size={14} />, label: "Livro" },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -1532,6 +1550,158 @@ export default function Admin() {
       )}
 
       {activeTab === "coupons" && <CouponsPanel />}
+
+      {activeTab === "livro" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Capítulos do Livro</h2>
+            <button
+              onClick={() => { setBookEditId(null); setBookForm({ order: (adminBookChapters.length || 0) + 1, title: "", tag: "", excerpt: "", content: "", isPreview: false }); setBookFormOpen(true); }}
+              className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
+              data-testid="btn-new-chapter"
+            >
+              <Plus size={12} />
+              Novo Capítulo
+            </button>
+          </div>
+
+          {bookFormOpen && (
+            <div className="bg-card border border-primary/20 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <p className="text-xs font-semibold text-foreground">{bookEditId ? "Editar Capítulo" : "Novo Capítulo"}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Ordem</label>
+                  <input type="number" value={bookForm.order} onChange={e => setBookForm(f => ({ ...f, order: Number(e.target.value) }))} className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-order" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tag</label>
+                  <input type="text" value={bookForm.tag} onChange={e => setBookForm(f => ({ ...f, tag: e.target.value }))} placeholder="ex: Essencial" className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-tag" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Título</label>
+                <input type="text" value={bookForm.title} onChange={e => setBookForm(f => ({ ...f, title: e.target.value }))} placeholder="A Solidão" className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-title" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Excerto (citação de abertura)</label>
+                <input type="text" value={bookForm.excerpt} onChange={e => setBookForm(f => ({ ...f, excerpt: e.target.value }))} placeholder="Frase de destaque..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-excerpt" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conteúdo completo</label>
+                <textarea value={bookForm.content} onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))} rows={10} placeholder="Colar o texto completo do capítulo aqui..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none" data-testid="input-chapter-content" />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setBookForm(f => ({ ...f, isPreview: !f.isPreview }))}
+                  className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${bookForm.isPreview ? "bg-primary" : "bg-muted-foreground/30"}`}
+                  data-testid="toggle-chapter-preview"
+                >
+                  <span className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${bookForm.isPreview ? "translate-x-4" : "translate-x-0"}`} />
+                </button>
+                <span className="text-xs text-muted-foreground">Pré-visualização gratuita</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (!bookForm.title.trim()) return;
+                    const url = bookEditId ? `/api/admin/book/chapters/${bookEditId}` : "/api/admin/book/chapters";
+                    const method = bookEditId ? "PATCH" : "POST";
+                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookForm) });
+                    setBookFormOpen(false);
+                    setBookEditId(null);
+                    refetchBookChapters();
+                  }}
+                  disabled={!bookForm.title.trim() || !bookForm.content.trim()}
+                  className="flex-1 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50"
+                  data-testid="btn-save-chapter"
+                >
+                  {bookEditId ? "Guardar" : "Criar"}
+                </button>
+                <button onClick={() => { setBookFormOpen(false); setBookEditId(null); }} className="flex-1 py-2 bg-muted text-muted-foreground rounded-lg text-sm">Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {adminBookChapters.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Ainda sem capítulos. Adiciona o primeiro.</p>
+            ) : (
+              adminBookChapters.map(ch => (
+                <div key={ch.id} className="bg-card border border-border rounded-xl overflow-hidden" data-testid={`admin-chapter-${ch.id}`}>
+                  <button
+                    onClick={() => setBookExpandedId(bookExpandedId === ch.id ? null : ch.id)}
+                    className="w-full flex items-center gap-3 p-3 text-left"
+                  >
+                    <span className="text-xs font-bold text-muted-foreground w-5 shrink-0">{ch.order}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{ch.title}</p>
+                      {ch.tag && <p className="text-[10px] text-primary">{ch.tag}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {ch.isPreview && <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Grátis</span>}
+                      <span className="text-[10px] text-muted-foreground">{ch.content.length} car.</span>
+                      {bookExpandedId === ch.id ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+                    </div>
+                  </button>
+                  {bookExpandedId === ch.id && (
+                    <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
+                      {ch.excerpt && <p className="text-xs italic text-muted-foreground">"{ch.excerpt}"</p>}
+                      <p className="text-xs text-foreground/70 line-clamp-3 whitespace-pre-wrap">{ch.content}</p>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: ch.content, isPreview: ch.isPreview }); setBookFormOpen(true); setBookExpandedId(null); }}
+                          className="flex items-center gap-1 text-xs text-primary font-medium px-2 py-1 rounded-lg bg-primary/10"
+                          data-testid={`btn-edit-chapter-${ch.id}`}
+                        >
+                          <Pencil size={11} />
+                          Editar
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Apagar este capítulo?")) return;
+                            await fetch(`/api/admin/book/chapters/${ch.id}`, { method: "DELETE", credentials: "include" });
+                            refetchBookChapters();
+                          }}
+                          className="flex items-center gap-1 text-xs text-red-500 font-medium px-2 py-1 rounded-lg bg-red-500/10"
+                          data-testid={`btn-delete-chapter-${ch.id}`}
+                        >
+                          <Trash2 size={11} />
+                          Apagar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">Compradores</h3>
+            {bookPurchases.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-3">Ainda sem compras registadas.</p>
+            ) : (
+              <div className="space-y-2">
+                {bookPurchases.map((p, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3" data-testid={`book-purchase-${i}`}>
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{p.email}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-primary">R${(p.amountCents / 100).toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

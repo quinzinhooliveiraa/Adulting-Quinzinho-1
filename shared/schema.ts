@@ -240,6 +240,31 @@ export const userEvents = pgTable("user_events", {
 
 export type UserEvent = typeof userEvents.$inferSelect;
 
+export const bookChapters = pgTable("book_chapters", {
+  id: serial("id").primaryKey(),
+  order: integer("order").notNull(),
+  title: text("title").notNull(),
+  tag: text("tag"),
+  excerpt: text("excerpt"),
+  content: text("content").notNull().default(""),
+  isPreview: boolean("is_preview").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBookChapterSchema = createInsertSchema(bookChapters).omit({ id: true, createdAt: true });
+export type InsertBookChapter = z.infer<typeof insertBookChapterSchema>;
+export type BookChapter = typeof bookChapters.$inferSelect;
+
+export const bookPurchases = pgTable("book_purchases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").notNull().unique(),
+  amountCents: integer("amount_cents").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type BookPurchase = typeof bookPurchases.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
