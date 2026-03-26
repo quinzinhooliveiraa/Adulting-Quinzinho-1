@@ -29,6 +29,7 @@ interface AdminUser {
   lastActiveAt: string | null;
   pwaInstalled: boolean;
   trialBonusClaimed?: boolean;
+  hasBook: boolean;
 }
 
 const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
@@ -100,6 +101,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const [showGrantPremium, setShowGrantPremium] = useState(false);
   const [grantDays, setGrantDays] = useState(30);
   const [grantingBonus, setGrantingBonus] = useState(false);
+  const [grantingBook, setGrantingBook] = useState(false);
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
@@ -172,6 +174,12 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
               </p>
             </div>
             <div className="min-w-0">
+              <span className="text-muted-foreground">Livro:</span>
+              <p className={`font-medium ${user.hasBook ? "text-emerald-500" : "text-muted-foreground"}`}>
+                {user.hasBook ? "Comprado" : "Não"}
+              </p>
+            </div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">PWA:</span>
               <p className={`font-medium ${user.pwaInstalled ? "text-green-500" : "text-muted-foreground"}`}>
                 {user.pwaInstalled ? "Instalado" : "Não"}
@@ -238,6 +246,38 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                       Confirmar — {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
                     </button>
                   </div>
+                )}
+
+                {user.hasBook ? (
+                  <button
+                    disabled={grantingBook}
+                    onClick={async () => {
+                      setGrantingBook(true);
+                      try {
+                        await apiRequest("DELETE", `/api/admin/users/${user.id}/revoke-book`);
+                        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                      } finally { setGrantingBook(false); }
+                    }}
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 disabled:opacity-50"
+                    data-testid={`button-revoke-book-${user.id}`}
+                  >
+                    <BookOpen size={12} /> Revogar Livro
+                  </button>
+                ) : (
+                  <button
+                    disabled={grantingBook}
+                    onClick={async () => {
+                      setGrantingBook(true);
+                      try {
+                        await apiRequest("POST", `/api/admin/users/${user.id}/grant-book`);
+                        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                      } finally { setGrantingBook(false); }
+                    }}
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                    data-testid={`button-grant-book-${user.id}`}
+                  >
+                    <BookOpen size={12} /> Liberar Livro
+                  </button>
                 )}
 
                 {user.isActive ? (

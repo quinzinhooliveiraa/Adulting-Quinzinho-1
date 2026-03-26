@@ -1306,7 +1306,10 @@ export async function registerRoutes(
 
   app.get("/api/admin/users", requireAdmin, async (_req: Request, res: Response) => {
     try {
-      const allUsers = await storage.getAllUsers();
+      const [allUsers, bookOwners] = await Promise.all([
+        storage.getAllUsers(),
+        storage.getAllBookPurchaseUserIds(),
+      ]);
       const usersWithStatus = allUsers.map(u => {
         const premiumStatus = getUserPremiumStatus(u);
         return {
@@ -1327,11 +1330,39 @@ export async function registerRoutes(
           lastActiveAt: u.lastActiveAt,
           pwaInstalled: u.pwaInstalled,
           trialBonusClaimed: u.trialBonusClaimed,
+          hasBook: bookOwners.has(u.id),
         };
       });
       res.json(usersWithStatus);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar usuários" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/grant-book", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const existing = await storage.getUserBookPurchase(userId);
+      if (existing) return res.json({ ok: true, alreadyOwned: true });
+      const grantId = `admin_grant_${userId}_${Date.now()}`;
+      await storage.createBookPurchase(userId, grantId, 0);
+      console.log(`[book] Acesso concedido pelo admin a: ${userId}`);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.log("[book] grant-book error:", err?.message);
+      res.status(500).json({ error: "Erro ao conceder acesso" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id/revoke-book", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      await storage.revokeBookAccess(userId);
+      console.log(`[book] Acesso revogado pelo admin a: ${userId}`);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.log("[book] revoke-book error:", err?.message);
+      res.status(500).json({ error: "Erro ao revogar acesso" });
     }
   });
 

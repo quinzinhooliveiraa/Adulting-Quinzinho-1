@@ -137,6 +137,8 @@ export interface IStorage {
   getUserBookPurchase(userId: string): Promise<BookPurchase | undefined>;
   createBookPurchase(userId: string, paymentIntentId: string, amountCents: number): Promise<BookPurchase>;
   getBookPurchases(): Promise<{ userId: string; name: string; email: string; amountCents: number; createdAt: Date }[]>;
+  getAllBookPurchaseUserIds(): Promise<Set<string>>;
+  revokeBookAccess(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -717,6 +719,15 @@ export class DatabaseStorage implements IStorage {
       amountCents: Number(r.amount_cents),
       createdAt: new Date(r.created_at),
     }));
+  }
+
+  async getAllBookPurchaseUserIds(): Promise<Set<string>> {
+    const rows = await db.select({ userId: bookPurchases.userId }).from(bookPurchases);
+    return new Set(rows.map(r => r.userId));
+  }
+
+  async revokeBookAccess(userId: string): Promise<void> {
+    await db.delete(bookPurchases).where(eq(bookPurchases.userId, userId));
   }
 }
 
