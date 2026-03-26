@@ -248,6 +248,7 @@ export const bookChapters = pgTable("book_chapters", {
   excerpt: text("excerpt"),
   content: text("content").notNull().default(""),
   isPreview: boolean("is_preview").notNull().default(false),
+  pageType: text("page_type").notNull().default("chapter"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

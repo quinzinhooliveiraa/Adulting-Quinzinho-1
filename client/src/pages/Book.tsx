@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
-  ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, AlignLeft, BookMarked
+  ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft
 } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import authorImg from "../assets/author.webp";
@@ -15,6 +15,7 @@ type Chapter = {
   tag: string | null;
   excerpt: string | null;
   isPreview: boolean;
+  pageType: string;
 };
 
 type PurchaseStatus = {
@@ -27,237 +28,349 @@ function formatPrice(cents: number) {
   return `R$\u00a0${(cents / 100).toFixed(2).replace(".", ",")}`;
 }
 
-/* ─────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
+   BOOK STYLES (injected once)
+───────────────────────────────────────────────────────────────── */
+const BOOK_STYLES = `
+  :root {
+    --bk-bg: #faf7f2;
+    --bk-ink: #1e1810;
+    --bk-muted: #78706a;
+    --bk-sep: #ddd5c8;
+    --bk-accent: #7c5c3a;
+    --bk-accent-light: rgba(124,92,58,0.1);
+    --bk-page: #f5f0e8;
+  }
+  .dark {
+    --bk-bg: #161410;
+    --bk-ink: #ede6dc;
+    --bk-muted: #857a6e;
+    --bk-sep: #2a2520;
+    --bk-accent: #c49a6c;
+    --bk-accent-light: rgba(196,154,108,0.12);
+    --bk-page: #1a1712;
+  }
+  .bk-bg    { background: var(--bk-bg) !important; }
+  .bk-ink   { color: var(--bk-ink); }
+  .bk-muted { color: var(--bk-muted); }
+  .bk-sep   { border-color: var(--bk-sep); }
+  .bk-accent{ color: var(--bk-accent); }
+  .bk-serif { font-family: 'Georgia', 'Times New Roman', serif; }
+  .pg-enter-right { animation: pgR .2s ease-out both; }
+  .pg-enter-left  { animation: pgL .2s ease-out both; }
+  @keyframes pgR { from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:none } }
+  @keyframes pgL { from { opacity:0; transform:translateX(-18px) } to { opacity:1; transform:none } }
+`;
+
+/* ─────────────────────────────────────────────────────────────────
+   TOC PAGE  (virtual – no fetch needed)
+───────────────────────────────────────────────────────────────── */
+function TocPage({ chapters, purchased, onSelect, onBuy }: {
+  chapters: Chapter[];
+  purchased: boolean;
+  onSelect: (idx: number) => void;
+  onBuy: () => void;
+}) {
+  const realChapters = chapters.filter(c => c.pageType === "chapter");
+  const frontMatter = chapters.filter(c => c.pageType === "front-matter");
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 pb-12 bk-bg">
+      {/* Ornament */}
+      <div className="flex items-center justify-center gap-2 py-10">
+        <div className="h-px w-12 opacity-40" style={{ background: "var(--bk-accent)" }} />
+        <span className="text-[10px] uppercase tracking-[0.25em] font-semibold bk-accent">Índice</span>
+        <div className="h-px w-12 opacity-40" style={{ background: "var(--bk-accent)" }} />
+      </div>
+
+      {/* Front matter */}
+      {frontMatter.length > 0 && (
+        <div className="mb-6">
+          {frontMatter.map((ch) => {
+            const idx = chapters.findIndex(c => c.id === ch.id);
+            return (
+              <button key={ch.id} onClick={() => onSelect(idx)}
+                className="w-full flex items-baseline justify-between py-2.5 border-b bk-sep group active:opacity-60">
+                <span className="bk-serif text-sm italic bk-ink group-hover:bk-accent">{ch.title}</span>
+                <span className="text-[10px] font-mono bk-muted ml-2">—</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Chapters */}
+      <div>
+        {realChapters.map((ch) => {
+          const idx = chapters.findIndex(c => c.id === ch.id);
+          const locked = !purchased && !ch.isPreview;
+          return (
+            <button key={ch.id}
+              onClick={() => locked ? onBuy() : onSelect(idx)}
+              className="w-full flex items-baseline justify-between py-2 border-b bk-sep group active:opacity-60">
+              <div className="flex items-baseline gap-3 flex-1 min-w-0">
+                <span className="text-[10px] font-mono bk-muted w-5 text-right shrink-0">{ch.order}</span>
+                <span className={`bk-serif text-[13px] text-left leading-snug ${locked ? "opacity-40" : "bk-ink"}`}>
+                  {ch.title.length > 55 ? ch.title.substring(0, 55) + "…" : ch.title}
+                </span>
+              </div>
+              {locked && <LockKeyhole size={10} className="bk-muted ml-2 shrink-0" />}
+              {ch.isPreview && !locked && (
+                <span className="text-[8px] ml-2 px-1.5 py-0.5 rounded-full shrink-0 font-semibold" style={{ background: "var(--bk-accent-light)", color: "var(--bk-accent)" }}>Grátis</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CHAPTER PAGE  (fetches content)
+───────────────────────────────────────────────────────────────── */
+function ChapterPage({ chapter, purchased, onBuy, animClass }: {
+  chapter: Chapter;
+  purchased: boolean;
+  onBuy: () => void;
+  animClass: string;
+}) {
+  const canRead = purchased || chapter.isPreview;
+  const isFrontMatter = chapter.pageType === "front-matter";
+
+  const { data, isLoading } = useQuery<{ content: string }>({
+    queryKey: ["/api/book/chapters", chapter.id, "content"],
+    queryFn: () => fetch(`/api/book/chapters/${chapter.id}/content`, { credentials: "include" }).then(r => r.json()),
+    enabled: canRead,
+  });
+
+  if (!canRead) return (
+    <div className={`flex-1 overflow-y-auto flex flex-col items-center justify-center gap-5 px-8 text-center ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+      <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "var(--bk-accent-light)" }}>
+        <LockKeyhole size={24} style={{ color: "var(--bk-accent)" }} />
+      </div>
+      <div>
+        <h3 className="bk-serif text-xl bk-ink mb-2">Capítulo bloqueado</h3>
+        <p className="text-sm bk-muted">Adquire o livro para aceder a todos os capítulos.</p>
+      </div>
+      <button onClick={onBuy} data-testid="btn-buy-reader"
+        className="px-8 py-3 rounded-2xl font-semibold text-sm text-white active:scale-[0.98] transition-transform"
+        style={{ background: "var(--bk-accent)" }}>
+        Comprar acesso completo
+      </button>
+    </div>
+  );
+
+  if (isLoading) return (
+    <div className={`flex-1 flex items-center justify-center ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+      <div className="flex gap-1.5">
+        {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--bk-accent)", animationDelay: `${i*0.15}s` }} />)}
+      </div>
+    </div>
+  );
+
+  const content = data?.content ?? "";
+
+  return (
+    <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+      <div className="max-w-[62ch] mx-auto px-7 pb-16">
+
+        {/* Front matter header (dedicatória / introdução) */}
+        {isFrontMatter ? (
+          <div className="pt-14 pb-10 text-center">
+            {chapter.tag && (
+              <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-6 bk-accent">{chapter.tag}</p>
+            )}
+            <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">{chapter.title}</h2>
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+              <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
+              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+            </div>
+          </div>
+        ) : (
+          /* Chapter header */
+          <div className="pt-12 pb-8">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+              <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
+                {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
+              </span>
+              <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+            </div>
+
+            <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide
+              ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
+              style={{ letterSpacing: "0.04em" }}>
+              {chapter.title}
+            </h2>
+
+            {chapter.excerpt && (
+              <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
+                style={{ borderColor: "var(--bk-accent)" }}>
+                {chapter.excerpt}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Body text */}
+        {isFrontMatter && chapter.tag === "DEDICATÓRIA" ? (
+          /* Dedication: centered italic */
+          <div className="text-center space-y-4 py-4">
+            {content.split("\n\n").map((para, i) => (
+              <p key={i} className="bk-serif text-base italic bk-ink leading-relaxed">{para}</p>
+            ))}
+          </div>
+        ) : (
+          /* Regular prose */
+          <div className="space-y-0">
+            {content.split("\n\n").map((para, i) => (
+              para.trim() ? (
+                <p key={i} className="bk-serif bk-ink leading-[1.95] mb-5"
+                  style={{ fontSize: "16.5px", textAlign: "justify", hyphens: "auto", letterSpacing: "0.01em" } as React.CSSProperties}>
+                  {para.trim()}
+                </p>
+              ) : <div key={i} className="h-3" />
+            ))}
+          </div>
+        )}
+
+        {/* End-of-page ornament */}
+        <div className="flex items-center justify-center gap-2 mt-12 opacity-25">
+          <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+          <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bk-accent)" }} />
+          <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+          <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
    BOOK READER  (full-screen overlay)
-───────────────────────────────────────── */
-function BookReader({
-  chapters,
-  startIdx,
-  purchased,
-  onClose,
-  onBuy,
-}: {
+───────────────────────────────────────────────────────────────── */
+// Virtual page type for TOC
+const TOC_ID = -999;
+
+function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   chapters: Chapter[];
   startIdx: number;
   purchased: boolean;
   onClose: () => void;
   onBuy: () => void;
 }) {
-  const [currentIdx, setCurrentIdx] = useState(startIdx);
+  // Pages: [TOC virtual, ...sorted chapters]
+  const pages = chapters; // already sorted by order, front matter first
+  const totalPages = pages.length + 1; // +1 for TOC
+
+  // currentPage: 0 = TOC, 1..n = pages[0..n-1]
+  const [currentPage, setCurrentPage] = useState(startIdx + 1); // +1 because page 0 is TOC
+  const [animClass, setAnimClass] = useState("");
   const [showToc, setShowToc] = useState(false);
-  const [animDir, setAnimDir] = useState<"left" | "right" | null>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
 
-  const chapter = chapters[currentIdx];
-  const canRead = purchased || chapter.isPreview;
-  const hasPrev = currentIdx > 0;
-  const hasNext = currentIdx < chapters.length - 1;
-
-  const { data: contentData, isLoading } = useQuery<{ content: string }>({
-    queryKey: ["/api/book/chapters", chapter.id, "content"],
-    queryFn: () =>
-      fetch(`/api/book/chapters/${chapter.id}/content`, { credentials: "include" }).then((r) => r.json()),
-    enabled: canRead,
-  });
+  const isToc = currentPage === 0;
+  const chapter = isToc ? null : pages[currentPage - 1];
+  const hasPrev = currentPage > 0;
+  const hasNext = currentPage < totalPages - 1;
+  const progress = Math.round((currentPage / (totalPages - 1)) * 100);
 
   function navigate(dir: "prev" | "next") {
-    setAnimDir(dir === "next" ? "left" : "right");
-    setTimeout(() => {
-      setCurrentIdx((i) => dir === "next" ? Math.min(i + 1, chapters.length - 1) : Math.max(i - 1, 0));
-      setAnimDir(null);
-      contentRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    }, 160);
+    const nextPage = dir === "next" ? currentPage + 1 : currentPage - 1;
+    if (nextPage < 0 || nextPage >= totalPages) return;
+    setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
+    setCurrentPage(nextPage);
+    setTimeout(() => setAnimClass(""), 220);
   }
 
   function handleTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX; }
   function handleTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 60) {
-      if (diff > 0 && hasNext) navigate("next");
-      if (diff < 0 && hasPrev) navigate("prev");
-    }
+    if (Math.abs(diff) > 55) { diff > 0 && hasNext ? navigate("next") : diff < 0 && hasPrev ? navigate("prev") : null; }
     touchStartX.current = null;
   }
 
-  const progress = Math.round(((currentIdx + 1) / chapters.length) * 100);
+  function goToChapter(idx: number) {
+    setAnimClass("pg-enter-right");
+    setCurrentPage(idx + 1);
+    setTimeout(() => setAnimClass(""), 220);
+    setShowToc(false);
+  }
+
+  function pageLabel() {
+    if (isToc) return "Índice";
+    const ch = pages[currentPage - 1];
+    if (ch.pageType === "front-matter") return ch.title;
+    return `Cap. ${ch.order}`;
+  }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "var(--book-bg, #faf7f2)" }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      <style>{`
-        :root { --book-bg: #faf7f2; --book-ink: #1e1710; --book-muted: #7a6e64; --book-sep: #d8d0c5; --book-accent: #7c5c3a; }
-        .dark { --book-bg: #17150f; --book-ink: #ede6dc; --book-muted: #857a6e; --book-sep: #2c2820; --book-accent: #c49a6c; }
-        .bk-text { color: var(--book-ink); }
-        .bk-muted { color: var(--book-muted); }
-        .bk-sep { border-color: var(--book-sep); }
-        .page-in-left { animation: pgLeft .16s ease-out both; }
-        .page-in-right { animation: pgRight .16s ease-out both; }
-        @keyframes pgLeft { from { opacity:0; transform:translateX(14px) } to { opacity:1; transform:translateX(0) } }
-        @keyframes pgRight { from { opacity:0; transform:translateX(-14px) } to { opacity:1; transform:translateX(0) } }
-      `}</style>
+    <div className="fixed inset-0 z-50 flex flex-col bk-bg"
+      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <style>{BOOK_STYLES}</style>
 
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bk-sep shrink-0" style={{ background: "var(--book-bg)" }}>
-        <button onClick={onClose} className="p-1.5 rounded-full active:opacity-50" data-testid="btn-close-reader">
+      <div className="flex items-center justify-between px-4 py-3 border-b bk-sep bk-bg shrink-0">
+        <button onClick={onClose} data-testid="btn-close-reader" className="p-1.5 active:opacity-50">
           <X size={20} className="bk-muted" />
         </button>
-        <p className="text-[11px] uppercase tracking-[0.18em] bk-muted font-medium">A Casa dos 20</p>
-        <button onClick={() => setShowToc(!showToc)} className="p-1.5 rounded-full active:opacity-50" data-testid="btn-toc">
+        <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
+        <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-1.5 active:opacity-50">
           <List size={20} className="bk-muted" />
         </button>
       </div>
 
-      {/* Progress */}
-      <div className="h-[2px] shrink-0" style={{ background: "var(--book-sep)" }}>
-        <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: "var(--book-accent)" }} />
+      {/* Progress bar */}
+      <div className="h-[2px] shrink-0" style={{ background: "var(--bk-sep)" }}>
+        <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: "var(--bk-accent)" }} />
       </div>
 
-      {/* TOC */}
+      {/* TOC overlay */}
       {showToc && (
-        <div className="absolute inset-0 z-20 flex flex-col overflow-hidden" style={{ background: "var(--book-bg)" }}>
-          <div className="flex items-center justify-between px-5 py-4 border-b bk-sep">
-            <h2 className="font-serif text-lg bk-text font-bold">Índice</h2>
+        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden">
+          <style>{BOOK_STYLES}</style>
+          <div className="flex items-center justify-between px-5 py-4 border-b bk-sep shrink-0">
+            <h2 className="bk-serif text-lg bk-ink font-bold">Índice</h2>
             <button onClick={() => setShowToc(false)} className="p-1.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {chapters.map((ch, idx) => {
-              const locked = !purchased && !ch.isPreview;
-              return (
-                <button
-                  key={ch.id}
-                  onClick={() => {
-                    if (locked) { onBuy(); return; }
-                    setCurrentIdx(idx);
-                    setShowToc(false);
-                    setTimeout(() => contentRef.current?.scrollTo({ top: 0 }), 50);
-                  }}
-                  data-testid={`toc-ch-${ch.id}`}
-                  className={`w-full flex items-center gap-4 px-5 py-3 border-b bk-sep transition-colors active:opacity-60 ${idx === currentIdx ? "bg-amber-500/8" : ""}`}
-                  style={idx === currentIdx ? { background: "color-mix(in srgb, var(--book-accent) 8%, transparent)" } : {}}
-                >
-                  <span className="text-[11px] font-mono bk-muted w-7 text-right shrink-0">{ch.order}</span>
-                  <p className={`flex-1 text-sm font-serif bk-text text-left truncate ${locked ? "opacity-40" : ""}`}>{ch.title}</p>
-                  {locked ? <LockKeyhole size={12} className="bk-muted shrink-0" /> :
-                    idx === currentIdx ? <AlignLeft size={12} className="shrink-0" style={{ color: "var(--book-accent)" }} /> :
-                    ch.isPreview ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "color-mix(in srgb, var(--book-accent) 15%, transparent)", color: "var(--book-accent)" }}>Grátis</span> : null}
-                </button>
-              );
-            })}
-          </div>
+          <TocPage chapters={pages} purchased={purchased}
+            onSelect={goToChapter} onBuy={() => { setShowToc(false); onBuy(); }} />
         </div>
       )}
 
-      {/* Chapter header */}
-      <div className="px-6 pt-8 pb-2 text-center shrink-0">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="h-px w-10 opacity-40" style={{ background: "var(--book-accent)" }} />
-          <span className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: "var(--book-accent)" }}>
-            Capítulo {chapter.order}
-          </span>
-          <div className="h-px w-10 opacity-40" style={{ background: "var(--book-accent)" }} />
-        </div>
-        {chapter.tag && (
-          <p className="text-[10px] uppercase tracking-widest mb-1.5 bk-muted">{chapter.tag}</p>
-        )}
-        <h2 className={`font-serif font-bold leading-snug bk-text ${chapter.title.length > 35 ? "text-xl" : "text-[22px]"}`}>
-          {chapter.title}
-        </h2>
-      </div>
+      {/* Page content */}
+      {isToc ? (
+        <TocPage chapters={pages} purchased={purchased} onSelect={goToChapter} onBuy={onBuy} />
+      ) : chapter ? (
+        <ChapterPage chapter={chapter} purchased={purchased} onBuy={onBuy} animClass={animClass} />
+      ) : null}
 
-      {/* Body */}
-      <div
-        ref={contentRef}
-        className={`flex-1 overflow-y-auto px-7 pb-8 ${animDir === "left" ? "page-in-left" : animDir === "right" ? "page-in-right" : ""}`}
-      >
-        {!canRead ? (
-          <div className="flex flex-col items-center justify-center min-h-[55vh] text-center gap-5 px-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--book-accent) 12%, transparent)" }}>
-              <LockKeyhole size={26} style={{ color: "var(--book-accent)" }} />
-            </div>
-            <div>
-              <h3 className="font-serif text-xl bk-text mb-2">Capítulo bloqueado</h3>
-              <p className="text-sm bk-muted">Adquire o livro para aceder a todos os capítulos.</p>
-            </div>
-            <button onClick={onBuy} className="px-8 py-3 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform text-white" style={{ background: "var(--book-accent)" }} data-testid="btn-buy-from-reader">
-              Comprar acesso
-            </button>
-          </div>
-        ) : isLoading ? (
-          <div className="flex items-center justify-center min-h-[55vh]">
-            <div className="flex gap-1.5">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--book-accent)", animationDelay: `${i * 0.15}s` }} />
-              ))}
-            </div>
-          </div>
-        ) : contentData?.content ? (
-          <div className="max-w-[58ch] mx-auto pt-4">
-            {chapter.excerpt && (
-              <div className="mb-8">
-                <p className="font-serif text-[15px] italic leading-relaxed text-center bk-muted">
-                  "{chapter.excerpt}"
-                </p>
-                <div className="flex items-center justify-center gap-2 mt-4">
-                  <div className="h-px w-10 opacity-30" style={{ background: "var(--book-accent)" }} />
-                  <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--book-accent)" }} />
-                  <div className="h-px w-10 opacity-30" style={{ background: "var(--book-accent)" }} />
-                </div>
-              </div>
-            )}
-            <div
-              className="font-serif leading-[1.9] bk-text whitespace-pre-wrap text-[16.5px]"
-              style={{ textAlign: "justify", hyphens: "auto", letterSpacing: "0.005em" } as React.CSSProperties}
-            >
-              {contentData.content}
-            </div>
-            {chapter.isPreview && (
-              <div className="mt-12 text-center">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-px flex-1 opacity-30" style={{ background: "var(--book-accent)" }} />
-                  <span className="text-[10px] uppercase tracking-widest bk-muted">Pré-visualização gratuita</span>
-                  <div className="h-px flex-1 opacity-30" style={{ background: "var(--book-accent)" }} />
-                </div>
-              </div>
-            )}
-            {/* End-of-chapter ornament */}
-            <div className="flex items-center justify-center gap-2 mt-10 mb-2 opacity-30">
-              <div className="h-px w-8" style={{ background: "var(--book-accent)" }} />
-              <div className="w-1 h-1 rounded-full" style={{ background: "var(--book-accent)" }} />
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--book-accent)" }} />
-              <div className="w-1 h-1 rounded-full" style={{ background: "var(--book-accent)" }} />
-              <div className="h-px w-8" style={{ background: "var(--book-accent)" }} />
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center min-h-[55vh]">
-            <p className="text-sm bk-muted">Conteúdo não disponível.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom nav */}
-      <div className="border-t bk-sep shrink-0 px-6 py-4 flex items-center justify-between" style={{ background: "var(--book-bg)" }}>
-        <button onClick={() => navigate("prev")} disabled={!hasPrev} className="flex items-center gap-1.5 text-sm disabled:opacity-20 active:opacity-50 transition-opacity bk-muted" data-testid="btn-prev-chapter">
-          <ChevronLeft size={17} /> Anterior
+      {/* Bottom navigation */}
+      <div className="shrink-0 border-t bk-sep bk-bg px-6 py-4 flex items-center justify-between">
+        <button onClick={() => navigate("prev")} disabled={!hasPrev}
+          data-testid="btn-prev-chapter"
+          className="flex items-center gap-1 text-sm disabled:opacity-20 active:opacity-50 transition-opacity bk-muted">
+          <ChevronLeft size={16} /> Anterior
         </button>
-        <p className="text-[11px] font-mono bk-muted">{currentIdx + 1} / {chapters.length}</p>
-        <button onClick={() => navigate("next")} disabled={!hasNext} className="flex items-center gap-1.5 text-sm font-medium disabled:opacity-20 active:opacity-50 transition-opacity" style={{ color: hasNext ? "var(--book-accent)" : "var(--book-muted)" }} data-testid="btn-next-chapter">
-          Próximo <ChevronRight size={17} />
+        <p className="text-[10px] bk-muted font-mono">{pageLabel()} · {currentPage + 1}/{totalPages}</p>
+        <button onClick={() => navigate("next")} disabled={!hasNext}
+          data-testid="btn-next-chapter"
+          className="flex items-center gap-1 text-sm font-semibold disabled:opacity-20 active:opacity-50 transition-opacity"
+          style={{ color: hasNext ? "var(--bk-accent)" : "var(--bk-muted)" }}>
+          Próximo <ChevronRight size={16} />
         </button>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
    MAIN PAGE
-───────────────────────────────────────── */
+───────────────────────────────────────────────────────────────── */
 export default function Book() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"sobre" | "ler">("sobre");
@@ -266,22 +379,30 @@ export default function Book() {
 
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<Chapter[]>({
     queryKey: ["/api/book/chapters"],
-    queryFn: () => fetch("/api/book/chapters", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => fetch("/api/book/chapters", { credentials: "include" }).then(r => r.json()),
   });
 
   const { data: purchaseStatus } = useQuery<PurchaseStatus>({
     queryKey: ["/api/book/purchase-status"],
-    queryFn: () => fetch("/api/book/purchase-status", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => fetch("/api/book/purchase-status", { credentials: "include" }).then(r => r.json()),
   });
 
   const purchased = purchaseStatus?.purchased ?? false;
   const priceLabel = purchaseStatus?.pricesCents ? formatPrice(purchaseStatus.pricesCents) : "R$\u00a019,90";
 
+  // Sort chapters: front-matter first (by order), then chapters
+  const sortedChapters = [...chapters].sort((a, b) => a.order - b.order);
+  const freeChapters = sortedChapters.filter(c => c.isPreview && c.pageType === "chapter");
+
   function openChapter(idx: number) {
-    const ch = chapters[idx];
+    const ch = sortedChapters[idx];
     if (!ch) return;
     if (!purchased && !ch.isPreview) { setShowPurchaseModal(true); return; }
     setReaderStartIdx(idx);
+  }
+
+  function openReader(startIdx = 0) {
+    setReaderStartIdx(startIdx);
   }
 
   function handlePurchaseSuccess() {
@@ -289,6 +410,15 @@ export default function Book() {
     queryClient.invalidateQueries({ queryKey: ["/api/book/purchase-status"] });
     queryClient.invalidateQueries({ queryKey: ["/api/book/chapters"] });
   }
+
+  const tagGradients: Record<string, string> = {
+    "ESSENCIAL":   "linear-gradient(135deg,#c9bfb0 0%,#7a6e64 100%)",
+    "TRANSIÇÃO":   "linear-gradient(135deg,#b8c4ce 0%,#5c6e7a 100%)",
+    "IDENTIDADE":  "linear-gradient(135deg,#c8bdd4 0%,#6e5c7a 100%)",
+    "AMOR":        "linear-gradient(135deg,#d4bdb8 0%,#7a5c5c 100%)",
+    "CRESCIMENTO": "linear-gradient(135deg,#b8cec4 0%,#5c7a6e 100%)",
+    "PROPÓSITO":   "linear-gradient(135deg,#cec4b8 0%,#7a6e5c 100%)",
+  };
 
   return (
     <div className="min-h-screen bg-background animate-in fade-in duration-700 overflow-x-hidden">
@@ -302,26 +432,19 @@ export default function Book() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted rounded-xl p-1 mb-8">
-          <button
-            onClick={() => setActiveTab("sobre")}
-            data-testid="tab-sobre"
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "sobre" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
+          <button onClick={() => setActiveTab("sobre")} data-testid="tab-sobre"
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "sobre" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
             Sobre
           </button>
-          <button
-            onClick={() => setActiveTab("ler")}
-            data-testid="tab-ler"
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === "ler" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            <BookMarked size={14} />
-            Ler Livro
+          <button onClick={() => setActiveTab("ler")} data-testid="tab-ler"
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === "ler" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
+            <BookMarked size={14} /> Ler Livro
           </button>
         </div>
 
         {/* ── TAB: SOBRE ── */}
         {activeTab === "sobre" && (
-          <div className="space-y-0">
+          <div>
             {/* Cover */}
             <div className="flex flex-col items-center mb-10">
               <div className="w-44 h-60 rounded-r-xl rounded-l-sm shadow-2xl shadow-primary/20 overflow-hidden relative border-l-[6px] border-primary/30 transform -rotate-1 hover:rotate-0 transition-transform duration-500">
@@ -337,10 +460,15 @@ export default function Book() {
             {purchased ? (
               <div className="mb-8 bg-green-500/10 border border-green-500/20 rounded-2xl p-4 flex items-center gap-3">
                 <CheckCircle2 size={20} className="text-green-600 shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-semibold text-green-700 dark:text-green-400">Livro desbloqueado</p>
                   <p className="text-xs text-muted-foreground">Tens acesso completo a todos os capítulos.</p>
                 </div>
+                <button onClick={() => openReader(0)} data-testid="btn-read-now"
+                  className="text-xs px-3 py-2 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
+                  style={{ background: "var(--bk-accent, #7c5c3a)" }}>
+                  Ler
+                </button>
               </div>
             ) : (
               <div className="mb-8 bg-card border border-border rounded-2xl p-5 space-y-3">
@@ -351,60 +479,37 @@ export default function Book() {
                   </div>
                   <span className="text-lg font-bold text-primary">{priceLabel}</span>
                 </div>
-                <button
-                  onClick={() => setShowPurchaseModal(true)}
-                  data-testid="btn-buy-book-in-app"
-                  className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-                >
-                  <BookOpen size={16} />
-                  Comprar e Ler Agora
+                <button onClick={() => setShowPurchaseModal(true)} data-testid="btn-buy-book-in-app"
+                  className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                  <BookOpen size={16} /> Comprar e Ler Agora
                 </button>
               </div>
             )}
 
-            {/* Free chapters — Reflexões do Livro */}
-            {chapters.filter(c => c.isPreview).length > 0 && (
+            {/* Free chapters cards */}
+            {freeChapters.length > 0 && (
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-serif text-lg text-foreground">Reflexões do Livro</h3>
                   <BookOpen size={17} className="text-muted-foreground" />
                 </div>
                 <div className="space-y-4">
-                  {chapters.filter(c => c.isPreview).map((chapter) => {
-                    const idx = chapters.findIndex(c => c.id === chapter.id);
-                    const tagGradients: Record<string, string> = {
-                      "ESSENCIAL":   "linear-gradient(135deg, #c9bfb0 0%, #7a6e64 100%)",
-                      "TRANSIÇÃO":   "linear-gradient(135deg, #b8c4ce 0%, #5c6e7a 100%)",
-                      "IDENTIDADE":  "linear-gradient(135deg, #c8bdd4 0%, #6e5c7a 100%)",
-                      "AMOR":        "linear-gradient(135deg, #d4bdb8 0%, #7a5c5c 100%)",
-                      "CRESCIMENTO": "linear-gradient(135deg, #b8cec4 0%, #5c7a6e 100%)",
-                      "PROPÓSITO":   "linear-gradient(135deg, #cec4b8 0%, #7a6e5c 100%)",
-                    };
-                    const grad = tagGradients[chapter.tag?.toUpperCase() ?? ""] ?? "linear-gradient(135deg, #c9bfb0 0%, #7a6e64 100%)";
+                  {freeChapters.map((chapter) => {
+                    const idx = sortedChapters.findIndex(c => c.id === chapter.id);
+                    const grad = tagGradients[chapter.tag?.toUpperCase() ?? ""] ?? "linear-gradient(135deg,#c9bfb0 0%,#7a6e64 100%)";
                     return (
-                      <button
-                        key={chapter.id}
-                        onClick={() => openChapter(idx)}
+                      <button key={chapter.id} onClick={() => openChapter(idx)}
                         data-testid={`card-free-ch-${chapter.id}`}
-                        className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.99] transition-transform shadow-sm"
-                      >
-                        {/* Decorative header */}
+                        className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.99] transition-transform shadow-sm">
                         <div className="h-28 w-full relative overflow-hidden" style={{ background: grad }}>
-                          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.6) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(0,0,0,0.3) 0%, transparent 50%)" }} />
+                          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%,rgba(255,255,255,0.6) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(0,0,0,0.3) 0%,transparent 50%)" }} />
                           <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent" />
                         </div>
-                        {/* Content */}
                         <div className="px-5 pb-5 -mt-1">
-                          {chapter.tag && (
-                            <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>
-                          )}
+                          {chapter.tag && <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>}
                           <h4 className="font-serif text-xl text-foreground mb-2 leading-tight">{chapter.title}</h4>
-                          {chapter.excerpt && (
-                            <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">
-                              "{chapter.excerpt}"
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--book-accent, #7c5c3a)" }}>
+                          {chapter.excerpt && <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">"{chapter.excerpt}"</p>}
+                          <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
                             Ler Reflexão <ChevronRight size={13} />
                           </div>
                         </div>
@@ -421,17 +526,17 @@ export default function Book() {
                 <ShoppingBag size={16} className="text-muted-foreground" />
                 <h3 className="text-sm font-medium text-foreground">Outras formas de comprar</h3>
               </div>
-              <button onClick={() => window.open("https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/", "_blank")} className="w-full p-3.5 bg-[#FF9900]/10 border border-[#FF9900]/20 rounded-xl flex items-center gap-3 transition-all active:scale-[0.98]" data-testid="button-buy-amazon">
+              <button onClick={() => window.open("https://www.amazon.com.br/Casa-dos-20-Quinzinho-Oliveira/dp/B0CWW9JR92/","_blank")} className="w-full p-3.5 bg-[#FF9900]/10 border border-[#FF9900]/20 rounded-xl flex items-center gap-3 active:scale-[0.98] transition-all" data-testid="button-buy-amazon">
                 <div className="w-8 h-8 rounded-lg bg-[#FF9900]/20 flex items-center justify-center shrink-0"><span className="text-sm font-bold text-[#FF9900]">A</span></div>
                 <div className="flex-1 text-left"><p className="text-xs font-semibold text-foreground">Amazon Brasil</p><p className="text-[10px] text-muted-foreground">E-book e físico</p></div>
                 <ExternalLink size={14} className="text-muted-foreground" />
               </button>
-              <button onClick={() => window.open("https://books.apple.com/us/book/a-casa-dos-20/id6760140786", "_blank")} className="w-full p-3.5 bg-muted border border-border rounded-xl flex items-center gap-3 transition-all active:scale-[0.98]" data-testid="button-buy-apple">
+              <button onClick={() => window.open("https://books.apple.com/us/book/a-casa-dos-20/id6760140786","_blank")} className="w-full p-3.5 bg-muted border border-border rounded-xl flex items-center gap-3 active:scale-[0.98] transition-all" data-testid="button-buy-apple">
                 <div className="w-8 h-8 rounded-lg bg-muted-foreground/10 flex items-center justify-center shrink-0"><span className="text-sm">🍎</span></div>
                 <div className="flex-1 text-left"><p className="text-xs font-semibold text-foreground">Apple Books</p><p className="text-[10px] text-muted-foreground">iBook digital</p></div>
                 <ExternalLink size={14} className="text-muted-foreground" />
               </button>
-              <button onClick={() => window.open("https://www.clubedeautores.com.br/", "_blank")} className="w-full p-3.5 bg-muted border border-border rounded-xl flex items-center gap-3 transition-all active:scale-[0.98]" data-testid="button-buy-clube">
+              <button onClick={() => window.open("https://www.clubedeautores.com.br/","_blank")} className="w-full p-3.5 bg-muted border border-border rounded-xl flex items-center gap-3 active:scale-[0.98] transition-all" data-testid="button-buy-clube">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><span className="text-sm font-bold text-primary">C</span></div>
                 <div className="flex-1 text-left"><p className="text-xs font-semibold text-foreground">Clube de Autores</p><p className="text-[10px] text-muted-foreground">Livro físico</p></div>
                 <ExternalLink size={14} className="text-muted-foreground" />
@@ -447,14 +552,11 @@ export default function Book() {
                 <h3 className="font-serif text-base text-foreground">Converse com o Autor</h3>
                 <p className="text-xs text-muted-foreground mt-1">Feedback, histórias ou apenas para trocar ideias.</p>
               </div>
-              <button
-                onClick={() => window.open("https://www.instagram.com/quinzinhooliveiraa_/", "_blank")}
+              <button onClick={() => window.open("https://www.instagram.com/quinzinhooliveiraa_/","_blank")}
                 className="w-full py-2.5 text-white rounded-full text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                style={{ background: "linear-gradient(135deg, #f9ce34, #ee2a7b, #6228d7)" }}
-                data-testid="btn-author-instagram"
-              >
-                <Instagram size={16} />
-                @quinzinhooliveiraa_
+                style={{ background: "linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)" }}
+                data-testid="btn-author-instagram">
+                <Instagram size={16} /> @quinzinhooliveiraa_
               </button>
             </div>
           </div>
@@ -463,7 +565,7 @@ export default function Book() {
         {/* ── TAB: LER LIVRO ── */}
         {activeTab === "ler" && (
           <div>
-            {/* Buy prompt if not purchased */}
+            {/* Buy banner */}
             {!purchased && (
               <div className="mb-6 bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -473,39 +575,53 @@ export default function Book() {
                   <p className="text-sm font-semibold text-foreground">Acesso completo por {priceLabel}</p>
                   <p className="text-xs text-muted-foreground">3 capítulos gratuitos disponíveis</p>
                 </div>
-                <button onClick={() => setShowPurchaseModal(true)} data-testid="btn-buy-ler-tab" className="text-xs px-3 py-2 bg-primary text-primary-foreground rounded-xl font-semibold shrink-0 active:scale-95 transition-transform">
+                <button onClick={() => setShowPurchaseModal(true)} data-testid="btn-buy-ler-tab"
+                  className="text-xs px-3 py-2 bg-primary text-primary-foreground rounded-xl font-semibold shrink-0 active:scale-95 transition-transform">
                   Comprar
                 </button>
               </div>
             )}
 
+            {/* Open reader from TOC */}
+            <button onClick={() => openReader(0)} data-testid="btn-open-toc"
+              className="w-full mb-5 p-4 border border-border bg-card rounded-2xl flex items-center gap-3 active:scale-[0.99] transition-transform">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "var(--bk-accent-light,rgba(124,92,58,0.1))" }}>
+                <AlignLeft size={16} style={{ color: "var(--bk-accent,#7c5c3a)" }} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground">Ver Índice Completo</p>
+                <p className="text-xs text-muted-foreground">{sortedChapters.filter(c=>c.pageType==="chapter").length} capítulos · introdução · dedicatória</p>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground" />
+            </button>
+
             {/* Chapter list */}
             {chaptersLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-[68px] bg-muted rounded-2xl animate-pulse" />)}
-              </div>
+              <div className="space-y-2">{[1,2,3,4,5].map(i=><div key={i} className="h-[68px] bg-muted rounded-2xl animate-pulse"/>)}</div>
             ) : (
               <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-                {chapters.map((chapter, idx) => {
+                {sortedChapters.map((chapter, idx) => {
                   const isLocked = !purchased && !chapter.isPreview;
+                  const isFM = chapter.pageType === "front-matter";
                   return (
-                    <button
-                      key={chapter.id}
-                      onClick={() => openChapter(idx)}
+                    <button key={chapter.id} onClick={() => openChapter(idx)}
                       data-testid={`chapter-read-${chapter.id}`}
-                      className="w-full flex items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/40 active:bg-muted"
-                    >
+                      className="w-full flex items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/40 active:bg-muted">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={isLocked ? {} : { background: "color-mix(in srgb, var(--book-accent, #7c5c3a) 12%, transparent)" }}>
+                        style={isLocked ? {} : { background: "var(--bk-accent-light,rgba(124,92,58,0.1))" }}>
                         {isLocked ? (
                           <LockKeyhole size={14} className="text-muted-foreground" />
+                        ) : isFM ? (
+                          <BookMarked size={14} style={{ color: "var(--bk-accent,#7c5c3a)" }} />
                         ) : (
-                          <span className="text-xs font-bold font-mono" style={{ color: "var(--book-accent, #7c5c3a)" }}>{chapter.order}</span>
+                          <span className="text-[10px] font-bold font-mono" style={{ color: "var(--bk-accent,#7c5c3a)" }}>{chapter.order}</span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        {chapter.tag && <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-0.5 truncate">{chapter.tag}</p>}
-                        <p className={`text-sm font-serif font-semibold truncate ${isLocked ? "text-muted-foreground" : "text-foreground"}`}>
+                        {chapter.tag && <p className="text-[9px] uppercase tracking-widest font-bold mb-0.5 truncate" style={{ color: "var(--bk-accent,#7c5c3a)" }}>{chapter.tag}</p>}
+                        <p className={`text-sm font-serif font-semibold ${isLocked ? "text-muted-foreground" : "text-foreground"}`}
+                          style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>
                           {chapter.title}
                         </p>
                         {chapter.excerpt && (
@@ -514,11 +630,9 @@ export default function Book() {
                           </p>
                         )}
                       </div>
-                      <div className="shrink-0">
+                      <div className="shrink-0 ml-2">
                         {chapter.isPreview ? (
-                          <span className="text-[9px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "color-mix(in srgb, var(--book-accent, #7c5c3a) 12%, transparent)", color: "var(--book-accent, #7c5c3a)" }}>
-                            Grátis
-                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--bk-accent-light,rgba(124,92,58,0.1))", color: "var(--bk-accent,#7c5c3a)" }}>Grátis</span>
                         ) : isLocked ? (
                           <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Bloqueado</span>
                         ) : (
@@ -535,9 +649,9 @@ export default function Book() {
       </div>
 
       {/* Book reader overlay */}
-      {readerStartIdx !== null && chapters.length > 0 && (
+      {readerStartIdx !== null && sortedChapters.length > 0 && (
         <BookReader
-          chapters={chapters}
+          chapters={sortedChapters}
           startIdx={readerStartIdx}
           purchased={purchased}
           onClose={() => setReaderStartIdx(null)}
