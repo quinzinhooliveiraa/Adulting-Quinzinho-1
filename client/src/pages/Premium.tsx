@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
+import CardSetupModal from "@/components/CardSetupModal";
 
 export default function Premium() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -70,21 +72,13 @@ export default function Premium() {
     }
   };
 
-  const handleSetupForBonus = async () => {
-    setLoading("bonus");
-    try {
-      const res = await fetch("/api/stripe/setup-for-bonus", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-    } finally {
-      setLoading(null);
-    }
+  const handleSetupForBonus = () => {
+    setShowCardModal(true);
+  };
+
+  const handleCardSuccess = () => {
+    setShowCardModal(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
   const features = [
@@ -102,6 +96,12 @@ export default function Premium() {
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="page-premium">
+      {showCardModal && (
+        <CardSetupModal
+          onSuccess={handleCardSuccess}
+          onClose={() => setShowCardModal(false)}
+        />
+      )}
       <div className="p-4">
         <button
           onClick={() => setLocation("/")}
@@ -173,9 +173,6 @@ export default function Premium() {
                   <p className="text-xs text-muted-foreground mt-0.5">Só pagas após os 30 dias, se quiseres continuar</p>
                 </div>
               </div>
-              {loading === "bonus" && (
-                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">A redirecionar...</p>
-              )}
             </button>
           )}
 
