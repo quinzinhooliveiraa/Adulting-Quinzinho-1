@@ -1187,10 +1187,6 @@ export async function registerRoutes(
       const id = Number(req.params.id);
       const chapter = await storage.getBookChapter(id);
       if (!chapter) return res.status(404).json({ error: "Capítulo não encontrado" });
-      if (!chapter.isPreview) {
-        const purchase = await storage.getUserBookPurchase(req.session.userId!);
-        if (!purchase) return res.status(403).json({ error: "Compra necessária" });
-      }
       res.json({ content: chapter.content });
     } catch {
       res.status(500).json({ error: "Erro ao buscar conteúdo" });
