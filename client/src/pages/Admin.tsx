@@ -1702,8 +1702,11 @@ export default function Admin() {
                 <input type="text" value={bookForm.excerpt} onChange={e => setBookForm(f => ({ ...f, excerpt: e.target.value }))} placeholder="Frase de destaque..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-excerpt" />
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conteúdo completo</label>
-                <textarea value={bookForm.content} onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))} rows={10} placeholder="Colar o texto completo do capítulo aqui..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none" data-testid="input-chapter-content" />
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conteúdo completo</label>
+                  <span className="text-[10px] text-muted-foreground">{bookForm.content.length} car.</span>
+                </div>
+                <textarea value={bookForm.content} onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))} rows={20} placeholder="Colar o texto completo do capítulo aqui..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-y font-mono" style={{ minHeight: 200 }} data-testid="input-chapter-content" />
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1742,35 +1745,51 @@ export default function Admin() {
               <p className="text-sm text-muted-foreground text-center py-6">Ainda sem capítulos. Adiciona o primeiro.</p>
             ) : (
               adminBookChapters.map(ch => (
-                <div key={ch.id} className="bg-card border border-border rounded-xl overflow-hidden" data-testid={`admin-chapter-${ch.id}`}>
-                  <button
-                    onClick={() => setBookExpandedId(bookExpandedId === ch.id ? null : ch.id)}
-                    className="w-full flex items-center gap-3 p-3 text-left"
-                  >
+                <div key={ch.id} className={`bg-card border rounded-xl overflow-hidden ${ch.content.length < 50 ? "border-red-500/40" : "border-border"}`} data-testid={`admin-chapter-${ch.id}`}>
+                  <div className="flex items-center gap-3 p-3">
                     <span className="text-xs font-bold text-muted-foreground w-5 shrink-0">{ch.order}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{ch.title}</p>
+                      <p className={`text-sm font-medium truncate ${ch.content.length < 50 ? "text-red-500" : "text-foreground"}`}>{ch.title}</p>
                       {ch.tag && <p className="text-[10px] text-primary">{ch.tag}</p>}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {ch.isPreview && <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Grátis</span>}
-                      <span className="text-[10px] text-muted-foreground">{ch.content.length} car.</span>
-                      {bookExpandedId === ch.id ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/admin/book/chapters/${ch.id}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isPreview: !ch.isPreview }) });
+                          refetchBookChapters();
+                        }}
+                        className={`text-[9px] px-2 py-1 rounded-full font-semibold border transition-colors ${ch.isPreview ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20" : "bg-muted text-muted-foreground border-border hover:bg-muted/70"}`}
+                        data-testid={`btn-toggle-preview-${ch.id}`}
+                        title={ch.isPreview ? "Clica para bloquear" : "Clica para libertar"}
+                      >
+                        {ch.isPreview ? "Grátis" : "Bloqueado"}
+                      </button>
+                      <span className="text-[10px] text-muted-foreground">{ch.content.length}c</span>
+                      <button
+                        onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: ch.content, isPreview: ch.isPreview }); setBookFormOpen(true); setBookExpandedId(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        className="p-1.5 rounded-lg bg-primary/5 hover:bg-primary/15 transition-colors"
+                        data-testid={`btn-edit-chapter-${ch.id}`}
+                        title="Editar"
+                      >
+                        <Pencil size={12} className="text-primary" />
+                      </button>
+                      <button
+                        onClick={() => setBookExpandedId(bookExpandedId === ch.id ? null : ch.id)}
+                        className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        {bookExpandedId === ch.id ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+                      </button>
                     </div>
-                  </button>
+                  </div>
                   {bookExpandedId === ch.id && (
                     <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
                       {ch.excerpt && <p className="text-xs italic text-muted-foreground">"{ch.excerpt}"</p>}
-                      <p className="text-xs text-foreground/70 line-clamp-3 whitespace-pre-wrap">{ch.content}</p>
+                      {ch.content.length < 50 ? (
+                        <p className="text-xs text-red-500 font-medium">⚠ Conteúdo vazio — clica no lápis para editar.</p>
+                      ) : (
+                        <p className="text-xs text-foreground/70 line-clamp-3 whitespace-pre-wrap">{ch.content}</p>
+                      )}
                       <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: ch.content, isPreview: ch.isPreview }); setBookFormOpen(true); setBookExpandedId(null); }}
-                          className="flex items-center gap-1 text-xs text-primary font-medium px-2 py-1 rounded-lg bg-primary/10"
-                          data-testid={`btn-edit-chapter-${ch.id}`}
-                        >
-                          <Pencil size={11} />
-                          Editar
-                        </button>
                         <button
                           onClick={async () => {
                             if (!confirm("Apagar este capítulo?")) return;
