@@ -362,6 +362,59 @@ export default function Book() {
               </div>
             )}
 
+            {/* Free chapters — Reflexões do Livro */}
+            {chapters.filter(c => c.isPreview).length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-serif text-lg text-foreground">Reflexões do Livro</h3>
+                  <BookOpen size={17} className="text-muted-foreground" />
+                </div>
+                <div className="space-y-4">
+                  {chapters.filter(c => c.isPreview).map((chapter) => {
+                    const idx = chapters.findIndex(c => c.id === chapter.id);
+                    const tagGradients: Record<string, string> = {
+                      "ESSENCIAL":   "linear-gradient(135deg, #c9bfb0 0%, #7a6e64 100%)",
+                      "TRANSIÇÃO":   "linear-gradient(135deg, #b8c4ce 0%, #5c6e7a 100%)",
+                      "IDENTIDADE":  "linear-gradient(135deg, #c8bdd4 0%, #6e5c7a 100%)",
+                      "AMOR":        "linear-gradient(135deg, #d4bdb8 0%, #7a5c5c 100%)",
+                      "CRESCIMENTO": "linear-gradient(135deg, #b8cec4 0%, #5c7a6e 100%)",
+                      "PROPÓSITO":   "linear-gradient(135deg, #cec4b8 0%, #7a6e5c 100%)",
+                    };
+                    const grad = tagGradients[chapter.tag?.toUpperCase() ?? ""] ?? "linear-gradient(135deg, #c9bfb0 0%, #7a6e64 100%)";
+                    return (
+                      <button
+                        key={chapter.id}
+                        onClick={() => openChapter(idx)}
+                        data-testid={`card-free-ch-${chapter.id}`}
+                        className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.99] transition-transform shadow-sm"
+                      >
+                        {/* Decorative header */}
+                        <div className="h-28 w-full relative overflow-hidden" style={{ background: grad }}>
+                          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.6) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(0,0,0,0.3) 0%, transparent 50%)" }} />
+                          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent" />
+                        </div>
+                        {/* Content */}
+                        <div className="px-5 pb-5 -mt-1">
+                          {chapter.tag && (
+                            <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>
+                          )}
+                          <h4 className="font-serif text-xl text-foreground mb-2 leading-tight">{chapter.title}</h4>
+                          {chapter.excerpt && (
+                            <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">
+                              "{chapter.excerpt}"
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--book-accent, #7c5c3a)" }}>
+                            Ler Reflexão <ChevronRight size={13} />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* External stores */}
             <div className="mb-6 bg-card rounded-3xl p-6 border border-border space-y-3">
               <div className="flex items-center gap-2 mb-1">
