@@ -676,6 +676,23 @@ export default function Admin() {
   const [analyticsDays, setAnalyticsDays] = useState(30);
   const [excludeAdmins, setExcludeAdmins] = useState(true);
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [appliedStart, setAppliedStart] = useState("");
+  const [appliedEnd, setAppliedEnd] = useState("");
+  const isCustomRange = !!(appliedStart && appliedEnd);
+
+  function buildAnalyticsUrl(path: string) {
+    const params = new URLSearchParams({ excludeAdmins: String(excludeAdmins) });
+    if (isCustomRange) {
+      params.set("startDate", appliedStart);
+      params.set("endDate", appliedEnd);
+    } else {
+      params.set("days", String(analyticsDays));
+    }
+    return `${path}?${params.toString()}`;
+  }
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
@@ -697,8 +714,14 @@ export default function Admin() {
     eventCounts: { event: string; count: number }[];
     dailyActive: { date: string; count: number }[];
   }>({
-    queryKey: ["/api/admin/analytics", analyticsDays, excludeAdmins],
-    queryFn: () => fetch(`/api/admin/analytics?days=${analyticsDays}&excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
+    queryKey: ["/api/admin/analytics", analyticsDays, excludeAdmins, appliedStart, appliedEnd],
+    queryFn: () => fetch(buildAnalyticsUrl("/api/admin/analytics"), { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "analytics",
+  });
+
+  const { data: topUsers = [] } = useQuery<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>({
+    queryKey: ["/api/admin/top-users", analyticsDays, excludeAdmins, appliedStart, appliedEnd],
+    queryFn: () => fetch(buildAnalyticsUrl("/api/admin/top-users"), { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
 
@@ -1247,16 +1270,59 @@ export default function Admin() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Uso do App</h2>
             <div className="flex gap-1">
-              {[7, 30, 90].map(d => (
+              {([1, 7, 30, 90] as const).map(d => (
                 <button
                   key={d}
-                  onClick={() => setAnalyticsDays(d)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${analyticsDays === d ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}
+                  data-testid={`btn-analytics-${d}d`}
+                  onClick={() => { setAnalyticsDays(d); setAppliedStart(""); setAppliedEnd(""); setCustomStart(""); setCustomEnd(""); }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${!isCustomRange && analyticsDays === d ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}
                 >
-                  {d}d
+                  {d === 1 ? "Hoje" : `${d}d`}
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Período personalizado</p>
+            <div className="flex gap-2 items-center">
+              <input
+                type="date"
+                value={customStart}
+                max={customEnd || todayStr}
+                onChange={e => setCustomStart(e.target.value)}
+                data-testid="input-analytics-start"
+                className="flex-1 px-2 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">até</span>
+              <input
+                type="date"
+                value={customEnd}
+                min={customStart}
+                max={todayStr}
+                onChange={e => setCustomEnd(e.target.value)}
+                data-testid="input-analytics-end"
+                className="flex-1 px-2 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground"
+              />
+              <button
+                onClick={() => { if (customStart && customEnd) { setAppliedStart(customStart); setAppliedEnd(customEnd); } }}
+                disabled={!customStart || !customEnd}
+                data-testid="btn-analytics-apply"
+                className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-40 shrink-0"
+              >
+                Aplicar
+              </button>
+            </div>
+            {isCustomRange && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-primary font-medium">📅 {appliedStart.slice(5)} → {appliedEnd.slice(5)}</span>
+                <button
+                  onClick={() => { setAppliedStart(""); setAppliedEnd(""); setCustomStart(""); setCustomEnd(""); }}
+                  className="text-[11px] text-muted-foreground underline"
+                  data-testid="btn-analytics-clear"
+                >limpar</button>
+              </div>
+            )}
           </div>
 
           <button
@@ -1357,15 +1423,42 @@ export default function Admin() {
                 {analyticsData?.dailyActive.reduce((sum, d) => sum + d.count, 0) || 0}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">sessões únicas</p>
-              <p className="text-[9px] text-muted-foreground">últimos {analyticsDays}d</p>
+              <p className="text-[9px] text-muted-foreground">{isCustomRange ? `${appliedStart.slice(5)} → ${appliedEnd.slice(5)}` : analyticsDays === 1 ? "hoje" : `últimos ${analyticsDays}d`}</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 text-center">
               <p className="text-2xl font-bold text-foreground">
                 {analyticsData?.eventCounts.reduce((sum, e) => sum + e.count, 0) || 0}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">ações totais</p>
-              <p className="text-[9px] text-muted-foreground">últimos {analyticsDays}d</p>
+              <p className="text-[9px] text-muted-foreground">{isCustomRange ? `${appliedStart.slice(5)} → ${appliedEnd.slice(5)}` : analyticsDays === 1 ? "hoje" : `últimos ${analyticsDays}d`}</p>
             </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">Utilizadores mais ativos</p>
+            {topUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Ainda sem dados suficientes</p>
+            ) : (
+              <div className="space-y-2">
+                {topUsers.map((u, i) => (
+                  <div key={u.userId} className="flex items-center gap-2.5" data-testid={`top-user-${i}`}>
+                    <span className="text-[11px] font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                    {u.avatarUrl ? (
+                      <img src={u.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                    <span className="text-xs font-bold text-primary shrink-0">{u.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

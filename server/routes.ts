@@ -1578,13 +1578,29 @@ export async function registerRoutes(
     try {
       const days = Number(req.query.days) || 30;
       const excludeAdmins = req.query.excludeAdmins === "true";
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
       const [eventCounts, dailyActive] = await Promise.all([
-        storage.getEventCounts(days, excludeAdmins),
-        storage.getDailyActiveUsers(days, excludeAdmins),
+        storage.getEventCounts(days, excludeAdmins, startDate, endDate),
+        storage.getDailyActiveUsers(days, excludeAdmins, startDate, endDate),
       ]);
       res.json({ eventCounts, dailyActive });
     } catch {
       res.status(500).json({ error: "Erro ao buscar analytics" });
+    }
+  });
+
+  app.get("/api/admin/top-users", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const days = Number(req.query.days) || 30;
+      const excludeAdmins = req.query.excludeAdmins === "true";
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+      const limit = Number(req.query.limit) || 10;
+      const topUsers = await storage.getTopActiveUsers(days, excludeAdmins, startDate, endDate, limit);
+      res.json(topUsers);
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar utilizadores mais ativos" });
     }
   });
 

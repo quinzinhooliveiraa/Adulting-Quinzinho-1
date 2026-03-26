@@ -119,8 +119,9 @@ export interface IStorage {
   getCouponUseCount(couponId: number): Promise<number>;
 
   trackEvent(userId: string | null, event: string, metadata?: string): Promise<void>;
-  getEventCounts(days?: number, excludeAdmins?: boolean): Promise<{ event: string; count: number }[]>;
-  getDailyActiveUsers(days?: number, excludeAdmins?: boolean): Promise<{ date: string; count: number }[]>;
+  getEventCounts(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ event: string; count: number }[]>;
+  getDailyActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]>;
+  getTopActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string, limit?: number): Promise<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -562,30 +563,26 @@ export class DatabaseStorage implements IStorage {
     await db.insert(userEvents).values({ userId: userId || null, event, metadata });
   }
 
-  async getEventCounts(days: number = 30, excludeAdmins: boolean = false): Promise<{ event: string; count: number }[]> {
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    if (excludeAdmins) {
-      const rows = await db.execute(drizzleSql`
-        SELECT ue.event, COUNT(*) as count
-        FROM user_events ue
-        JOIN users u ON ue.user_id = u.id
-        WHERE ue.created_at >= ${since} AND u.role != 'admin'
-        GROUP BY ue.event
-        ORDER BY count DESC
-      `);
-      return (rows.rows as any[]).map(r => ({ event: r.event, count: Number(r.count) }));
-    }
-    const rows = await db
-      .select({ event: userEvents.event, count: count() })
-      .from(userEvents)
-      .where(gte(userEvents.createdAt, since))
-      .groupBy(userEvents.event)
-      .orderBy(desc(count()));
-    return rows.map(r => ({ event: r.event, count: Number(r.count) }));
+  async getEventCounts(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ event: string; count: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
+    const adminClause = excludeAdmins
+      ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
+      : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT ue.event, COUNT(*) as count
+      FROM user_events ue
+      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until}
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY ue.event
+      ORDER BY count DESC
+    `);
+    return (rows.rows as any[]).map(r => ({ event: r.event, count: Number(r.count) }));
   }
 
-  async getDailyActiveUsers(days: number = 30, excludeAdmins: boolean = false): Promise<{ date: string; count: number }[]> {
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getDailyActiveUsers(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
     const adminClause = excludeAdmins
       ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
       : "";
@@ -593,7 +590,7 @@ export class DatabaseStorage implements IStorage {
       SELECT TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
              COUNT(DISTINCT ue.user_id) as count
       FROM user_events ue
-      WHERE ue.created_at >= ${since} AND ue.user_id IS NOT NULL
+      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until} AND ue.user_id IS NOT NULL
       ${drizzleSql.raw(adminClause)}
       GROUP BY TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
       ORDER BY date ASC
@@ -602,13 +599,37 @@ export class DatabaseStorage implements IStorage {
       (rows.rows as any[]).map(r => [r.date as string, Number(r.count)])
     );
     const result: { date: string; count: number }[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      const brt = new Date(d.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    let cursor = new Date(since);
+    while (cursor <= until) {
+      const brt = new Date(cursor.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
       const dateStr = `${brt.getFullYear()}-${String(brt.getMonth() + 1).padStart(2, "0")}-${String(brt.getDate()).padStart(2, "0")}`;
       result.push({ date: dateStr, count: dataMap.get(dateStr) ?? 0 });
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
     }
     return result;
+  }
+
+  async getTopActiveUsers(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string, limit: number = 10): Promise<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
+    const adminClause = excludeAdmins ? `AND u.role != 'admin'` : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT u.id as user_id, u.name, u.email, u.avatar_url, COUNT(*) as count
+      FROM user_events ue
+      JOIN users u ON ue.user_id = u.id
+      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until} AND ue.user_id IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY u.id, u.name, u.email, u.avatar_url
+      ORDER BY count DESC
+      LIMIT ${limit}
+    `);
+    return (rows.rows as any[]).map(r => ({
+      userId: r.user_id,
+      name: r.name || "Sem nome",
+      email: r.email || "",
+      avatarUrl: r.avatar_url || null,
+      count: Number(r.count),
+    }));
   }
 }
 
