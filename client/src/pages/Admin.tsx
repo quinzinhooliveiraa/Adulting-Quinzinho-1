@@ -719,11 +719,12 @@ export default function Admin() {
     enabled: activeTab === "analytics",
   });
 
-  const { data: topUsers = [] } = useQuery<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>({
+  const { data: topUsersRaw } = useQuery<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>({
     queryKey: ["/api/admin/top-users", analyticsDays, excludeAdmins, appliedStart, appliedEnd],
     queryFn: () => fetch(buildAnalyticsUrl("/api/admin/top-users"), { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
+  const topUsers = Array.isArray(topUsersRaw) ? topUsersRaw : [];
 
   const { data: demographics } = useQuery<{
     total: number;

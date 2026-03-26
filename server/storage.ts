@@ -621,7 +621,7 @@ export class DatabaseStorage implements IStorage {
       ${drizzleSql.raw(adminClause)}
       GROUP BY u.id, u.name, u.email, u.avatar_url
       ORDER BY count DESC
-      LIMIT ${limit}
+      LIMIT ${drizzleSql.raw(String(limit))}
     `);
     return (rows.rows as any[]).map(r => ({
       userId: r.user_id,
