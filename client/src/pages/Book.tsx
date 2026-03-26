@@ -182,23 +182,44 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
 /* ─────────────────────────────────────────────────────────────────
    CHAPTER PAGE  (fetches content)
 ───────────────────────────────────────────────────────────────── */
-function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, subPageCount }: {
+function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSubPageCount }: {
   chapter: Chapter;
   purchased: boolean;
   onBuy: () => void;
   animClass: string;
   subPage: number;
-  subPageCount: number;
+  onActualSubPageCount: (n: number) => void;
 }) {
   const canRead = purchased || chapter.isPreview;
   const isFrontMatter = chapter.pageType === "front-matter";
-  const currentPdfPage = chapter.pdfPage != null ? chapter.pdfPage + subPage : null;
 
   const { data, isLoading } = useQuery<{ content: string }>({
     queryKey: ["/api/book/chapters", chapter.id, "content"],
     queryFn: () => fetch(`/api/book/chapters/${chapter.id}/content`, { credentials: "include" }).then(r => r.json()),
     enabled: canRead,
   });
+
+  // Split content into exact PDF pages using \f separator
+  const rawContent = data?.content ?? "";
+  const pdfPages: string[] = rawContent
+    ? rawContent.split("\f").map(p => p.trim()).filter(p => p.length > 0)
+    : [];
+
+  // Report actual sub-page count to parent
+  useEffect(() => {
+    if (data && pdfPages.length > 0) {
+      onActualSubPageCount(pdfPages.length);
+    }
+  }, [data?.content]);
+
+  // Which PDF page text to display (clamped)
+  const safeSubPage = Math.min(subPage, Math.max(0, pdfPages.length - 1));
+  const pageText = pdfPages[safeSubPage] ?? "";
+
+  // Actual PDF page number shown at bottom
+  const currentPdfPage = chapter.pdfPage != null && pdfPages.length > 0
+    ? chapter.pdfPage + safeSubPage
+    : null;
 
   if (!canRead) return (
     <div className={`flex-1 overflow-y-auto flex flex-col items-center justify-center gap-5 px-8 text-center ${animClass}`} style={{ background: "var(--bk-bg)" }}>
@@ -225,57 +246,51 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, subPageCou
     </div>
   );
 
-  const content = data?.content ?? "";
-
   return (
     <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
       <div className="max-w-[62ch] mx-auto px-7 pb-16">
 
-        {/* Front matter header (dedicatória / introdução) */}
-        {isFrontMatter ? (
-          <div className="pt-14 pb-10 text-center">
-            {chapter.tag && (
-              <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-6 bk-accent">{chapter.tag}</p>
-            )}
-            <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">{chapter.title}</h2>
-            <div className="flex items-center justify-center gap-2 mt-5">
-              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
-              <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
-              <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+        {/* Header — only on first sub-page */}
+        {safeSubPage === 0 && (
+          isFrontMatter ? (
+            <div className="pt-14 pb-10 text-center">
+              {chapter.tag && (
+                <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-6 bk-accent">{chapter.tag}</p>
+              )}
+              <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">{chapter.title}</h2>
+              <div className="flex items-center justify-center gap-2 mt-5">
+                <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+                <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
+                <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+              </div>
             </div>
-          </div>
-        ) : (
-          /* Chapter header */
-          <div className="pt-12 pb-8">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
-              <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
-                {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
-              </span>
-              <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+          ) : (
+            <div className="pt-12 pb-8">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+                <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
+                  {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
+                </span>
+                <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+              </div>
+              <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide
+                ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
+                style={{ letterSpacing: "0.04em" }}>
+                {chapter.title}
+              </h2>
+              {chapter.excerpt && (
+                <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
+                  style={{ borderColor: "var(--bk-accent)" }}>
+                  {chapter.excerpt}
+                </p>
+              )}
             </div>
-
-            <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide
-              ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
-              style={{ letterSpacing: "0.04em" }}>
-              {chapter.title}
-            </h2>
-
-            {chapter.excerpt && (
-              <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
-                style={{ borderColor: "var(--bk-accent)" }}>
-                {chapter.excerpt}
-              </p>
-            )}
-          </div>
+          )
         )}
 
-        {/* Body text */}
+        {/* Body text — exact PDF page content */}
         {(() => {
-          const allParas = processContent(content);
-          // Distribute paragraphs evenly across sub-pages
-          const perPage = Math.max(1, Math.ceil(allParas.length / subPageCount));
-          const paras = allParas.slice(subPage * perPage, (subPage + 1) * perPage);
+          const paras = processContent(pageText);
 
           if (isFrontMatter && chapter.tag === "DEDICATÓRIA") {
             return (
@@ -297,7 +312,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, subPageCou
                     textAlign: "justify",
                     hyphens: "auto",
                     letterSpacing: "0.008em",
-                    textIndent: i === 0 && subPage === 0 ? "0" : "1.5em",
+                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.5em",
                   } as React.CSSProperties}>
                   {p}
                 </p>
@@ -336,12 +351,11 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   onClose: () => void;
   onBuy: () => void;
 }) {
-  // Compute how many sub-pages (PDF pages) each chapter occupies
-  // sub-page count = next chapter's pdfPage - this chapter's pdfPage (min 1)
-  const subPageCounts = chapters.map((ch, i) => {
+  // Initial sub-page counts from pdfPage differences (updated dynamically as content loads)
+  const initCounts = chapters.map((ch, i) => {
     if (!ch.pdfPage) return 1;
     const next = chapters[i + 1]?.pdfPage;
-    if (!next) return Math.max(1, 176 - ch.pdfPage + 1); // last chapter ends ~p176
+    if (!next) return 5; // last chapter: conservative estimate, updated by content
     return Math.max(1, next - ch.pdfPage);
   });
 
@@ -350,6 +364,8 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   const [subPage, setSubPage]       = useState(0);
   const [animClass, setAnimClass]   = useState("");
   const [showToc, setShowToc]       = useState(false);
+  // Mutable sub-page counts — updated by ChapterPage when actual content is loaded
+  const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
 
   const chapter       = chapters[chapterIdx];
@@ -361,6 +377,17 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   const totalSubPages = subPageCounts.reduce((a, b) => a + b, 0);
   const absPage = subPageCounts.slice(0, chapterIdx).reduce((a, b) => a + b, 0) + subPage;
   const progress = totalSubPages > 1 ? Math.round((absPage / (totalSubPages - 1)) * 100) : 100;
+
+  function handleActualSubPageCount(n: number) {
+    if (n === subPageCounts[chapterIdx]) return;
+    setSubPageCounts(prev => {
+      const next = [...prev];
+      next[chapterIdx] = n;
+      return next;
+    });
+    // Clamp subPage if it exceeds the real count
+    setSubPage(p => Math.min(p, n - 1));
+  }
 
   function navigate(dir: "prev" | "next") {
     const anim = dir === "next" ? "pg-enter-right" : "pg-enter-left";
@@ -450,7 +477,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
           onBuy={onBuy}
           animClass={animClass}
           subPage={subPage}
-          subPageCount={subPageCount}
+          onActualSubPageCount={handleActualSubPageCount}
         />
       ) : null}
 
