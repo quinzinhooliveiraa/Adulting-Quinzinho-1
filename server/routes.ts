@@ -3212,7 +3212,7 @@ const AUTO_NOTIFICATION_DEFAULTS = [
   },
   {
     type: "daily_motivation",
-    title: "Reflexão do Dia 📖",
+    title: "Reflexão para Hoje ✨",
     body: "{reflection}",
     url: "/",
     triggerHours: 24,
@@ -3284,6 +3284,8 @@ export async function seedAutoNotifications() {
     const existing = await storage.getAutoNotificationConfig(config.type);
     if (!existing) {
       await storage.upsertAutoNotificationConfig(config);
+    } else if (existing.title !== config.title) {
+      await storage.updateAutoNotificationConfig(existing.id, { title: config.title });
     }
   }
 }
@@ -3349,7 +3351,7 @@ export async function processAutoNotifications() {
       if (!shouldSend) continue;
 
       const result = await buildAutoNotificationBody(config, user.id);
-      const payload = JSON.stringify({ title: config.title, body: result.body, url: result.url });
+      const payload = JSON.stringify({ title: config.title, body: result.body, url: result.url, actions: result.actions || [] });
 
       let delivered = false;
       for (const sub of subs) {
@@ -3491,9 +3493,10 @@ const JOURNEY_START_MESSAGES = [
   "Autoconhecimento, Propósito, Relações, Ansiedade... Uma das jornadas foi feita para o que sentes agora.",
 ];
 
-async function buildAutoNotificationBody(config: { type: string; body: string; url: string }, userId: string): Promise<{ body: string; url: string }> {
+async function buildAutoNotificationBody(config: { type: string; body: string; url: string }, userId: string): Promise<{ body: string; url: string; actions?: { action: string; title: string }[] }> {
   let body = config.body;
   let url = config.url;
+  let actions: { action: string; title: string }[] | undefined;
   const now = new Date();
 
   if (config.type === "daily_motivation") {
@@ -3502,7 +3505,11 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
     for (let i = 0; i < today.length; i++) seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
     const index = Math.abs(seed) % DAILY_REFLECTIONS.length;
     const reflection = DAILY_REFLECTIONS[index];
-    body = reflection.text;
+    body = `"${reflection.text}"`;
+    actions = [
+      { action: "reflect", title: "Expandir e Refletir" },
+      { action: "share", title: "Compartilhar" },
+    ];
   }
 
   if (config.type === "daily_reminder") {
@@ -3559,5 +3566,5 @@ async function buildAutoNotificationBody(config: { type: string; body: string; u
     body = body.replace("{count}", String(monthCount));
   }
 
-  return { body, url };
+  return { body, url, actions };
 }

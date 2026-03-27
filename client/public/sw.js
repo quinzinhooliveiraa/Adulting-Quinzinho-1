@@ -1,4 +1,4 @@
-const CACHE_NAME = "casa-dos-20-v6";
+const CACHE_NAME = "casa-dos-20-v7";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
@@ -92,8 +92,15 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
   const campaignId = event.notification.data?.campaignId;
+  const notifUrl = event.notification.data?.url || "/";
+
+  let targetUrl = notifUrl;
+  if (event.action === "reflect") {
+    targetUrl = "/";
+  } else if (event.action === "share") {
+    targetUrl = "/";
+  }
 
   if (campaignId) {
     fetch("/api/push/clicked", {
@@ -107,11 +114,11 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
-          client.navigate(url);
+          client.navigate(targetUrl);
           return client.focus();
         }
       }
-      return self.clients.openWindow(url);
+      return self.clients.openWindow(targetUrl);
     })
   );
 });
