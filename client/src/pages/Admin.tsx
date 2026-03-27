@@ -6,7 +6,7 @@ import {
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
   Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp,
-  BookOpen, Lock, ChevronRight, ChevronUp, Pencil
+  BookOpen, Lock, ChevronRight, ChevronUp, Pencil, CreditCard
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +42,8 @@ interface Stats {
   grantedUsers: number;
   expiredUsers: number;
   blockedUsers: number;
+  cardBonusUsers: number;
+  bookPurchaseUsers: number;
 }
 
 interface FeedbackTicket {
@@ -1056,6 +1058,8 @@ export default function Admin() {
               <StatCard icon={Check} label="Liberados" value={stats.grantedUsers} color="text-green-500" />
               <StatCard icon={XCircle} label="Expirados" value={stats.expiredUsers} color="text-muted-foreground" />
               <StatCard icon={Ban} label="Bloqueados" value={stats.blockedUsers} color="text-red-500" />
+              <StatCard icon={CreditCard} label="Cartão 30d" value={stats.cardBonusUsers ?? 0} color="text-violet-500" />
+              <StatCard icon={BookOpen} label="Livro" value={stats.bookPurchaseUsers ?? 0} color="text-amber-500" />
             </div>
           )}
 

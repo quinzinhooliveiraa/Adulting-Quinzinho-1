@@ -1334,8 +1334,13 @@ export async function registerRoutes(
       const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
       if (pi.status !== "succeeded") return res.status(400).json({ error: "Pagamento não confirmado" });
       if (pi.metadata?.userId !== req.session.userId) return res.status(403).json({ error: "Pagamento inválido" });
+      const buyer = await storage.getUser(req.session.userId!);
       await storage.createBookPurchase(req.session.userId!, paymentIntentId, pi.amount);
       console.log(`[book] Compra registada: ${req.session.userId} — ${pi.amount}c`);
+      if (buyer) {
+        const { notifyAdminBookPurchase } = await import("./adminNotify");
+        notifyAdminBookPurchase(buyer.name, buyer.email, pi.amount).catch(() => {});
+      }
       res.json({ ok: true });
     } catch (err: any) {
       console.log("[book] confirm-purchase error:", err?.message);
@@ -1851,6 +1856,8 @@ export async function registerRoutes(
         return !s.hasPremium && s.reason === "expired";
       }).length;
       const blockedUsers = allUsers.filter(u => !u.isActive).length;
+      const cardBonusUsers = allUsers.filter(u => u.trialBonusClaimed).length;
+      const bookPurchaseUsers = (await storage.getBookPurchases()).length;
 
       res.json({
         totalUsers,
@@ -1860,6 +1867,8 @@ export async function registerRoutes(
         grantedUsers,
         expiredUsers,
         blockedUsers,
+        cardBonusUsers,
+        bookPurchaseUsers,
       });
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar estatísticas" });

@@ -114,3 +114,22 @@ export async function notifyAdminRenewal(userName: string, userEmail: string) {
     console.error("[admin-notify] notifyAdminRenewal error:", err);
   }
 }
+
+export async function notifyAdminBookPurchase(userName: string, userEmail: string, amountCents: number) {
+  try {
+    const admins = await storage.getAllUsers();
+    const amount = (amountCents / 100).toFixed(2).replace(".", ",");
+    for (const admin of admins) {
+      if (admin.role === "admin" && admin.adminNotifyNewSub) {
+        await sendToAdmin(
+          admin.id,
+          "Livro Vendido 📚",
+          `${userName} (${userEmail}) comprou o livro por €${amount}`,
+          "/admin"
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[admin-notify] notifyAdminBookPurchase error:", err);
+  }
+}
