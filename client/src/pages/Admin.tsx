@@ -1973,6 +1973,93 @@ const INTERVAL_OPTIONS = [
   { value: 168, label: "Semanal" },
 ];
 
+function RecoveryNotificationCard() {
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const { data: abandoned, isLoading } = useQuery<{ total: number; users: { id: string; name: string; email: string; hasPush: boolean }[] }>({
+    queryKey: ["/api/admin/abandoned-checkouts"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/abandoned-checkouts", { credentials: "include" });
+      if (!res.ok) return { total: 0, users: [] };
+      return res.json();
+    },
+  });
+
+  const withPush = abandoned?.users.filter(u => u.hasPush) ?? [];
+  const withoutPush = abandoned?.users.filter(u => !u.hasPush) ?? [];
+
+  const handleSend = async () => {
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/admin/send-recovery-notifications", { method: "POST", credentials: "include" });
+      const data = await res.json();
+      setResult(`Enviado para ${data.sent} dispositivo(s). ${data.skipped > 0 ? `${data.skipped} sem push ativo.` : ""}`);
+    } catch {
+      setResult("Erro ao enviar.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <CreditCard size={16} className="text-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Recuperação de Checkout</h2>
+      </div>
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Utilizadores que iniciaram o registo do cartão mas não completaram — envia-lhes uma notificação push a lembrar.
+        </p>
+        {isLoading ? (
+          <p className="text-[11px] text-muted-foreground">A verificar Stripe...</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-4 text-[11px]">
+              <span className="text-foreground font-semibold">{abandoned?.total ?? 0}</span>
+              <span className="text-muted-foreground">com checkout abandonado</span>
+              {withPush.length > 0 && (
+                <>
+                  <span className="text-green-500 font-semibold">{withPush.length}</span>
+                  <span className="text-muted-foreground">com push ativo</span>
+                </>
+              )}
+            </div>
+            {abandoned && abandoned.users.length > 0 && (
+              <div className="space-y-1">
+                {abandoned.users.map(u => (
+                  <div key={u.id} className="flex items-center justify-between text-[11px] px-2 py-1 rounded-md bg-muted/50">
+                    <span className="text-foreground">{u.name}</span>
+                    <span className={u.hasPush ? "text-green-500" : "text-muted-foreground"}>
+                      {u.hasPush ? "push ativo" : "sem push"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {withoutPush.length > 0 && (
+              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push — não receberão notificação.</p>
+            )}
+          </div>
+        )}
+        {result && (
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">{result}</p>
+        )}
+        <button
+          onClick={handleSend}
+          disabled={sending || isLoading || withPush.length === 0}
+          className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+          data-testid="button-send-recovery"
+        >
+          {sending ? "Enviando..." : `Enviar Notificação${withPush.length > 0 ? ` (${withPush.length})` : ""}`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PushNotificationPanel() {
   const [pushTitle, setPushTitle] = useState("Casa dos 20");
   const [pushBody, setPushBody] = useState("");
@@ -2076,6 +2163,8 @@ function PushNotificationPanel() {
   return (
     <div className="space-y-6">
       <AutoNotificationsPanel />
+
+      <RecoveryNotificationCard />
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">

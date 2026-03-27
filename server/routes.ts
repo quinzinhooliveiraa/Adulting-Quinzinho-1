@@ -3110,6 +3110,106 @@ REGRAS:
     }
   });
 
+  app.get("/api/admin/abandoned-checkouts", requireAdmin, async (_req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      const abandonedUserIds = new Set<string>();
+
+      while (hasMore) {
+        const sessions = await stripe.checkout.sessions.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        for (const session of sessions.data) {
+          if (session.mode !== "setup" || session.status === "complete") continue;
+          if ((session.metadata as any)?.purpose !== "trial_bonus") continue;
+          const userId = (session.metadata as any)?.userId;
+          if (userId) abandonedUserIds.add(userId);
+        }
+        hasMore = sessions.has_more;
+        if (hasMore && sessions.data.length > 0) startingAfter = sessions.data[sessions.data.length - 1].id;
+      }
+
+      const result = [];
+      for (const userId of abandonedUserIds) {
+        const user = await storage.getUser(userId);
+        if (!user || user.trialBonusClaimed) continue;
+        const subs = await storage.getPushSubscriptions(userId);
+        result.push({ id: user.id, name: user.name, email: user.email, hasPush: subs.length > 0 });
+      }
+      res.json({ total: result.length, users: result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/send-recovery-notifications", requireAdmin, async (_req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const webpushModule = await import("web-push");
+      const webpush = webpushModule.default || webpushModule;
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+        process.env.VAPID_PUBLIC_KEY || "",
+        process.env.VAPID_PRIVATE_KEY || ""
+      );
+
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      const abandonedUserIds = new Set<string>();
+
+      while (hasMore) {
+        const sessions = await stripe.checkout.sessions.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        for (const session of sessions.data) {
+          if (session.mode !== "setup" || session.status === "complete") continue;
+          if ((session.metadata as any)?.purpose !== "trial_bonus") continue;
+          const userId = (session.metadata as any)?.userId;
+          if (userId) abandonedUserIds.add(userId);
+        }
+        hasMore = sessions.has_more;
+        if (hasMore && sessions.data.length > 0) startingAfter = sessions.data[sessions.data.length - 1].id;
+      }
+
+      let sent = 0;
+      let skipped = 0;
+      const payload = JSON.stringify({
+        title: "Os teus 30 dias grátis ainda estão à espera",
+        body: "Ficaste a um passo! Guarda o cartão e ganha 30 dias gratuitos.",
+        url: "/",
+      });
+
+      for (const userId of abandonedUserIds) {
+        const user = await storage.getUser(userId);
+        if (!user || user.trialBonusClaimed) { skipped++; continue; }
+        const subs = await storage.getPushSubscriptions(userId);
+        if (subs.length === 0) { skipped++; continue; }
+        for (const sub of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload
+            );
+            sent++;
+          } catch (err: any) {
+            const status = err?.statusCode || err?.status;
+            if (status === 410 || status === 404) await storage.deletePushSubscription(sub.userId, sub.endpoint);
+          }
+        }
+      }
+
+      res.json({ ok: true, sent, skipped, total: abandonedUserIds.size });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/notifications/auto", requireAdmin, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
