@@ -851,7 +851,7 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { textWrap: true, zIndex: 10 });
+                          updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
@@ -905,7 +905,7 @@ export default function BlogReflectionEditor({
                       top: `${img.y}px`,
                       width: `${img.width}px`,
                       height: `${img.height}px`,
-                      transform: `rotate(${img.rotation}deg)`,
+                      transform: `rotate(0deg)`,
                       zIndex: 25,
                       borderRadius: '12px',
                       overflow: 'hidden',
