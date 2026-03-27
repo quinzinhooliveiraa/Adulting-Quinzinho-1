@@ -1633,6 +1633,7 @@ function CardGame({
   const [showCompleted, setShowCompleted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [showSavedCards, setShowSavedCards] = useState(false);
   const [imageTheme, setImageTheme] = useState<ShareImageTheme>(() => document.documentElement.classList.contains("dark") ? "dark" : "light");
   const questionPreviewRef = useRef<HTMLCanvasElement>(null);
 
@@ -1726,6 +1727,15 @@ function CardGame({
           {savedCards.length > 0 && ` ${savedCards.length} foram salvas.`}
         </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
+          {savedCards.length > 0 && (
+            <button
+              onClick={() => setShowSavedCards(true)}
+              className="w-full p-4 border border-primary/30 bg-primary/10 text-primary rounded-2xl font-medium flex items-center justify-center gap-2"
+              data-testid="button-view-saved"
+            >
+              <Bookmark size={18} fill="currentColor" /> Ver {savedCards.length} cartas salvas
+            </button>
+          )}
           <button
             onClick={resetGame}
             className="w-full p-4 bg-primary text-primary-foreground rounded-2xl font-medium flex items-center justify-center gap-2"
@@ -1741,6 +1751,33 @@ function CardGame({
             Voltar
           </button>
         </div>
+
+        {/* Saved cards panel */}
+        {showSavedCards && (
+          <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowSavedCards(false)} />
+            <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-[85vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-border/40 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Bookmark size={16} className="text-primary" fill="currentColor" />
+                  <h3 className="font-serif text-lg text-foreground">Cartas Salvas</h3>
+                  <span className="text-xs text-muted-foreground">({savedCards.length})</span>
+                </div>
+                <button onClick={() => setShowSavedCards(false)} className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {savedCards.map((idx, i) => (
+                  <div key={idx} className={`p-4 rounded-2xl bg-gradient-to-br ${color} bg-opacity-10`}>
+                    <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">{subtitle} · #{i + 1}</p>
+                    <p className="font-serif text-base text-foreground leading-relaxed">{questions[idx]}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1762,6 +1799,19 @@ function CardGame({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {savedCards.length > 0 && (
+            <button
+              onClick={() => setShowSavedCards(true)}
+              className="relative p-2 rounded-full bg-primary/10 text-primary transition-colors"
+              data-testid="button-open-saved"
+              title="Ver cartas salvas"
+            >
+              <Bookmark size={18} fill="currentColor" />
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full text-[9px] font-bold flex items-center justify-center px-0.5 bg-primary text-primary-foreground">
+                {savedCards.length}
+              </span>
+            </button>
+          )}
           <button
             onClick={resetGame}
             className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -1911,6 +1961,33 @@ function CardGame({
           </div>
         )}
       </div>
+
+      {/* Saved Cards Panel */}
+      {showSavedCards && (
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowSavedCards(false)} />
+          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-2">
+                <Bookmark size={16} className="text-primary" fill="currentColor" />
+                <h3 className="font-serif text-lg text-foreground">Cartas Salvas</h3>
+                <span className="text-xs text-muted-foreground">({savedCards.length})</span>
+              </div>
+              <button onClick={() => setShowSavedCards(false)} className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+              {savedCards.map((idx, i) => (
+                <div key={idx} className="p-4 rounded-2xl bg-muted/50 border border-border/40">
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">{subtitle} · #{i + 1}</p>
+                  <p className="font-serif text-base text-foreground leading-relaxed">{questions[idx]}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showImagePreview && (
         <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
