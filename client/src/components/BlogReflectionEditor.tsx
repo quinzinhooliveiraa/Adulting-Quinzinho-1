@@ -151,23 +151,27 @@ export default function BlogReflectionEditor({
     const el = editableRef.current;
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     if (!hasWrappedImages) return;
-    
+
     const wrapImages = images.filter(img => img.textWrap);
     wrapImages.sort((a, b) => a.y - b.y);
     const containerWidth = el.offsetWidth || 600;
-
     const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
     const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    const gap = 16;
 
-    const firstContent = el.firstChild; // anchor: insert all spacers before existing content, in order
+    // Track cumulative float heights per side so each spacer accounts for previous ones
+    let leftFloatEnd = 0;
+    let rightFloatEnd = 0;
+
+    const fragment = document.createDocumentFragment();
 
     wrapImages.forEach(img => {
-      const adjustedY = Math.max(0, img.y - elPadding);
-      const adjustedX = Math.max(0, img.x - elPaddingLeft);
       const side = img.x < containerWidth / 2 ? 'left' : 'right';
-      const gap = 16;
-      const imgRight = adjustedX + img.width;
-      const imgBottom = adjustedY + img.height;
+      const currentFloatEnd = side === 'left' ? leftFloatEnd : rightFloatEnd;
+
+      const adjustedY = Math.max(0, img.y - elPadding - currentFloatEnd);
+      const adjustedX = Math.max(0, img.x - elPaddingLeft);
+      const spacerHeight = adjustedY + img.height + gap;
 
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
@@ -175,19 +179,25 @@ export default function BlogReflectionEditor({
 
       if (side === 'right') {
         const w = containerWidth - adjustedX + gap;
-        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        spacer.style.cssText = `float: right; width: ${w}px; height: ${spacerHeight}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        rightFloatEnd += spacerHeight;
       } else {
-        const w = imgRight + gap;
-        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        const w = adjustedX + img.width + gap;
+        spacer.style.cssText = `float: left; width: ${w}px; height: ${spacerHeight}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        leftFloatEnd += spacerHeight;
       }
 
-      if (firstContent) {
-        el.insertBefore(spacer, firstContent);
-      } else {
-        el.appendChild(spacer);
-      }
+      fragment.appendChild(spacer);
     });
-  }, [images, selectedImage, hasWrappedImages]);
+
+    // Insert all spacers in correct y-ascending order before any existing content
+    const firstContent = el.firstChild;
+    if (firstContent) {
+      el.insertBefore(fragment, firstContent);
+    } else {
+      el.appendChild(fragment);
+    }
+  }, [images, hasWrappedImages]);
 
   const handleContentInput = useCallback(() => {
     if (editableRef.current) {
@@ -833,6 +843,7 @@ export default function BlogReflectionEditor({
                     <div 
                       className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <button
                         onPointerDown={(e) => {
@@ -899,7 +910,7 @@ export default function BlogReflectionEditor({
                 <div key={`wrap-${img.id}`}>
                   <div
                     data-img-overlay="true"
-                    className={`absolute pointer-events-auto ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                    className={`absolute pointer-events-auto ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
                     style={{
                       left: `${img.x}px`,
                       top: `${img.y}px`,
@@ -910,10 +921,31 @@ export default function BlogReflectionEditor({
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      touchAction: 'none',
                     }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setSelectedImage(img.id);
+                      if (img.locked) return;
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const initX = img.x;
+                      const initY = img.y;
+                      const container = canvasContainerRef.current;
+                      const containerW = container?.offsetWidth || 600;
+                      const handleMove = (mv: PointerEvent) => {
+                        updateImage(img.id, {
+                          x: Math.max(0, Math.min(containerW - img.width, initX + (mv.clientX - startX))),
+                          y: Math.max(0, initY + (mv.clientY - startY)),
+                        });
+                      };
+                      const handleUp = () => {
+                        document.removeEventListener('pointermove', handleMove);
+                        document.removeEventListener('pointerup', handleUp);
+                      };
+                      document.addEventListener('pointermove', handleMove);
+                      document.addEventListener('pointerup', handleUp);
                     }}
                   >
                     <img src={img.src} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -928,6 +960,7 @@ export default function BlogReflectionEditor({
                       className="absolute flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       style={{ zIndex: 35, top: `${img.y + img.height - 48}px`, left: `${img.x + img.width / 2}px`, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <button
                         onPointerDown={(e) => {
