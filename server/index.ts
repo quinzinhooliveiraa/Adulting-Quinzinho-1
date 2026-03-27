@@ -159,13 +159,13 @@ app.use((req, res, next) => {
       const runNotificationCycle = async () => {
         try {
           const dueNotifs = await storage.getDueNotifications();
-          if (dueNotifs.length > 0) {
+          if (dueNotifs.length > 0 && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_PUBLIC_KEY) {
             const webpushModule = await import("web-push");
             const webpush = webpushModule.default || webpushModule;
             webpush.setVapidDetails(
               process.env.VAPID_SUBJECT || "mailto:admin@example.com",
-              process.env.VAPID_PUBLIC_KEY || "",
-              process.env.VAPID_PRIVATE_KEY || ""
+              process.env.VAPID_PUBLIC_KEY,
+              process.env.VAPID_PRIVATE_KEY
             );
 
             const allSubs = await storage.getAllPushSubscriptions();

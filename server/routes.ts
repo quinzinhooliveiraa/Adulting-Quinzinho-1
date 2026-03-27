@@ -3303,6 +3303,10 @@ const AUTO_NOTIFICATION_PRIORITY: string[] = [
 ];
 
 export async function processAutoNotifications() {
+  if (!process.env.VAPID_PRIVATE_KEY || !process.env.VAPID_PUBLIC_KEY) {
+    return;
+  }
+
   const brazilHour = getBrazilHour();
   if (brazilHour < 7 || brazilHour >= 23) {
     return;
@@ -3322,8 +3326,8 @@ export async function processAutoNotifications() {
   const webpush = webpushModule.default || webpushModule;
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || "mailto:admin@example.com",
-    process.env.VAPID_PUBLIC_KEY || "",
-    process.env.VAPID_PRIVATE_KEY || ""
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
   );
 
   const allUsers = await storage.getAllUsers();
