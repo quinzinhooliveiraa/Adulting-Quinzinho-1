@@ -151,44 +151,33 @@ export default function BlogReflectionEditor({
     const el = editableRef.current;
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     if (!hasWrappedImages) return;
-
+    
     const wrapImages = images.filter(img => img.textWrap);
-    // Process higher-y images first so lower-y images become firstChild (reading order)
-    wrapImages.sort((a, b) => b.y - a.y);
+    wrapImages.sort((a, b) => a.y - b.y);
+    const containerWidth = el.offsetWidth || 600;
 
-    const editorPaddingTop = parseFloat(getComputedStyle(el).paddingTop) || 24;
-    const editorPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 24;
-    const contentWidth = Math.max(100, el.clientWidth - editorPaddingLeft * 2);
-    const gap = 12;
-    const containerW = canvasContainerRef.current?.offsetWidth ?? (contentWidth + editorPaddingLeft * 2);
+    const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
+    const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
 
     wrapImages.forEach(img => {
-      const imgTopInContent = Math.max(0, img.y - editorPaddingTop);
-      const imgXInContent = Math.max(0, img.x - editorPaddingLeft);
-      const imgRightInContent = Math.min(contentWidth, imgXInContent + img.width);
-      const side = (img.x + img.width / 2) < containerW / 2 ? 'left' : 'right';
+      const adjustedY = Math.max(0, img.y - elPadding);
+      const adjustedX = Math.max(0, img.x - elPaddingLeft);
+      const side = img.x < containerWidth / 2 ? 'left' : 'right';
+      const gap = 16;
+      const imgRight = adjustedX + img.width;
+      const imgBottom = adjustedY + img.height;
 
-      // Single-float technique using shape-outside: inset(0 0 0 0)
-      // margin-top positions the float at the image's y; shape-outside ensures text
-      // flows full-width in the margin area (above the image) — no blank space, no anchor needed.
-      // No `clear` is used, so multiple images on different sides coexist without conflict.
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
       spacer.contentEditable = 'false';
 
-      const floatW = side === 'right'
-        ? Math.max(8, contentWidth - imgXInContent + gap)
-        : Math.max(8, imgRightInContent + gap);
-
-      spacer.style.cssText = [
-        `float: ${side}`,
-        `width: ${floatW}px`,
-        `height: ${img.height}px`,
-        `margin-top: ${imgTopInContent}px`,
-        `shape-outside: inset(0 0 0 0)`,
-        `pointer-events: none`,
-        `opacity: 0`,
-      ].join('; ');
+      if (side === 'right') {
+        const w = containerWidth - adjustedX + gap;
+        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+      } else {
+        const w = imgRight + gap;
+        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+      }
 
       if (el.firstChild) {
         el.insertBefore(spacer, el.firstChild);
@@ -196,8 +185,7 @@ export default function BlogReflectionEditor({
         el.appendChild(spacer);
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images, hasWrappedImages]);
+  }, [images, selectedImage, hasWrappedImages]);
 
   const handleContentInput = useCallback(() => {
     if (editableRef.current) {
@@ -916,36 +904,14 @@ export default function BlogReflectionEditor({
                       width: `${img.width}px`,
                       height: `${img.height}px`,
                       transform: `rotate(${img.rotation}deg)`,
-                      touchAction: 'none',
                       zIndex: selectedImage === img.id ? 22 : (img.zIndex ?? 10),
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      cursor: img.locked ? 'default' : 'grab',
                     }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setSelectedImage(img.id);
-                      if (img.locked) return;
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      const startX = e.clientX;
-                      const startY = e.clientY;
-                      const initX = img.x;
-                      const initY = img.y;
-                      const containerW = canvasContainerRef.current?.offsetWidth ?? 600;
-                      const handlePointerMove = (mv: PointerEvent) => {
-                        updateImage(img.id, {
-                          x: Math.min(Math.max(0, initX + mv.clientX - startX), containerW - img.width),
-                          y: Math.max(0, initY + mv.clientY - startY),
-                        });
-                      };
-                      const handlePointerUp = (up: PointerEvent) => {
-                        document.removeEventListener('pointermove', handlePointerMove);
-                        document.removeEventListener('pointerup', handlePointerUp);
-                        try { (up.target as HTMLElement).releasePointerCapture(up.pointerId); } catch(_){}
-                      };
-                      document.addEventListener('pointermove', handlePointerMove);
-                      document.addEventListener('pointerup', handlePointerUp);
                     }}
                   >
                     <img src={img.src} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
