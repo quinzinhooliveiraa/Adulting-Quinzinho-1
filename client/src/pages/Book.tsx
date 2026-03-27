@@ -1000,16 +1000,20 @@ export default function Book() {
                       <button key={chapter.id} onClick={() => openChapter(idx)}
                         data-testid={`card-free-ch-${chapter.id}`}
                         className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.99] transition-transform shadow-sm">
-                        <div className="h-28 w-full relative overflow-hidden" style={{ background: grad }}>
+                        <div className="relative w-full" style={{ background: grad, minHeight: "9rem" }}>
                           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%,rgba(255,255,255,0.6) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(0,0,0,0.3) 0%,transparent 50%)" }} />
-                          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                          <div className="relative z-10 flex flex-col justify-end h-full p-5 pt-10">
+                            {chapter.tag && <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-white/70 mb-1">{chapter.tag}</p>}
+                            <h4 className="font-serif text-lg text-white leading-snug">{chapter.title}</h4>
+                          </div>
                         </div>
-                        <div className="px-5 pb-5 -mt-1">
-                          {chapter.tag && <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>}
-                          <h4 className="font-serif text-xl text-foreground mb-2 leading-tight">{chapter.title}</h4>
-                          {chapter.excerpt && <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">"{chapter.excerpt}"</p>}
-                          <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
-                            Ler Reflexão <ChevronRight size={13} />
+                        <div className="px-5 py-3 flex items-center justify-between">
+                          {chapter.excerpt
+                            ? <p className="text-xs text-muted-foreground italic leading-relaxed line-clamp-1 flex-1 mr-3">"{chapter.excerpt}"</p>
+                            : <span />}
+                          <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
+                            Ler <ChevronRight size={12} />
                           </div>
                         </div>
                       </button>
