@@ -5,15 +5,16 @@
  * Page 175 is blank — skipped.
  */
 
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { db } from "../server/db";
 import { sql } from "drizzle-orm";
 
 const PDF = "./attached_assets/EBOOK_-_CASA_DOS_20_Refletindo_sobre_os_Desafios_da_Transição__1774559232117.pdf";
 
 function extractRaw(page: number): string {
-  return execSync(
-    `pdftotext -f ${page} -l ${page} -raw "${PDF}" -`,
+  return execFileSync(
+    "pdftotext",
+    ["-f", String(page), "-l", String(page), "-raw", PDF, "-"],
     { encoding: "utf8" }
   );
 }
