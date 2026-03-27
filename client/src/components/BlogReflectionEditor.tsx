@@ -50,7 +50,13 @@ export default function BlogReflectionEditor({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [images, setImages] = useState<ImageElement[]>(initialImages || []);
+  const [images, setImages] = useState<ImageElement[]>(() =>
+    (initialImages || []).map(img => {
+      if (!img.textWrap) return img;
+      // Normalize wrapped images to top position — avoids massive anchor float from old y values
+      return { ...img, y: 24 };
+    })
+  );
   const [bannerUrl, setBannerUrl] = useState<string>(initialBanner || "");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -167,7 +173,9 @@ export default function BlogReflectionEditor({
       // Clamp imgX to the content area (image may start left of the padding)
       const imgXInContent = Math.max(0, img.x - editorPaddingLeft);
       const imgRightInContent = Math.min(contentWidth, imgXInContent + img.width);
-      const side = imgXInContent < contentWidth / 2 ? 'left' : 'right';
+      // Determine side from canvas center (not content center) to avoid misclassification
+      const containerW = canvasContainerRef.current?.offsetWidth ?? (contentWidth + editorPaddingLeft * 2);
+      const side = (img.x + img.width / 2) < containerW / 2 ? 'left' : 'right';
 
       // Two-float technique:
       // 1. Anchor (1px wide, imgTopInContent tall) — text flows full-width above image
@@ -868,7 +876,11 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { textWrap: true, zIndex: 10 });
+                          // Snap image to top-left or top-right when activating wrap mode
+                          const containerW = canvasContainerRef.current?.offsetWidth ?? 400;
+                          const isLeft = img.x < containerW / 2;
+                          const snappedX = isLeft ? 0 : Math.max(0, containerW - img.width);
+                          updateImage(img.id, { textWrap: true, zIndex: 10, y: 24, x: snappedX });
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
