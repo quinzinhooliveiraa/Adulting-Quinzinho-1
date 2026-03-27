@@ -102,6 +102,8 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const [transferError, setTransferError] = useState("");
   const [showGrantPremium, setShowGrantPremium] = useState(false);
   const [grantDays, setGrantDays] = useState(30);
+  const [grantConfirm, setGrantConfirm] = useState(false);
+  const [grantConfirmText, setGrantConfirmText] = useState("");
   const [grantingBonus, setGrantingBonus] = useState(false);
   const [grantingBook, setGrantingBook] = useState(false);
 
@@ -216,37 +218,75 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
 
                 {showGrantPremium && (
                   <div className="w-full bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3 space-y-2">
-                    <p className="text-[11px] text-muted-foreground">Por quantos dias?</p>
-                    <div className="flex gap-2">
-                      {[30, 90, 180, 365].map(d => (
+                    {!grantConfirm ? (
+                      <>
+                        <p className="text-[11px] text-muted-foreground">Por quantos dias?</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {[30, 90, 180, 365].map(d => (
+                            <button
+                              key={d}
+                              onClick={() => setGrantDays(d)}
+                              className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === d ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                              data-testid={`button-grant-days-${d}`}
+                            >
+                              {d}d
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setGrantDays(0)}
+                            className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === 0 ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                            data-testid="button-grant-unlimited"
+                          >
+                            Ilimitado
+                          </button>
+                        </div>
                         <button
-                          key={d}
-                          onClick={() => setGrantDays(d)}
-                          className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === d ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
-                          data-testid={`button-grant-days-${d}`}
+                          onClick={() => { setGrantConfirm(true); setGrantConfirmText(""); }}
+                          className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500 text-white font-medium"
+                          data-testid={`button-confirm-grant-${user.id}`}
                         >
-                          {d}d
+                          Liberar — {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
                         </button>
-                      ))}
-                      <button
-                        onClick={() => setGrantDays(0)}
-                        className={`text-[10px] px-2 py-1 rounded-md border ${grantDays === 0 ? "bg-yellow-500 text-white border-yellow-500" : "border-border text-muted-foreground hover:bg-muted"}`}
-                        data-testid="button-grant-unlimited"
-                      >
-                        Ilimitado
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const premiumUntil = grantDays > 0 ? new Date(Date.now() + grantDays * 86400000).toISOString() : null;
-                        onUpdate(user.id, { isPremium: true, premiumUntil });
-                        setShowGrantPremium(false);
-                      }}
-                      className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500 text-white font-medium"
-                      data-testid={`button-confirm-grant-${user.id}`}
-                    >
-                      Confirmar — {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
-                    </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-muted-foreground">
+                          Escreve <strong className="text-foreground">"confirmar"</strong> para liberar premium a <strong className="text-foreground">{user.name}</strong>:
+                        </p>
+                        <input
+                          type="text"
+                          value={grantConfirmText}
+                          onChange={e => setGrantConfirmText(e.target.value)}
+                          placeholder="confirmar"
+                          className="w-full text-[11px] px-2 py-1.5 rounded-md border border-border bg-background"
+                          data-testid={`input-grant-confirm-${user.id}`}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setGrantConfirm(false); setGrantConfirmText(""); }}
+                            className="flex-1 text-[11px] px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid={`button-cancel-grant-${user.id}`}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            disabled={grantConfirmText !== "confirmar"}
+                            onClick={() => {
+                              const premiumUntil = grantDays > 0 ? new Date(Date.now() + grantDays * 86400000).toISOString() : null;
+                              onUpdate(user.id, { isPremium: true, premiumUntil });
+                              setShowGrantPremium(false);
+                              setGrantConfirm(false);
+                              setGrantConfirmText("");
+                            }}
+                            className="flex-1 text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500 text-white font-medium disabled:opacity-40"
+                            data-testid={`button-confirm-grant-final-${user.id}`}
+                          >
+                            Confirmar
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
