@@ -1060,8 +1060,8 @@ export async function registerRoutes(
       async function ensureCustomer() {
         if (customerId) {
           try {
-            await stripe.customers.retrieve(customerId);
-            return customerId;
+            const existing = await stripe.customers.retrieve(customerId) as any;
+            if (!existing.deleted) return customerId;
           } catch {}
         }
         const customer = await stripe.customers.create({
@@ -1078,24 +1078,38 @@ export async function registerRoutes(
         customer: customerId,
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
-        expand: ["latest_invoice.payment_intent"],
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card"],
+        },
+        expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
       });
 
       const invoice = subscription.latest_invoice as any;
       const paymentIntent = invoice?.payment_intent as any;
+      const setupIntent = (subscription as any).pending_setup_intent as any;
 
-      if (!paymentIntent?.client_secret) {
+      const clientSecret = paymentIntent?.client_secret ?? setupIntent?.client_secret ?? null;
+
+      if (!clientSecret) {
+        console.error("create-subscription-intent: no client_secret", {
+          subscriptionId: subscription.id,
+          subscriptionStatus: subscription.status,
+          invoiceStatus: invoice?.status,
+          invoiceAmountDue: invoice?.amount_due,
+          paymentIntentStatus: paymentIntent?.status,
+          setupIntentStatus: setupIntent?.status,
+        });
         return res.status(500).json({ message: "Não foi possível iniciar o pagamento" });
       }
 
       res.json({
-        clientSecret: paymentIntent.client_secret,
+        clientSecret,
         subscriptionId: subscription.id,
       });
     } catch (error: any) {
-      console.error("create-subscription-intent error:", error);
-      res.status(500).json({ message: "Erro ao criar subscrição" });
+      console.error("create-subscription-intent error:", error?.message ?? error);
+      res.status(500).json({ message: "Não foi possível iniciar o pagamento. Tenta novamente." });
     }
   });
 
