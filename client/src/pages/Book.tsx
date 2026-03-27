@@ -1070,6 +1070,14 @@ export default function Book() {
                   </div>
                 ))}
               </div>
+              <button
+                onClick={() => window.open("https://www.amazon.com.br/product-reviews/B0CWW9JR92/?sortBy=recent", "_blank")}
+                data-testid="btn-more-reviews-amazon"
+                className="mt-3 w-full py-2.5 rounded-xl border border-border text-xs font-medium text-muted-foreground flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform hover-elevate">
+                <Star size={12} className="fill-[#FF9900] text-[#FF9900]" />
+                Ver mais avaliações na Amazon
+                <ExternalLink size={12} />
+              </button>
             </div>
 
             {/* External stores */}
