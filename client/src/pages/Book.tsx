@@ -1004,10 +1004,10 @@ export default function Book() {
                           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%,rgba(255,255,255,0.6) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(0,0,0,0.3) 0%,transparent 50%)" }} />
                           <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent" />
                         </div>
-                        <div className="px-5 pb-5 -mt-1">
+                        <div className="px-5 pt-3 pb-4">
                           {chapter.tag && <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>}
                           <h4 className="font-serif text-base text-foreground mb-2 leading-snug" style={{ overflow: "hidden", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 } as React.CSSProperties}>{chapter.title}</h4>
-                          {chapter.excerpt && <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">"{chapter.excerpt}"</p>}
+                          {chapter.excerpt && <p className="text-sm text-muted-foreground italic leading-relaxed mb-3">"{chapter.excerpt}"</p>}
                           <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
                             Ler Reflexão <ChevronRight size={13} />
                           </div>
