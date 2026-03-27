@@ -222,7 +222,7 @@ export default function NotebookEditor({ initialContent = "", onClose, onSave }:
 
   if (showText) {
     return (
-      <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300">
+      <div className="fixed inset-x-0 sm:bottom-0 bg-black/50 z-50 flex items-end justify-center animate-in fade-in duration-300" style={{ top: 'env(safe-area-inset-top, 0px)', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
         <div className="bg-background rounded-t-3xl max-h-full overflow-y-auto w-full max-w-2xl animate-in slide-in-from-bottom duration-300 flex flex-col">
           <div className="sticky top-0 bg-background flex items-center justify-between p-6 border-b border-border">
             <h2 className="font-serif text-xl">Visualização de Texto</h2>

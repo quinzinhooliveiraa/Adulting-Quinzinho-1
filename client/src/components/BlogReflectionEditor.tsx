@@ -618,10 +618,10 @@ export default function BlogReflectionEditor({
               
               <div 
                 ref={canvasContainerRef}
-                className="relative overflow-visible"
+                className="relative overflow-hidden"
                 style={{ 
                   isolation: 'isolate',
-                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 80))
+                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 24))
                 }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
@@ -831,7 +831,7 @@ export default function BlogReflectionEditor({
 
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button
@@ -925,8 +925,8 @@ export default function BlogReflectionEditor({
                   </div>
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute left-1/2 -translate-x-1/2 flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
-                      style={{ zIndex: 35, top: `${img.y + img.height + 8}px` }}
+                      className="absolute flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      style={{ zIndex: 35, top: `${img.y + img.height - 48}px`, left: `${img.x + img.width / 2}px`, transform: 'translateX(-50%)' }}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button

@@ -318,7 +318,7 @@ function ImageShareDrawer({ text, theme, onThemeChange, onClose }: { text: strin
   }, [text, theme]);
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-x-0 sm:bottom-0 z-50 flex items-end sm:items-center justify-center" style={{ top: 'env(safe-area-inset-top, 0px)', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
       <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl p-6 pt-8 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-full overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full">
