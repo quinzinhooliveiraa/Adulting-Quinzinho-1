@@ -862,7 +862,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 ───────────────────────────────────────────────────────────────── */
 export default function Book() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"sobre" | "ler">("sobre");
+  const [activeTab, setActiveTab] = useState<"sobre" | "ler">("ler");
   const [readerStartIdx, setReaderStartIdx] = useState<number | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
