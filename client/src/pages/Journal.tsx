@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useGeoPrice } from "@/hooks/useGeoPrice";
 import { Search, PenLine, ChevronRight, X, Hash, Check, Share2, Trash2, Edit2, ImagePlus, Archive, ChevronDown, Eye, Crown, Share, Image as ImageIcon, Link2, Copy, ExternalLink, Loader2 } from "lucide-react";
 import AudioButton from "@/components/AudioButton";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { JournalEntry } from "@shared/schema";
 
 function JournalUpgradePopup({ limit, onClose }: { limit: number; onClose: () => void }) {
+  const { price: geo } = useGeoPrice();
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/stripe/products"],
     queryFn: async () => {
@@ -70,10 +72,10 @@ function JournalUpgradePopup({ limit, onClose }: { limit: number; onClose: () =>
               MELHOR VALOR
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-foreground">R$79,90</span>
+              <span className="text-lg font-bold text-foreground">{geo.yearlyFormatted}</span>
               <span className="text-xs text-muted-foreground">/ano</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">R${yearlyMonthly}/mês</p>
+            <p className="text-[11px] text-muted-foreground">{geo.yearlyMonthlyFormatted}/mês</p>
           </button>
 
           <button
@@ -84,7 +86,7 @@ function JournalUpgradePopup({ limit, onClose }: { limit: number; onClose: () =>
             data-testid="plan-monthly-journal"
           >
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-foreground">R$9,90</span>
+              <span className="text-lg font-bold text-foreground">{geo.monthlyFormatted}</span>
               <span className="text-xs text-muted-foreground">/mês</span>
             </div>
           </button>

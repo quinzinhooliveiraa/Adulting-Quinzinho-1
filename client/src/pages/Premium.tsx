@@ -5,11 +5,13 @@ import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
+import { useGeoPrice } from "@/hooks/useGeoPrice";
 
 export default function Premium() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
+  const { price: geo } = useGeoPrice();
   const [showCardModal, setShowCardModal] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -189,7 +191,7 @@ export default function Premium() {
                   <p className="text-muted-foreground text-sm">Cancele quando quiser</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">R$9,90</p>
+                  <p className="text-2xl font-bold text-primary">{geo.monthlyFormatted}</p>
                   <p className="text-xs text-muted-foreground">/mês</p>
                 </div>
               </div>
@@ -215,8 +217,8 @@ export default function Premium() {
                   <p className="text-muted-foreground text-sm">Melhor custo-benefício</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">R$79,90</p>
-                  <p className="text-xs text-muted-foreground">/ano (~R$6,66/mês)</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{geo.yearlyFormatted}</p>
+                  <p className="text-xs text-muted-foreground">/ano (~{geo.yearlyMonthlyFormatted}/mês)</p>
                 </div>
               </div>
               {loading === yearlyPrice.price_id && (

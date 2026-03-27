@@ -9,6 +9,7 @@ import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } fr
 import { useCreateEntry } from "@/hooks/useJournal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
+import { useGeoPrice } from "@/hooks/useGeoPrice";
 import { useQuery } from "@tanstack/react-query";
 
 function useStripeCheckout() {
@@ -2151,6 +2152,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
   const { monthlyPrice, yearlyPrice, checkout } = useStripeCheckout();
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
   const [loading, setLoading] = useState(false);
+  const { price: geo } = useGeoPrice();
 
   const handleSubscribe = async () => {
     const price = selectedPlan === "yearly" ? yearlyPrice : monthlyPrice;
@@ -2193,10 +2195,10 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
             ECONOMIZE {yearlySavings}%
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-foreground">R$79,90</span>
+            <span className="text-2xl font-bold text-foreground">{geo.yearlyFormatted}</span>
             <span className="text-sm text-muted-foreground">/ano</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">R${yearlyMonthly}/mês — melhor custo-benefício</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{geo.yearlyMonthlyFormatted}/mês — melhor custo-benefício</p>
         </button>
 
         <button
@@ -2209,7 +2211,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
           data-testid="plan-monthly"
         >
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-foreground">R$9,90</span>
+            <span className="text-2xl font-bold text-foreground">{geo.monthlyFormatted}</span>
             <span className="text-sm text-muted-foreground">/mês</span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">Flexível, cancele quando quiser</p>
@@ -2242,7 +2244,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           data-testid="button-subscribe"
         >
-          {loading ? "Redirecionando..." : selectedPlan === "yearly" ? "Assinar Anual — R$79,90/ano" : "Assinar Mensal — R$9,90/mês"}
+          {loading ? "Redirecionando..." : selectedPlan === "yearly" ? `Assinar Anual — ${geo.yearlyFormatted}/ano` : `Assinar Mensal — ${geo.monthlyFormatted}/mês`}
         </button>
         <button
           onClick={onBack}

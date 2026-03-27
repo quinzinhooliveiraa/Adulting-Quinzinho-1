@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useGeoPrice } from "@/hooks/useGeoPrice";
 import {
   ArrowRight, ArrowLeft, Bell, Check,
   Map, BookOpen, PenLine, MessageCircle, Smile,
@@ -50,6 +51,7 @@ const INTERESTS = [
 ];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
+  const { price: geo } = useGeoPrice();
   const savedStep = parseInt(localStorage.getItem("casa-onboarding-step") || "0", 10);
   const [stepIndex, setStepIndex] = useState(isNaN(savedStep) ? 0 : Math.min(savedStep, STEP_ORDER.length - 1));
   const [isAnimating, setIsAnimating] = useState(false);
@@ -706,7 +708,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
                       <Crown size={10} /> Premium
                     </p>
-                    <p className="text-xs font-bold text-foreground">R$ 9,90<span className="text-muted-foreground font-normal">/mês</span></p>
+                    <p className="text-xs font-bold text-foreground">{geo.monthlyFormatted}<span className="text-muted-foreground font-normal">/mês</span></p>
                   </div>
                   <div className="space-y-2">
                     {[

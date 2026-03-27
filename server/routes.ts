@@ -264,6 +264,85 @@ export async function registerRoutes(
     }
   })();
 
+  // ── Geo Pricing ─────────────────────────────────────────────────────────────
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    BRL: "R$", EUR: "€", USD: "$", GBP: "£", AOA: "Kz", MZN: "MT",
+    CHF: "Fr", CAD: "CA$", AUD: "A$", NZD: "NZ$", JPY: "¥", CNY: "¥",
+    INR: "₹", MXN: "$", ARS: "$", CLP: "$", COP: "$", PEN: "S/.",
+    SEK: "kr", NOK: "kr", DKK: "kr", PLN: "zł", CZK: "Kč", HUF: "Ft",
+    RON: "lei", HRK: "kn", TRY: "₺", ZAR: "R", NGN: "₦", KES: "KSh",
+    ILS: "₪", SAR: "﷼", AED: "د.إ", SGD: "S$", HKD: "HK$", KRW: "₩",
+    THB: "฿", IDR: "Rp", MYR: "RM", PHP: "₱", VND: "₫", TWD: "NT$",
+  };
+
+  function formatGeoAmount(amount: number, currency: string): string {
+    const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
+    if (["EUR", "GBP", "CHF"].includes(currency))
+      return `${sym}${amount.toFixed(2).replace(".", ",")}`;
+    if (["BRL", "ARS", "CLP", "MXN"].includes(currency))
+      return `${sym}${amount.toFixed(2).replace(".", ",")}`;
+    if (["JPY", "KRW", "VND", "IDR"].includes(currency))
+      return `${sym}${Math.round(amount).toLocaleString()}`;
+    return `${sym}${amount.toFixed(2)}`;
+  }
+
+  const geoCache = new Map<string, { data: object; ts: number }>();
+
+  app.get("/api/geo-pricing", async (req: Request, res: Response) => {
+    const BASE_MONTHLY = 9.9;
+    const BASE_YEARLY = 79.9;
+    const defaultResp = {
+      currency: "BRL", symbol: "R$",
+      monthly: BASE_MONTHLY, yearly: BASE_YEARLY, yearlyMonthly: 6.66,
+      monthlyFormatted: "R$9,90", yearlyFormatted: "R$79,90",
+      yearlyMonthlyFormatted: "R$6,66", countryCode: "BR",
+    };
+    try {
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+        || req.socket?.remoteAddress || "";
+      const isLocal = !ip || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("10.") || ip.startsWith("192.168.");
+      if (isLocal) return res.json(defaultResp);
+
+      const cached = geoCache.get(ip);
+      if (cached && Date.now() - cached.ts < 1000 * 60 * 60) return res.json(cached.data);
+
+      const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(3000) });
+      if (!geoRes.ok) return res.json(defaultResp);
+      const geo = await geoRes.json() as { currency?: string; country_code?: string };
+      const currency = geo.currency || "BRL";
+      const countryCode = geo.country_code || "BR";
+
+      if (currency === "BRL") {
+        geoCache.set(ip, { data: defaultResp, ts: Date.now() });
+        return res.json(defaultResp);
+      }
+
+      const rateRes = await fetch(
+        `https://api.frankfurter.app/latest?from=BRL&to=${currency}`,
+        { signal: AbortSignal.timeout(3000) }
+      );
+      if (!rateRes.ok) return res.json(defaultResp);
+      const rateData = await rateRes.json() as { rates?: Record<string, number> };
+      const rate = rateData.rates?.[currency];
+      if (!rate) return res.json(defaultResp);
+
+      const monthly = Math.ceil(BASE_MONTHLY * rate * 100) / 100;
+      const yearly = Math.ceil(BASE_YEARLY * rate * 100) / 100;
+      const yearlyMonthly = Math.ceil((yearly / 12) * 100) / 100;
+      const symbol = CURRENCY_SYMBOLS[currency] || currency + " ";
+      const resp = {
+        currency, symbol, monthly, yearly, yearlyMonthly, countryCode,
+        monthlyFormatted: formatGeoAmount(monthly, currency),
+        yearlyFormatted: formatGeoAmount(yearly, currency),
+        yearlyMonthlyFormatted: formatGeoAmount(yearlyMonthly, currency),
+      };
+      geoCache.set(ip, { data: resp, ts: Date.now() });
+      return res.json(resp);
+    } catch {
+      return res.json(defaultResp);
+    }
+  });
+
   app.post("/api/auth/validate-email", async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
