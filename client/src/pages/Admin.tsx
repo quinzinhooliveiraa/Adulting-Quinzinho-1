@@ -1757,6 +1757,7 @@ export default function Admin() {
                         onClick={async () => {
                           await fetch(`/api/admin/book/chapters/${ch.id}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isPreview: !ch.isPreview }) });
                           refetchBookChapters();
+                          queryClient.invalidateQueries({ queryKey: ["/api/book/chapters"] });
                         }}
                         className={`text-[9px] px-2 py-1 rounded-full font-semibold border transition-colors ${ch.isPreview ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20" : "bg-muted text-muted-foreground border-border hover:bg-muted/70"}`}
                         data-testid={`btn-toggle-preview-${ch.id}`}

@@ -868,6 +868,7 @@ export default function Book() {
 
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<Chapter[]>({
     queryKey: ["/api/book/chapters"],
+    staleTime: 0,
     queryFn: async () => {
       const r = await fetch("/api/book/chapters", { credentials: "include" });
       if (!r.ok) return [];

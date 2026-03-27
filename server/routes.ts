@@ -1403,7 +1403,14 @@ export async function registerRoutes(
     try {
       const id = Number(req.params.id);
       const { order, title, tag, excerpt, content, isPreview } = req.body;
-      const updated = await storage.updateBookChapter(id, { order, title, tag, excerpt, content, isPreview });
+      const updateData: Record<string, any> = {};
+      if (order !== undefined) updateData.order = order;
+      if (title !== undefined) updateData.title = title;
+      if (tag !== undefined) updateData.tag = tag;
+      if (excerpt !== undefined) updateData.excerpt = excerpt;
+      if (content !== undefined) updateData.content = content;
+      if (isPreview !== undefined) updateData.isPreview = isPreview;
+      const updated = await storage.updateBookChapter(id, updateData);
       if (!updated) return res.status(404).json({ error: "Capítulo não encontrado" });
       res.json(updated);
     } catch {
