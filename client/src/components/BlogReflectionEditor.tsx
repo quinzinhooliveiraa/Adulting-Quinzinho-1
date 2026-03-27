@@ -616,10 +616,10 @@ export default function BlogReflectionEditor({
               
               <div 
                 ref={canvasContainerRef}
-                className="relative overflow-hidden"
+                className="relative overflow-visible"
                 style={{ 
                   isolation: 'isolate',
-                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 24))
+                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 80))
                 }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
