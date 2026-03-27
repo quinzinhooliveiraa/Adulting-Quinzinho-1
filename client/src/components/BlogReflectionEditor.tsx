@@ -50,13 +50,7 @@ export default function BlogReflectionEditor({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [images, setImages] = useState<ImageElement[]>(() =>
-    (initialImages || []).map(img => {
-      if (!img.textWrap) return img;
-      // Normalize wrapped images to top position — avoids massive anchor float from old y values
-      return { ...img, y: 24 };
-    })
-  );
+  const [images, setImages] = useState<ImageElement[]>(initialImages || []);
   const [bannerUrl, setBannerUrl] = useState<string>(initialBanner || "");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -876,14 +870,11 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          // Only ONE image can be in wrap mode at a time (multi-float CSS conflicts)
-                          // Deactivate wrap on all others; snap this one to top-left or top-right
-                          const containerW = canvasContainerRef.current?.offsetWidth ?? 400;
-                          const isLeft = img.x < containerW / 2;
-                          const snappedX = isLeft ? 0 : Math.max(0, containerW - img.width);
+                          // Only ONE image can be in wrap mode at a time
+                          // Keep the image at its current position — user chose where it should be
                           setImages(prev => prev.map(i =>
                             i.id === img.id
-                              ? { ...i, textWrap: true, zIndex: 10, y: 24, x: snappedX }
+                              ? { ...i, textWrap: true, zIndex: 10 }
                               : { ...i, textWrap: false, zIndex: i.zIndex === 10 ? 20 : i.zIndex }
                           ));
                         }}
@@ -940,14 +931,36 @@ export default function BlogReflectionEditor({
                       width: `${img.width}px`,
                       height: `${img.height}px`,
                       transform: `rotate(${img.rotation}deg)`,
+                      touchAction: 'none',
                       zIndex: selectedImage === img.id ? 22 : (img.zIndex ?? 10),
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      cursor: img.locked ? 'default' : 'grab',
                     }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setSelectedImage(img.id);
+                      if (img.locked) return;
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const initX = img.x;
+                      const initY = img.y;
+                      const containerW = canvasContainerRef.current?.offsetWidth ?? 600;
+                      const handlePointerMove = (mv: PointerEvent) => {
+                        updateImage(img.id, {
+                          x: Math.min(Math.max(0, initX + mv.clientX - startX), containerW - img.width),
+                          y: Math.max(0, initY + mv.clientY - startY),
+                        });
+                      };
+                      const handlePointerUp = (up: PointerEvent) => {
+                        document.removeEventListener('pointermove', handlePointerMove);
+                        document.removeEventListener('pointerup', handlePointerUp);
+                        try { (up.target as HTMLElement).releasePointerCapture(up.pointerId); } catch(_){}
+                      };
+                      document.addEventListener('pointermove', handlePointerMove);
+                      document.addEventListener('pointerup', handlePointerUp);
                     }}
                   >
                     <img src={img.src} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
