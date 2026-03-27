@@ -1,13 +1,5 @@
-import { useState, useEffect } from "react";
-import { X, Crown, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { X, Crown, Loader2, AlertCircle } from "lucide-react";
 
 interface Plan {
   priceId: string;
@@ -23,208 +15,44 @@ interface SubscriptionCheckoutModalProps {
   onClose: () => void;
 }
 
-interface PaymentFormProps extends SubscriptionCheckoutModalProps {
-  subscriptionId: string;
-}
-
-function PaymentForm({ plan, subscriptionId, onSuccess, onClose }: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
+export default function SubscriptionCheckoutModal({
+  plan,
+  onClose,
+}: SubscriptionCheckoutModalProps) {
   const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    setLoading(true);
-    setError("");
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        redirect: "if_required",
-        confirmParams: {
-          return_url: window.location.href,
-        },
-      });
-
-      if (stripeError) {
-        setError(stripeError.message || "Erro no pagamento. Verifica os dados.");
-        setLoading(false);
-        return;
-      }
-
-      if (paymentIntent?.status === "succeeded") {
-        const confirmRes = await fetch("/api/stripe/confirm-subscription", {
+    async function startCheckout() {
+      try {
+        const res = await fetch("/api/stripe/checkout", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscriptionId }),
+          body: JSON.stringify({ priceId: plan.priceId }),
         });
-        const confirmData = await confirmRes.json();
-        if (!confirmRes.ok) {
-          setError(confirmData.message || "Erro ao ativar subscrição.");
-          setLoading(false);
+        const data = await res.json();
+
+        if (!res.ok || !data.url) {
+          if (!cancelled) setError(data.message || "Erro ao iniciar pagamento.");
           return;
         }
-        setSuccess(true);
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        setTimeout(() => onSuccess(), 2000);
-      } else {
-        setError("Pagamento não confirmado. Tenta novamente.");
-        setLoading(false);
+
+        if (!cancelled) {
+          window.location.href = data.url;
+        }
+      } catch {
+        if (!cancelled) setError("Erro de ligação. Tenta novamente.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch {
-      setError("Erro de ligação. Tenta novamente.");
-      setLoading(false);
     }
-  };
 
-  if (success) {
-    return (
-      <div className="px-6 py-10 flex flex-col items-center text-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center">
-          <CheckCircle2 size={32} className="text-amber-500" />
-        </div>
-        <h2 className="text-xl font-bold font-serif text-foreground">Premium ativado!</h2>
-        <p className="text-sm text-muted-foreground">
-          Bem-vindo ao {plan.label === "Mensal" ? "plano mensal" : "plano anual"} da Casa dos 20.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="px-6 pt-7 pb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-            <Crown size={20} className="text-amber-600" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold font-serif text-foreground leading-tight">
-              Casa dos 20 Premium
-            </h2>
-            <p className="text-xs text-muted-foreground">Plano {plan.label}</p>
-          </div>
-        </div>
-
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-foreground">Plano {plan.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {plan.interval === "month" ? "Renovação mensal · cancele quando quiser" : "Renovação anual · melhor custo-benefício"}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-base font-bold text-amber-600 dark:text-amber-400">{plan.priceFormatted}</p>
-            <p className="text-[10px] text-muted-foreground">/{plan.interval === "month" ? "mês" : "ano"}</p>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <PaymentElement
-            onReady={() => setReady(true)}
-            options={{
-              layout: "tabs",
-              paymentMethodOrder: ["apple_pay", "google_pay", "card"],
-              wallets: {
-                applePay: "auto",
-                googlePay: "auto",
-              },
-            }}
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 mb-4">
-          <Lock size={11} className="text-muted-foreground shrink-0" />
-          <p className="text-[11px] text-muted-foreground">
-            Protegido pelo Stripe · os teus dados nunca passam pelos nossos servidores
-          </p>
-        </div>
-
-        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
-          <div className="flex items-start gap-2">
-            <ShieldCheck size={14} className="text-green-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
-              {plan.interval === "month"
-                ? "Subscrição mensal · cancele a qualquer momento sem penalização"
-                : "Subscrição anual · poupa 33% em relação ao plano mensal"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 pb-2 space-y-2">
-        {error && <p className="text-xs text-red-500 text-center py-1">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading || !stripe || !ready}
-          data-testid="btn-confirm-subscription"
-          className="w-full py-3.5 rounded-2xl bg-amber-500 text-white font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50"
-        >
-          {loading ? "A processar..." : `Subscrever por ${plan.priceFormatted}`}
-        </button>
-
-        <button
-          type="button"
-          onClick={onClose}
-          data-testid="btn-cancel-subscription"
-          className="w-full py-2.5 rounded-2xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Cancelar
-        </button>
-      </div>
-    </form>
-  );
-}
-
-export default function SubscriptionCheckoutModal({
-  plan,
-  onSuccess,
-  onClose,
-}: SubscriptionCheckoutModalProps) {
-  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
-  const [clientSecret, setClientSecret] = useState("");
-  const [subscriptionId, setSubscriptionId] = useState("");
-  const [loadError, setLoadError] = useState("");
-
-  useEffect(() => {
-    const keyFetch = fetch("/api/stripe/config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.publishableKey) return loadStripe(d.publishableKey);
-        throw new Error("Stripe não configurado.");
-      });
-
-    const intentFetch = fetch("/api/stripe/create-subscription-intent", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: plan.priceId }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.clientSecret) throw new Error(d.message || "Erro ao criar subscrição.");
-        return d;
-      });
-
-    Promise.all([keyFetch, intentFetch])
-      .then(([stripeInst, intentData]) => {
-        setStripePromise(Promise.resolve(stripeInst));
-        setClientSecret(intentData.clientSecret);
-        setSubscriptionId(intentData.subscriptionId);
-      })
-      .catch((err) => setLoadError(err.message || "Erro de ligação."));
+    startCheckout();
+    return () => { cancelled = true; };
   }, [plan.priceId]);
-
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
 
   return (
     <div
@@ -234,7 +62,7 @@ export default function SubscriptionCheckoutModal({
     >
       <div
         className="relative bg-card rounded-t-3xl border border-border w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500"
-        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -245,36 +73,34 @@ export default function SubscriptionCheckoutModal({
           <X size={18} />
         </button>
 
-        {loadError ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground">{loadError}</p>
+        <div className="px-6 pt-8 pb-4 flex flex-col items-center text-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center">
+            <Crown size={26} className="text-amber-500" />
           </div>
-        ) : !clientSecret || !stripePromise ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground animate-pulse">A carregar...</p>
+
+          <div>
+            <h2 className="text-lg font-bold font-serif text-foreground">
+              Casa dos 20 Premium
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Plano {plan.label} · {plan.priceFormatted}/{plan.interval === "month" ? "mês" : "ano"}
+            </p>
           </div>
-        ) : (
-          <Elements
-            stripe={stripePromise}
-            options={{
-              clientSecret,
-              appearance: {
-                theme: isDark ? "night" : "stripe",
-                variables: {
-                  borderRadius: "12px",
-                  fontSizeBase: "15px",
-                },
-              },
-            }}
-          >
-            <PaymentForm
-              plan={plan}
-              subscriptionId={subscriptionId}
-              onSuccess={onSuccess}
-              onClose={onClose}
-            />
-          </Elements>
-        )}
+
+          {error ? (
+            <div className="flex items-center gap-2 text-red-500 text-sm mt-2">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 mt-2">
+              <Loader2 size={22} className="animate-spin text-amber-500" />
+              <p className="text-sm text-muted-foreground">
+                A abrir página de pagamento segura...
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1024,7 +1024,6 @@ export async function registerRoutes(
       const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const sessionParams: any = {
         customer: customerId,
-        payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
         success_url: `${domain}/?checkout=success`,
@@ -1168,6 +1167,53 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("confirm-subscription error:", error);
       res.status(500).json({ message: "Erro ao confirmar subscrição" });
+    }
+  });
+
+  app.post("/api/stripe/sync-subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const stripe = await getUncachableStripeClient();
+      let customerId = user.stripeCustomerId;
+
+      if (!customerId) {
+        return res.json({ synced: false, reason: "no_customer" });
+      }
+
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 5,
+      });
+
+      if (subscriptions.data.length === 0) {
+        const trialing = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "trialing",
+          limit: 5,
+        });
+        subscriptions.data.push(...trialing.data);
+      }
+
+      if (subscriptions.data.length === 0) {
+        return res.json({ synced: false, reason: "no_active_subscription" });
+      }
+
+      const sub = subscriptions.data[0];
+      const periodEnd = new Date(sub.current_period_end * 1000);
+
+      await storage.updateUser(user.id, {
+        stripeSubscriptionId: sub.id,
+        isPremium: true,
+        premiumUntil: periodEnd,
+      });
+
+      return res.json({ synced: true, premiumUntil: periodEnd });
+    } catch (error: any) {
+      console.error("sync-subscription error:", error);
+      res.status(500).json({ message: "Erro ao sincronizar subscrição" });
     }
   });
 

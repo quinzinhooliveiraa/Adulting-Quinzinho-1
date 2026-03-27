@@ -34,7 +34,7 @@ function AuthGate() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [bonusBanner, setBonusBanner] = useState<"success" | "cancel" | null>(null);
+  const [bonusBanner, setBonusBanner] = useState<"success" | "cancel" | "checkout-success" | null>(null);
   const [pwaReturnBanner, setPwaReturnBanner] = useState(false);
 
   useEffect(() => {
@@ -42,9 +42,10 @@ function AuthGate() {
     const googleNewUser = params.get("google_new_user");
     const err = params.get("google_error");
     const bonus = params.get("bonus");
+    const checkout = params.get("checkout");
     const fromPwa = params.get("pwa") === "1";
 
-    if (googleNewUser || err !== null || bonus || fromPwa) {
+    if (googleNewUser || err !== null || bonus || checkout || fromPwa) {
       window.history.replaceState({}, "", window.location.pathname);
       if (googleNewUser) {
         localStorage.setItem("casa-dos-20-needs-onboarding", "true");
@@ -68,6 +69,19 @@ function AuthGate() {
       } else if (bonus === "cancel") {
         setBonusBanner("cancel");
         setTimeout(() => setBonusBanner(null), 5000);
+      }
+      if (checkout === "success") {
+        setBonusBanner("checkout-success");
+        fetch("/api/stripe/sync-subscription", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        }).finally(() => {
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          }, 500);
+        });
+        setTimeout(() => setBonusBanner(null), 8000);
       }
       if (fromPwa && !googleNewUser) {
         setPwaReturnBanner(true);
@@ -172,19 +186,25 @@ function AuthGate() {
       <PwaInstallPrompt />
       {bonusBanner && (
         <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
-          bonusBanner === "success"
+          bonusBanner === "success" || bonusBanner === "checkout-success"
             ? "bg-green-500/10 border-green-400/30"
             : "bg-muted border-border"
         }`} data-testid="bonus-result-banner">
-          <span className="text-xl">{bonusBanner === "success" ? "🎉" : "😕"}</span>
+          <span className="text-xl">{bonusBanner === "success" || bonusBanner === "checkout-success" ? "🎉" : "😕"}</span>
           <div>
-            <p className={`text-sm font-semibold ${bonusBanner === "success" ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
-              {bonusBanner === "success" ? "+16 dias a ser ativados!" : "Adição de cartão cancelada"}
+            <p className={`text-sm font-semibold ${bonusBanner === "success" || bonusBanner === "checkout-success" ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
+              {bonusBanner === "checkout-success"
+                ? "Subscrição ativada com sucesso!"
+                : bonusBanner === "success"
+                  ? "+16 dias a ser ativados!"
+                  : "Adição de cartão cancelada"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {bonusBanner === "success"
-                ? "O teu trial de 30 dias será ativado em instantes."
-                : "Podes tentar novamente quando quiseres."}
+              {bonusBanner === "checkout-success"
+                ? "Bem-vindo ao Premium da Casa dos 20."
+                : bonusBanner === "success"
+                  ? "O teu trial de 30 dias será ativado em instantes."
+                  : "Podes tentar novamente quando quiseres."}
             </p>
           </div>
         </div>
