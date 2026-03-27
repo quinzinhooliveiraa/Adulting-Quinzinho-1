@@ -612,12 +612,21 @@ export default function Book() {
 
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<Chapter[]>({
     queryKey: ["/api/book/chapters"],
-    queryFn: () => fetch("/api/book/chapters", { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/book/chapters", { credentials: "include" });
+      if (!r.ok) return [];
+      const data = await r.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const { data: purchaseStatus } = useQuery<PurchaseStatus>({
     queryKey: ["/api/book/purchase-status"],
-    queryFn: () => fetch("/api/book/purchase-status", { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/book/purchase-status", { credentials: "include" });
+      if (!r.ok) return null;
+      return r.json();
+    },
   });
 
   const purchased = purchaseStatus?.purchased ?? false;
