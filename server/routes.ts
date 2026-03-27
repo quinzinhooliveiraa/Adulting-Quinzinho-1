@@ -235,16 +235,18 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.set("trust proxy", 1);
   app.use(
     session({
       store: new PgStore({ pool, createTableIfMissing: true }),
       secret: process.env.SESSION_SECRET || "casa-dos-20-secret-key-change-in-prod",
       resave: false,
       saveUninitialized: false,
+      rolling: true,
       cookie: {
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+        maxAge: 90 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: false,
+        secure: "auto",
         sameSite: "lax",
       },
     })
@@ -895,11 +897,14 @@ export async function registerRoutes(
 
       req.session.userId = user.id;
       console.log(`[google-oauth] success user=${user.id} isNew=${isNewUser} fromPwa=${fromPwa}`);
-      if (isNewUser) {
-        res.redirect(fromPwa ? "/?google_new_user=1&pwa=1" : "/?google_new_user=1");
-      } else {
-        res.redirect(fromPwa ? "/?pwa=1" : "/");
-      }
+      req.session.save((saveErr) => {
+        if (saveErr) console.error("[google-oauth] session save error:", saveErr);
+        if (isNewUser) {
+          res.redirect(fromPwa ? "/?google_new_user=1&pwa=1" : "/?google_new_user=1");
+        } else {
+          res.redirect(fromPwa ? "/?pwa=1" : "/");
+        }
+      });
     } catch (err) {
       console.error("[google-oauth] callback error:", err);
       res.redirect("/?google_error=server_error");
