@@ -607,16 +607,25 @@ export class DatabaseStorage implements IStorage {
   async getDailyActiveUsers(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]> {
     const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
-    const adminClause = excludeAdmins
-      ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
+    const adminUserClause = excludeAdmins
+      ? `AND user_id NOT IN (SELECT id FROM users WHERE role = 'admin')`
       : "";
     const rows = await db.execute(drizzleSql`
-      SELECT TO_CHAR((ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
-             COUNT(DISTINCT ue.user_id) as count
-      FROM user_events ue
-      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until} AND ue.user_id IS NOT NULL
-      ${drizzleSql.raw(adminClause)}
-      GROUP BY TO_CHAR((ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
+      SELECT TO_CHAR((activity_time AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
+             COUNT(DISTINCT user_id) as count
+      FROM (
+        SELECT user_id, created_at as activity_time FROM journal_entries
+        WHERE created_at >= ${since} AND created_at <= ${until}
+        UNION ALL
+        SELECT user_id, created_at as activity_time FROM mood_checkins
+        WHERE created_at >= ${since} AND created_at <= ${until}
+        UNION ALL
+        SELECT user_id, created_at as activity_time FROM user_events
+        WHERE created_at >= ${since} AND created_at <= ${until} AND user_id IS NOT NULL
+      ) all_activity
+      WHERE 1=1
+      ${drizzleSql.raw(adminUserClause)}
+      GROUP BY TO_CHAR((activity_time AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
       ORDER BY date ASC
     `);
     const dataMap = new Map<string, number>(
@@ -638,10 +647,25 @@ export class DatabaseStorage implements IStorage {
     const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
     const adminClause = excludeAdmins ? `AND u.role != 'admin'` : "";
     const rows = await db.execute(drizzleSql`
-      SELECT u.id as user_id, u.name, u.email, u.avatar_url, COUNT(*) as count
-      FROM user_events ue
-      JOIN users u ON ue.user_id = u.id
-      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until} AND ue.user_id IS NOT NULL
+      SELECT u.id as user_id, u.name, u.email, u.avatar_url, SUM(activity_count) as count
+      FROM (
+        SELECT user_id, COUNT(*) as activity_count
+        FROM journal_entries
+        WHERE created_at >= ${since} AND created_at <= ${until}
+        GROUP BY user_id
+        UNION ALL
+        SELECT user_id, COUNT(*) as activity_count
+        FROM mood_checkins
+        WHERE created_at >= ${since} AND created_at <= ${until}
+        GROUP BY user_id
+        UNION ALL
+        SELECT user_id, COUNT(*) as activity_count
+        FROM user_events
+        WHERE created_at >= ${since} AND created_at <= ${until} AND user_id IS NOT NULL
+        GROUP BY user_id
+      ) activity
+      JOIN users u ON activity.user_id = u.id
+      WHERE 1=1
       ${drizzleSql.raw(adminClause)}
       GROUP BY u.id, u.name, u.email, u.avatar_url
       ORDER BY count DESC
