@@ -267,6 +267,23 @@ export const bookPurchases = pgTable("book_purchases", {
 
 export type BookPurchase = typeof bookPurchases.$inferSelect;
 
+export const bookHighlights = pgTable("book_highlights", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  chapterId: integer("chapter_id").notNull(),
+  subPage: integer("sub_page").notNull().default(0),
+  text: text("text").notNull(),
+  paraIndex: integer("para_index").notNull(),
+  startOffset: integer("start_offset").notNull(),
+  endOffset: integer("end_offset").notNull(),
+  color: text("color").notNull().default("yellow"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBookHighlightSchema = createInsertSchema(bookHighlights).omit({ id: true, createdAt: true });
+export type InsertBookHighlight = z.infer<typeof insertBookHighlightSchema>;
+export type BookHighlight = typeof bookHighlights.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;

@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
-  ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft
+  ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft,
+  Highlighter, Trash2
 } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import authorImg from "../assets/author.webp";
 import BookPurchaseModal from "@/components/BookPurchaseModal";
+import { apiRequest, queryClient as qc } from "@/lib/queryClient";
 
 type Chapter = {
   id: number;
@@ -68,6 +70,36 @@ function processContent(raw: string): string[] {
   return paragraphs.filter(p => p.length > 0);
 }
 
+type BookHighlight = {
+  id: number;
+  userId: string;
+  chapterId: number;
+  subPage: number;
+  paraIndex: number;
+  startOffset: number;
+  endOffset: number;
+  text: string;
+  color: string;
+  createdAt: string;
+};
+
+type PendingHL = {
+  paraIndex: number;
+  startOffset: number;
+  endOffset: number;
+  text: string;
+  rect: DOMRect;
+};
+
+const HL_COLORS = {
+  yellow: { bg: "rgba(255,236,90,0.55)",  dark: "rgba(255,236,90,0.3)",  label: "Amarelo" },
+  green:  { bg: "rgba(120,210,130,0.55)", dark: "rgba(120,210,130,0.3)", label: "Verde" },
+  pink:   { bg: "rgba(255,160,180,0.55)", dark: "rgba(255,160,180,0.3)", label: "Rosa" },
+  blue:   { bg: "rgba(100,190,240,0.55)", dark: "rgba(100,190,240,0.3)", label: "Azul" },
+} as const;
+
+type HLColor = keyof typeof HL_COLORS;
+
 type PurchaseStatus = {
   purchased: boolean;
   purchasedAt: string | null;
@@ -110,6 +142,15 @@ const BOOK_STYLES = `
   .pg-enter-left  { animation: pgL .2s ease-out both; }
   @keyframes pgR { from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:none } }
   @keyframes pgL { from { opacity:0; transform:translateX(-18px) } to { opacity:1; transform:none } }
+  .bk-hl-yellow { background: rgba(255,236,90,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-green  { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-pink   { background: rgba(255,160,180,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-blue   { background: rgba(100,190,240,0.55); border-radius: 2px; cursor: pointer; }
+  .dark .bk-hl-yellow { background: rgba(255,236,90,0.28); }
+  .dark .bk-hl-green  { background: rgba(120,210,130,0.28); }
+  .dark .bk-hl-pink   { background: rgba(255,160,180,0.28); }
+  .dark .bk-hl-blue   { background: rgba(100,190,240,0.28); }
+  .bk-hl-yellow:active,.bk-hl-green:active,.bk-hl-pink:active,.bk-hl-blue:active { opacity:0.7; }
 `;
 
 /* ─────────────────────────────────────────────────────────────────
@@ -197,9 +238,9 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   CHAPTER PAGE  (fetches content)
+   CHAPTER PAGE  (fetches content + highlights)
 ───────────────────────────────────────────────────────────────── */
-function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSubPageCount, allChapters, onGoToChapter }: {
+function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSubPageCount, allChapters, onGoToChapter, highlights, onSaveHighlight, onDeleteHighlight }: {
   chapter: Chapter;
   purchased: boolean;
   onBuy: () => void;
@@ -208,9 +249,16 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   onActualSubPageCount: (n: number) => void;
   allChapters?: Chapter[];
   onGoToChapter?: (idx: number) => void;
+  highlights: BookHighlight[];
+  onSaveHighlight: (data: { chapterId: number; subPage: number; paraIndex: number; startOffset: number; endOffset: number; text: string; color: HLColor }) => void;
+  onDeleteHighlight: (id: number) => void;
 }) {
   const canRead = purchased || chapter.isPreview;
   const isFrontMatter = chapter.pageType === "front-matter" || chapter.pageType === "epilogue";
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [pendingHL, setPendingHL] = useState<PendingHL | null>(null);
+  const [activeHLId, setActiveHLId] = useState<number | null>(null);
+  const [activeHLPos, setActiveHLPos] = useState<{ x: number; y: number } | null>(null);
 
   const { data, isLoading } = useQuery<{ content: string }>({
     queryKey: ["/api/book/chapters", chapter.id, "content"],
@@ -218,30 +266,116 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     enabled: canRead,
   });
 
-  // Split content into exact PDF pages using \f separator
   const rawContent = data?.content ?? "";
   const pdfPages: string[] = rawContent
     ? rawContent.split("\f").map(p => p.trim()).filter(p => p.length > 0)
     : [];
 
-  // Report actual sub-page count to parent
   useEffect(() => {
     if (!data) return;
-    if (rawContent === "__TOC__") {
-      onActualSubPageCount(1);
-    } else if (pdfPages.length > 0) {
-      onActualSubPageCount(pdfPages.length);
-    }
+    if (rawContent === "__TOC__") onActualSubPageCount(1);
+    else if (pdfPages.length > 0) onActualSubPageCount(pdfPages.length);
   }, [data?.content]);
 
-  // Which PDF page text to display (clamped)
   const safeSubPage = Math.min(subPage, Math.max(0, pdfPages.length - 1));
   const pageText = pdfPages[safeSubPage] ?? "";
-
-  // Actual PDF page number shown at bottom
   const currentPdfPage = chapter.pdfPage != null && pdfPages.length > 0
-    ? chapter.pdfPage + safeSubPage
-    : null;
+    ? chapter.pdfPage + safeSubPage : null;
+
+  // ─── Selection detection ───────────────────────────────────────
+  const getParaSelection = useCallback((): PendingHL | null => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) return null;
+    const range = selection.getRangeAt(0);
+    const text = selection.toString().trim();
+    if (text.length < 2) return null;
+    let node: Node | null = range.startContainer;
+    let paraEl: HTMLElement | null = null;
+    while (node && node !== document.body) {
+      const el = node as HTMLElement;
+      if ((el as HTMLElement).dataset?.paraIdx !== undefined) { paraEl = el; break; }
+      node = node.parentElement;
+    }
+    if (!paraEl) return null;
+    const paraIdx = parseInt(paraEl.dataset.paraIdx || "0");
+    const preRange = document.createRange();
+    preRange.selectNodeContents(paraEl);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    const startOffset = preRange.toString().length;
+    const endOffset = Math.min(startOffset + text.length, (paraEl.textContent || "").length);
+    const rect = range.getBoundingClientRect();
+    return { paraIndex: paraIdx, startOffset, endOffset, text, rect };
+  }, []);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || !canRead) return;
+    function onEnd() {
+      setTimeout(() => {
+        const r = getParaSelection();
+        if (r) setPendingHL(r);
+      }, 80);
+    }
+    el.addEventListener("mouseup", onEnd);
+    el.addEventListener("touchend", onEnd);
+    return () => { el.removeEventListener("mouseup", onEnd); el.removeEventListener("touchend", onEnd); };
+  }, [canRead, data?.content, getParaSelection]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (!t.closest("[data-hl-toolbar]") && !t.closest("[data-hl-tooltip]")) {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) setPendingHL(null);
+        if (!t.closest("[data-highlight-id]")) { setActiveHLId(null); setActiveHLPos(null); }
+      }
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  // ─── Render paragraph with highlights ─────────────────────────
+  function renderPara(text: string, paraIdx: number): React.ReactNode {
+    const hls = highlights
+      .filter(h => h.chapterId === chapter.id && h.subPage === safeSubPage && h.paraIndex === paraIdx)
+      .sort((a, b) => a.startOffset - b.startOffset);
+    if (!hls.length) return text;
+    const nodes: React.ReactNode[] = [];
+    let cursor = 0;
+    for (const hl of hls) {
+      const s = Math.max(hl.startOffset, cursor);
+      const e = Math.min(hl.endOffset, text.length);
+      if (s >= e) continue;
+      if (s > cursor) nodes.push(text.slice(cursor, s));
+      nodes.push(
+        <mark key={hl.id} className={`bk-hl-${hl.color}`} data-highlight-id={hl.id}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            setPendingHL(null);
+            window.getSelection()?.removeAllRanges();
+            if (activeHLId === hl.id) { setActiveHLId(null); setActiveHLPos(null); }
+            else {
+              const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+              setActiveHLId(hl.id);
+              setActiveHLPos({ x: r.left + r.width / 2, y: r.top });
+            }
+          }}>
+          {text.slice(s, e)}
+        </mark>
+      );
+      cursor = e;
+    }
+    if (cursor < text.length) nodes.push(text.slice(cursor));
+    return nodes;
+  }
+
+  function clampX(x: number) {
+    return Math.max(96, Math.min(x, (typeof window !== "undefined" ? window.innerWidth : 400) - 96));
+  }
+  function calcToolbarY(rect: DOMRect) {
+    const top = rect.top - 60;
+    return top < 8 ? rect.bottom + 10 : top;
+  }
 
   if (!canRead) return (
     <div className={`flex-1 overflow-y-auto flex flex-col items-center justify-center gap-5 px-8 text-center ${animClass}`} style={{ background: "var(--bk-bg)" }}>
@@ -249,7 +383,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
         <LockKeyhole size={24} style={{ color: "var(--bk-accent)" }} />
       </div>
       <div>
-        <h3 className="bk-serif text-xl bk-ink mb-2">Capítulo bloqueado</h3>
+        <h3 className="bk-serif text-xl bk-ink font-bold mb-2">Capítulo bloqueado</h3>
         <p className="text-sm bk-muted">Adquire o livro para aceder a todos os capítulos.</p>
       </div>
       <button onClick={onBuy} data-testid="btn-buy-reader"
@@ -268,7 +402,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     </div>
   );
 
-  // Special Sumário rendering — dynamic TOC from chapters list
+  // Sumário
   if (rawContent === "__TOC__" && allChapters) {
     const fmChapters = allChapters.filter(c => c.pageType === "front-matter" && c.title !== "Sumário");
     const regularChapters = allChapters.filter(c => c.pageType === "chapter");
@@ -284,7 +418,6 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
               <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
             </div>
           </div>
-          {/* Front-matter entries (Introdução, Dedicatória) */}
           {fmChapters.map(ch => {
             const idx = allChapters.indexOf(ch);
             return (
@@ -295,22 +428,18 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
               </button>
             );
           })}
-          {/* Chapter entries */}
           {regularChapters.map(ch => {
             const idx = allChapters.indexOf(ch);
             const isLocked = !purchased && !ch.isPreview;
             return (
-              <button key={ch.id} onClick={() => !isLocked && onGoToChapter?.(idx)}
-                disabled={isLocked}
+              <button key={ch.id} onClick={() => !isLocked && onGoToChapter?.(idx)} disabled={isLocked}
                 className="w-full flex items-start gap-3 py-3 border-b bk-sep text-left disabled:opacity-40 active:opacity-60 group">
-                <span className="text-[10px] font-mono font-bold shrink-0 mt-0.5 w-5 text-right"
-                  style={{ color: "var(--bk-accent)" }}>{ch.order}</span>
+                <span className="text-[10px] font-mono font-bold shrink-0 mt-0.5 w-5 text-right" style={{ color: "var(--bk-accent)" }}>{ch.order}</span>
                 <span className="bk-serif text-sm bk-ink leading-snug">{ch.title}</span>
                 {isLocked && <LockKeyhole size={11} className="shrink-0 mt-1 ml-auto bk-muted" />}
               </button>
             );
           })}
-          {/* Epilogue entries (Mensagem ao Leitor) */}
           {epilogueChapters.map(ch => {
             const idx = allChapters.indexOf(ch);
             return (
@@ -326,119 +455,159 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     );
   }
 
+  const isSpacedTitle = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ](\s[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ])*$/.test(pageText.trim());
+  const paras = isSpacedTitle ? [] : processContent(pageText);
+
   return (
-    <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
-      <div className="max-w-[62ch] mx-auto px-7 pb-16">
+    <>
+      <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+        <div ref={contentRef} className="max-w-[62ch] mx-auto px-7 pb-16">
 
-        {/* Header — only on first sub-page */}
-        {safeSubPage === 0 && (
-          isFrontMatter ? (
-            <div className="pt-14 pb-10 text-center">
-              {chapter.tag && (
-                <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-6 bk-accent">{chapter.tag}</p>
-              )}
-              <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">{chapter.title}</h2>
-              <div className="flex items-center justify-center gap-2 mt-5">
-                <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
-                <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
-                <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
-              </div>
-            </div>
-          ) : (
-            <div className="pt-12 pb-8">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
-                <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
-                  {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
-                </span>
-                <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
-              </div>
-              <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide
-                ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
-                style={{ letterSpacing: "0.04em" }}>
-                {chapter.title}
-              </h2>
-              {chapter.excerpt && (
-                <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
-                  style={{ borderColor: "var(--bk-accent)" }}>
-                  {chapter.excerpt}
-                </p>
-              )}
-            </div>
-          )
-        )}
-
-        {/* Body text — exact PDF page content */}
-        {(() => {
-          // Detect spaced-letter title page: "M E N S A G E M A O L E I T O R"
-          const isSpacedTitle = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ](\s[A-ZÁÉÍÓÚÀÂÊÔÃÕÇÜ])*$/.test(pageText.trim());
-
-          if (isSpacedTitle) {
-            return (
-              <div className="flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
-                <p className="bk-serif font-bold bk-accent text-center"
-                  style={{ fontSize: "13px", letterSpacing: "0.35em", lineHeight: "3", opacity: 0.85 }}>
-                  {pageText.trim()}
-                </p>
-                <div className="flex items-center justify-center gap-2 mt-8 opacity-25">
-                  <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
-                  <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
-                  <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+          {safeSubPage === 0 && (
+            isFrontMatter ? (
+              <div className="pt-14 pb-10 text-center">
+                {chapter.tag && <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-6 bk-accent">{chapter.tag}</p>}
+                <h2 className="bk-serif text-2xl bk-ink font-bold mb-3">{chapter.title}</h2>
+                <div className="flex items-center justify-center gap-2 mt-5">
+                  <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
+                  <div className="w-1 h-1 rounded-full opacity-40" style={{ background: "var(--bk-accent)" }} />
+                  <div className="h-px w-16 opacity-30" style={{ background: "var(--bk-accent)" }} />
                 </div>
               </div>
-            );
-          }
-
-          const paras = processContent(pageText);
-
-          if (isFrontMatter && chapter.tag === "DEDICATÓRIA") {
-            return (
-              <div className="py-4 space-y-5 text-center">
-                {paras.map((p, i) => (
-                  <p key={i} className="bk-serif text-base italic bk-ink leading-relaxed">{p}</p>
-                ))}
+            ) : (
+              <div className="pt-12 pb-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+                  <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
+                    {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
+                  </span>
+                  <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
+                </div>
+                <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
+                  style={{ letterSpacing: "0.04em" }}>
+                  {chapter.title}
+                </h2>
+                {chapter.excerpt && (
+                  <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
+                    style={{ borderColor: "var(--bk-accent)" }}>
+                    {chapter.excerpt}
+                  </p>
+                )}
               </div>
-            );
-          }
+            )
+          )}
 
-          return (
-            <div className="pt-2 pb-2">
+          {isSpacedTitle ? (
+            <div className="flex flex-col items-center justify-center" style={{ minHeight: "50vh" }}>
+              <p className="bk-serif font-bold bk-accent text-center" style={{ fontSize: "13px", letterSpacing: "0.35em", lineHeight: "3", opacity: 0.85 }}>
+                {pageText.trim()}
+              </p>
+              <div className="flex items-center justify-center gap-2 mt-8 opacity-25">
+                <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+                <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+                <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+              </div>
+            </div>
+          ) : isFrontMatter && chapter.tag === "DEDICATÓRIA" ? (
+            <div className="py-4 space-y-5 text-center">
               {paras.map((p, i) => (
-                <p key={i} className="bk-serif bk-ink mb-5 last:mb-0"
-                  style={{
-                    fontSize: "16.5px",
-                    lineHeight: "1.92",
-                    textAlign: "justify",
-                    hyphens: "auto",
-                    letterSpacing: "0.008em",
-                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.5em",
-                  } as React.CSSProperties}>
-                  {p}
+                <p key={i} data-para-idx={i} className="bk-serif text-base italic bk-ink leading-relaxed">
+                  {renderPara(p, i)}
                 </p>
               ))}
             </div>
-          );
-        })()}
+          ) : (
+            <div className="pt-2 pb-2">
+              {paras.map((p, i) => (
+                <p key={i} data-para-idx={i} className="bk-serif bk-ink mb-5 last:mb-0"
+                  style={{
+                    fontSize: "16.5px", lineHeight: "1.92", textAlign: "justify",
+                    hyphens: "auto", letterSpacing: "0.008em",
+                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.5em",
+                  } as React.CSSProperties}>
+                  {renderPara(p, i)}
+                </p>
+              ))}
+            </div>
+          )}
 
-        {/* PDF page number at bottom */}
-        {currentPdfPage && (
-          <div className="flex items-center justify-center mt-8 mb-2">
-            <span className="text-[10px] font-mono bk-muted">{currentPdfPage}</span>
+          {currentPdfPage && (
+            <div className="flex items-center justify-center mt-8 mb-2">
+              <span className="text-[10px] font-mono bk-muted">{currentPdfPage}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-2 mt-12 opacity-25">
+            <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
+            <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bk-accent)" }} />
+            <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
+            <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
           </div>
-        )}
-
-        {/* End-of-page ornament */}
-        <div className="flex items-center justify-center gap-2 mt-12 opacity-25">
-          <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
-          <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bk-accent)" }} />
-          <div className="w-1 h-1 rounded-full" style={{ background: "var(--bk-accent)" }} />
-          <div className="h-px w-10" style={{ background: "var(--bk-accent)" }} />
         </div>
       </div>
-    </div>
+
+      {/* ── Highlight color toolbar ── */}
+      {pendingHL && (
+        <div data-hl-toolbar
+          className="fixed z-[200] pointer-events-auto"
+          style={{ left: clampX(pendingHL.rect.left + pendingHL.rect.width / 2), top: calcToolbarY(pendingHL.rect), transform: "translateX(-50%)" }}>
+          <div className="flex items-center gap-1.5 rounded-full px-3 py-2 shadow-2xl"
+            style={{ background: "var(--bk-ink)" }}>
+            {(Object.entries(HL_COLORS) as [HLColor, typeof HL_COLORS[HLColor]][]).map(([color, cfg]) => (
+              <button key={color}
+                data-testid={`btn-hl-${color}`}
+                title={cfg.label}
+                className="w-7 h-7 rounded-full active:scale-90 transition-transform ring-2 ring-transparent hover:ring-white/30"
+                style={{ background: cfg.bg }}
+                onClick={() => {
+                  onSaveHighlight({
+                    chapterId: chapter.id, subPage: safeSubPage,
+                    paraIndex: pendingHL.paraIndex,
+                    startOffset: pendingHL.startOffset, endOffset: pendingHL.endOffset,
+                    text: pendingHL.text, color,
+                  });
+                  setPendingHL(null);
+                  window.getSelection()?.removeAllRanges();
+                }}
+              />
+            ))}
+            <button className="ml-1 opacity-50 hover:opacity-90 transition-opacity"
+              onClick={() => { setPendingHL(null); window.getSelection()?.removeAllRanges(); }}>
+              <X size={14} style={{ color: "var(--bk-bg)" }} />
+            </button>
+          </div>
+          {pendingHL.rect.top - 60 >= 8 && (
+            <div className="flex justify-center">
+              <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid var(--bk-ink)" }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Delete highlight tooltip ── */}
+      {activeHLId !== null && activeHLPos && (
+        <div data-hl-tooltip
+          className="fixed z-[200] pointer-events-auto"
+          style={{ left: clampX(activeHLPos.x), top: activeHLPos.y - 54, transform: "translateX(-50%)" }}>
+          <div className="flex items-center rounded-full shadow-2xl overflow-hidden"
+            style={{ background: "var(--bk-ink)" }}>
+            <button data-testid="btn-hl-delete"
+              className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-medium active:opacity-70"
+              style={{ color: "var(--bk-bg)" }}
+              onClick={() => { onDeleteHighlight(activeHLId); setActiveHLId(null); setActiveHLPos(null); }}>
+              <Trash2 size={13} /> Remover marcação
+            </button>
+          </div>
+          <div className="flex justify-center">
+            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid var(--bk-ink)" }} />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
+
 
 /* ─────────────────────────────────────────────────────────────────
    BOOK READER  (full-screen overlay)
@@ -450,64 +619,62 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   onClose: () => void;
   onBuy: () => void;
 }) {
-  // Initial sub-page counts from pdfPage differences (updated dynamically as content loads)
   const initCounts = chapters.map((ch, i) => {
     if (!ch.pdfPage) return 1;
     const next = chapters[i + 1]?.pdfPage;
-    if (!next) return 5; // last chapter: conservative estimate, updated by content
+    if (!next) return 5;
     return Math.max(1, next - ch.pdfPage);
   });
 
-  // chapterIdx: 0..n-1 (no TOC as default view; TOC is overlay only)
   const [chapterIdx, setChapterIdx] = useState(startIdx);
   const [subPage, setSubPage]       = useState(0);
   const [animClass, setAnimClass]   = useState("");
   const [showToc, setShowToc]       = useState(false);
-  // Mutable sub-page counts — updated by ChapterPage when actual content is loaded
+  const [showHLPanel, setShowHLPanel] = useState(false);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
 
-  const chapter       = chapters[chapterIdx];
-  const subPageCount  = subPageCounts[chapterIdx] ?? 1;
+  const chapter      = chapters[chapterIdx];
+  const subPageCount = subPageCounts[chapterIdx] ?? 1;
   const hasPrev = chapterIdx > 0 || subPage > 0;
   const hasNext = chapterIdx < chapters.length - 1 || subPage < subPageCount - 1;
 
-  // Absolute page number for progress bar (across all sub-pages of all chapters)
   const totalSubPages = subPageCounts.reduce((a, b) => a + b, 0);
   const absPage = subPageCounts.slice(0, chapterIdx).reduce((a, b) => a + b, 0) + subPage;
   const progress = totalSubPages > 1 ? Math.round((absPage / (totalSubPages - 1)) * 100) : 100;
 
+  // ─── Highlights ───────────────────────────────────────────────
+  const { data: allHighlights = [] } = useQuery<BookHighlight[]>({
+    queryKey: ["/api/book/highlights"],
+    queryFn: () => fetch("/api/book/highlights", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const saveHL = useMutation({
+    mutationFn: (data: object) => apiRequest("POST", "/api/book/highlights", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/book/highlights"] }),
+  });
+
+  const deleteHL = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/book/highlights/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/book/highlights"] }),
+  });
+
+  // ─── Navigation ───────────────────────────────────────────────
   function handleActualSubPageCount(n: number) {
     if (n === subPageCounts[chapterIdx]) return;
-    setSubPageCounts(prev => {
-      const next = [...prev];
-      next[chapterIdx] = n;
-      return next;
-    });
-    // Clamp subPage if it exceeds the real count
+    setSubPageCounts(prev => { const nx = [...prev]; nx[chapterIdx] = n; return nx; });
     setSubPage(p => Math.min(p, n - 1));
   }
 
   function navigate(dir: "prev" | "next") {
-    const anim = dir === "next" ? "pg-enter-right" : "pg-enter-left";
-    setAnimClass(anim);
+    setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
     setTimeout(() => setAnimClass(""), 220);
-
     if (dir === "next") {
-      if (subPage < subPageCount - 1) {
-        setSubPage(p => p + 1);
-      } else if (chapterIdx < chapters.length - 1) {
-        setChapterIdx(i => i + 1);
-        setSubPage(0);
-      }
+      if (subPage < subPageCount - 1) setSubPage(p => p + 1);
+      else if (chapterIdx < chapters.length - 1) { setChapterIdx(i => i + 1); setSubPage(0); }
     } else {
-      if (subPage > 0) {
-        setSubPage(p => p - 1);
-      } else if (chapterIdx > 0) {
-        const prevIdx = chapterIdx - 1;
-        setChapterIdx(prevIdx);
-        setSubPage(subPageCounts[prevIdx] - 1);
-      }
+      if (subPage > 0) setSubPage(p => p - 1);
+      else if (chapterIdx > 0) { const p = chapterIdx - 1; setChapterIdx(p); setSubPage(subPageCounts[p] - 1); }
     }
   }
 
@@ -515,16 +682,17 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   function handleTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 55) { diff > 0 && hasNext ? navigate("next") : diff < 0 && hasPrev ? navigate("prev") : null; }
     touchStartX.current = null;
+    // Don't swipe if user is selecting text
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+    if (Math.abs(diff) > 55) { diff > 0 && hasNext ? navigate("next") : diff < 0 && hasPrev ? navigate("prev") : null; }
   }
 
   function goToChapter(idx: number) {
     setAnimClass("pg-enter-right");
     setTimeout(() => setAnimClass(""), 220);
-    setChapterIdx(idx);
-    setSubPage(0);
-    setShowToc(false);
+    setChapterIdx(idx); setSubPage(0); setShowToc(false);
   }
 
   function pageLabel() {
@@ -545,9 +713,21 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
           <X size={20} className="bk-muted" />
         </button>
         <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
-        <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-1.5 active:opacity-50">
-          <List size={20} className="bk-muted" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => setShowHLPanel(true)} data-testid="btn-highlights-panel"
+            className="p-1.5 active:opacity-50 relative">
+            <Highlighter size={18} className="bk-muted" />
+            {allHighlights.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full text-[8px] font-bold flex items-center justify-center px-0.5"
+                style={{ background: "var(--bk-accent)", color: "var(--bk-bg)" }}>
+                {allHighlights.length}
+              </span>
+            )}
+          </button>
+          <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-1.5 active:opacity-50">
+            <List size={20} className="bk-muted" />
+          </button>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -568,6 +748,79 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
         </div>
       )}
 
+      {/* Highlights panel */}
+      {showHLPanel && (
+        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden">
+          <style>{BOOK_STYLES}</style>
+          <div className="flex items-center justify-between px-5 py-4 border-b bk-sep shrink-0">
+            <div className="flex items-center gap-2">
+              <Highlighter size={16} style={{ color: "var(--bk-accent)" }} />
+              <h2 className="bk-serif text-lg bk-ink font-bold">As Tuas Marcações</h2>
+            </div>
+            <button onClick={() => setShowHLPanel(false)} className="p-1.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 pb-12">
+            {allHighlights.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-60 gap-3 text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center opacity-30"
+                  style={{ background: "var(--bk-accent-light)" }}>
+                  <Highlighter size={20} style={{ color: "var(--bk-accent)" }} />
+                </div>
+                <p className="bk-serif text-base bk-ink opacity-60">Ainda não marcaste nada.</p>
+                <p className="text-sm bk-muted text-center">Seleciona texto no livro e escolhe uma cor para sublinhar.</p>
+              </div>
+            ) : (
+              <div>
+                {allHighlights.map(hl => {
+                  const ch = chapters.find(c => c.id === hl.chapterId);
+                  const colorBg = HL_COLORS[hl.color as HLColor]?.bg ?? "rgba(255,236,90,0.55)";
+                  return (
+                    <div key={hl.id} className="py-4 border-b bk-sep last:border-0">
+                      <div className="flex items-start gap-3">
+                        <div className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ background: colorBg }} />
+                        <div className="flex-1 min-w-0">
+                          {ch && (
+                            <p className="text-[10px] uppercase tracking-widest font-bold mb-1.5"
+                              style={{ color: "var(--bk-accent)" }}>
+                              {ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title.slice(0, 40)}` : ch.title}
+                            </p>
+                          )}
+                          <p className="bk-serif text-[14px] bk-ink leading-relaxed italic">
+                            "{hl.text}"
+                          </p>
+                          <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+                            <p className="text-[11px] bk-muted">
+                              {new Date(hl.createdAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
+                            </p>
+                            <div className="flex items-center gap-3">
+                              {ch && (
+                                <button className="text-[11px] font-semibold active:opacity-60"
+                                  style={{ color: "var(--bk-accent)" }}
+                                  onClick={() => {
+                                    const idx = chapters.findIndex(c => c.id === hl.chapterId);
+                                    if (idx >= 0) { goToChapter(idx); setShowHLPanel(false); }
+                                  }}>
+                                  Ir ao capítulo
+                                </button>
+                              )}
+                              <button className="flex items-center gap-1 text-[11px] active:opacity-60"
+                                style={{ color: "var(--bk-muted)" }}
+                                onClick={() => deleteHL.mutate(hl.id)}>
+                                <Trash2 size={12} /> Remover
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Page content */}
       {chapter ? (
         <ChapterPage
@@ -579,6 +832,9 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
           onActualSubPageCount={handleActualSubPageCount}
           allChapters={chapters}
           onGoToChapter={goToChapter}
+          highlights={allHighlights}
+          onSaveHighlight={(data) => saveHL.mutate(data)}
+          onDeleteHighlight={(id) => deleteHL.mutate(id)}
         />
       ) : null}
 

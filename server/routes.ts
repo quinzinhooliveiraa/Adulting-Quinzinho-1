@@ -1259,6 +1259,47 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/book/highlights", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const highlights = await storage.getBookHighlights(req.session.userId!);
+      res.json(highlights);
+    } catch {
+      res.status(500).json({ error: "Erro ao carregar marcações" });
+    }
+  });
+
+  app.post("/api/book/highlights", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { chapterId, subPage, text, paraIndex, startOffset, endOffset, color } = req.body;
+      if (!chapterId || text === undefined || paraIndex === undefined || startOffset === undefined || endOffset === undefined) {
+        return res.status(400).json({ error: "Dados incompletos" });
+      }
+      const highlight = await storage.createBookHighlight({
+        userId: req.session.userId!,
+        chapterId: Number(chapterId),
+        subPage: Number(subPage ?? 0),
+        text: String(text).slice(0, 2000),
+        paraIndex: Number(paraIndex),
+        startOffset: Number(startOffset),
+        endOffset: Number(endOffset),
+        color: String(color || "yellow"),
+      });
+      res.json(highlight);
+    } catch {
+      res.status(500).json({ error: "Erro ao guardar marcação" });
+    }
+  });
+
+  app.delete("/api/book/highlights/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const ok = await storage.deleteBookHighlight(id, req.session.userId!);
+      res.json({ ok });
+    } catch {
+      res.status(500).json({ error: "Erro ao remover marcação" });
+    }
+  });
+
   app.get("/api/admin/book/chapters", requireAdmin, async (_req: Request, res: Response) => {
     try {
       const rows = await db.select().from(bookChapters).orderBy(bookChapters.order);

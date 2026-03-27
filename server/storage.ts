@@ -41,9 +41,12 @@ import {
   type CouponUse,
   bookChapters,
   bookPurchases,
+  bookHighlights,
   type BookChapter,
   type InsertBookChapter,
   type BookPurchase,
+  type BookHighlight,
+  type InsertBookHighlight,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -139,6 +142,10 @@ export interface IStorage {
   getBookPurchases(): Promise<{ userId: string; name: string; email: string; amountCents: number; createdAt: Date }[]>;
   getAllBookPurchaseUserIds(): Promise<Set<string>>;
   revokeBookAccess(userId: string): Promise<void>;
+
+  getBookHighlights(userId: string): Promise<BookHighlight[]>;
+  createBookHighlight(data: InsertBookHighlight): Promise<BookHighlight>;
+  deleteBookHighlight(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -728,6 +735,23 @@ export class DatabaseStorage implements IStorage {
 
   async revokeBookAccess(userId: string): Promise<void> {
     await db.delete(bookPurchases).where(eq(bookPurchases.userId, userId));
+  }
+
+  async getBookHighlights(userId: string): Promise<BookHighlight[]> {
+    return db.select().from(bookHighlights)
+      .where(eq(bookHighlights.userId, userId))
+      .orderBy(desc(bookHighlights.createdAt));
+  }
+
+  async createBookHighlight(data: InsertBookHighlight): Promise<BookHighlight> {
+    const [row] = await db.insert(bookHighlights).values(data).returning();
+    return row;
+  }
+
+  async deleteBookHighlight(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(bookHighlights)
+      .where(and(eq(bookHighlights.id, id), eq(bookHighlights.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
