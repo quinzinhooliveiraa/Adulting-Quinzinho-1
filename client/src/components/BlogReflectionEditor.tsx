@@ -433,8 +433,8 @@ export default function BlogReflectionEditor({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
-      <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain pt-safe sm:pt-0 mb-[64px] sm:mb-0">
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+      <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain pt-safe sm:pt-0">
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
           <h2 className="font-serif text-xl sm:text-[28px] text-foreground">Guardar Pensamento</h2>
