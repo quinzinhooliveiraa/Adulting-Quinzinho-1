@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
   ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft,
-  Highlighter, Trash2
+  Highlighter, Trash2, Star
 } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import authorImg from "../assets/author.webp";
@@ -1018,6 +1018,59 @@ export default function Book() {
                 </div>
               </div>
             )}
+
+            {/* Amazon Reviews */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-serif text-lg text-foreground">O que dizem os leitores</h3>
+                <div className="flex gap-0.5">
+                  {[1,2,3,4,5].map(i => <Star key={i} size={13} className="fill-[#FF9900] text-[#FF9900]" />)}
+                </div>
+              </div>
+              <div className="space-y-3">
+                {([
+                  {
+                    name: "Maria Eduarda Moura",
+                    title: "Comprem sem medo!!!",
+                    text: "Este livro é maravilhoso!! Eu já estou indicando pra todos que conheço, todos devem ter a oportunidade de ler algo tão reconfortante e especial. Neste momento difícil e importante de nossas vidas, nossos 20 anos… Com certeza, ele ficará em meu coração!",
+                    date: "4 de março de 2026",
+                  },
+                  {
+                    name: "Cliente Kindle",
+                    title: "um abraço no coração",
+                    text: "eu não sei nem expressar o que senti lendo esse livro, acho que é a sensação de ser compreendida. cada capítulo conta com reflexões que confirmam algo que eu já pensei ou que me apresentam outro ponto de vista e me fazem sair da bolha. sinto que todos nessa casa dos 20 anos precisam ler e sentir que não estão sozinhos e a vida está apenas começando.",
+                    date: "14 de julho de 2024",
+                  },
+                  {
+                    name: "Cliente Kindle",
+                    title: "Que livro excelente!",
+                    text: "Veio como ensino no meu tempo, tem um pouco de autoajuda, e te leva a pensar um pouco mais nas suas ações. Estou prestes a completar 19 anos e resolvi ler porque estava insegura com muitas coisas. E foi perfeito para mim!",
+                    date: "11 de setembro de 2024",
+                  },
+                  {
+                    name: "Maryhellen",
+                    title: "muitas reflexões",
+                    text: "É o tipo de livro que todo mundo deveria ler antes dos 20, aos 20 e poucos e depois. O livro nos leva a refletir sobre o lugar que queremos estar, que tudo tem o seu tempo e que as coisas acontecem no ritmo da vida.",
+                    date: "5 de dezembro de 2024",
+                  },
+                ] as { name: string; title: string; text: string; date: string }[]).map((review, i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{review.name}</p>
+                        <div className="flex gap-0.5 mt-0.5">
+                          {[1,2,3,4,5].map(s => <Star key={s} size={11} className="fill-[#FF9900] text-[#FF9900]" />)}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{review.date}</span>
+                    </div>
+                    <p className="text-xs font-semibold text-foreground italic">"{review.title}"</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{review.text}</p>
+                    <p className="text-[10px] text-muted-foreground/60">via Amazon · Compra verificada</p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* External stores */}
             <div className="mb-6 bg-card rounded-3xl p-6 border border-border space-y-3">
