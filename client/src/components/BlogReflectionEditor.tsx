@@ -159,6 +159,8 @@ export default function BlogReflectionEditor({
     const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
     const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
 
+    const firstContent = el.firstChild; // anchor: insert all spacers before existing content, in order
+
     wrapImages.forEach(img => {
       const adjustedY = Math.max(0, img.y - elPadding);
       const adjustedX = Math.max(0, img.x - elPaddingLeft);
@@ -179,8 +181,8 @@ export default function BlogReflectionEditor({
         spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       }
 
-      if (el.firstChild) {
-        el.insertBefore(spacer, el.firstChild);
+      if (firstContent) {
+        el.insertBefore(spacer, firstContent);
       } else {
         el.appendChild(spacer);
       }
@@ -433,8 +435,8 @@ export default function BlogReflectionEditor({
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:inset-0 bg-black/50 z-[45] sm:z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
-      <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain">
+    <div className="fixed inset-x-0 top-0 sm:inset-0 bg-black/50 z-[45] sm:z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }} onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+      <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain pt-safe sm:pt-0">
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
           <h2 className="font-serif text-xl sm:text-[28px] text-foreground">Guardar Pensamento</h2>
@@ -616,10 +618,10 @@ export default function BlogReflectionEditor({
               
               <div 
                 ref={canvasContainerRef}
-                className="relative overflow-hidden"
+                className="relative overflow-visible"
                 style={{ 
                   isolation: 'isolate',
-                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 24))
+                  minHeight: Math.max(350, ...images.map(img => img.y + img.height + 80))
                 }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;

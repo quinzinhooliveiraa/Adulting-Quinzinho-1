@@ -866,13 +866,13 @@ export default function Journal() {
         )}
 
       {isWriting && !showNotebook && (
-        <div className="fixed inset-x-0 top-0 bottom-[64px] z-[45] bg-background flex flex-col overflow-hidden" style={{ touchAction: 'none' }}
+        <div className="fixed inset-x-0 top-0 z-[45] bg-background flex flex-col overflow-hidden pt-safe" style={{ touchAction: 'none', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
           onTouchMove={(e) => {
             const target = e.target as HTMLElement;
             if (!target.closest('textarea')) e.preventDefault();
           }}
         >
-          <div className="shrink-0 flex justify-between items-center px-6 pt-12 pb-4 border-b border-border/40">
+          <div className="shrink-0 flex justify-between items-center px-6 pt-4 pb-4 border-b border-border/40">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
               {isEditing ? "Editar" : "Nova"} Reflexão
             </h2>
