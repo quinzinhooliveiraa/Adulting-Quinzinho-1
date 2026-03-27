@@ -703,14 +703,14 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bk-bg"
+    <div className="fixed inset-0 z-50 flex flex-col bk-bg pt-safe"
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <style>{BOOK_STYLES}</style>
 
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b bk-sep bk-bg shrink-0">
-        <button onClick={onClose} data-testid="btn-close-reader" className="p-1.5 active:opacity-50">
-          <X size={20} className="bk-muted" />
+        <button onClick={onClose} data-testid="btn-close-reader" className="p-2.5 active:opacity-50">
+          <X size={22} className="bk-muted" />
         </button>
         <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
         <div className="flex items-center gap-0.5">
