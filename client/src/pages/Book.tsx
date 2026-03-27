@@ -1006,7 +1006,7 @@ export default function Book() {
                         </div>
                         <div className="px-5 pb-5 -mt-1">
                           {chapter.tag && <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-1.5">{chapter.tag}</p>}
-                          <h4 className="font-serif text-xl text-foreground mb-2 leading-tight line-clamp-2">{chapter.title}</h4>
+                          <h4 className="font-serif text-base text-foreground mb-2 leading-snug" style={{ overflow: "hidden", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 } as React.CSSProperties}>{chapter.title}</h4>
                           {chapter.excerpt && <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">"{chapter.excerpt}"</p>}
                           <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
                             Ler Reflexão <ChevronRight size={13} />
