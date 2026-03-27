@@ -18,3 +18,9 @@ id = "kT8XlB6Yg6NpSWykm9F2u"
 uri = "file://LP_CasaDos20.md"
 type = "text"
 title = "Documento de Landing Page — Casa dos 20"
+
+[[outputs]]
+id = "GUGGPiaiuLLKa25z1CVOu"
+uri = "file://INSTRUCOES.md"
+type = "text"
+title = "Guia de Manutenção — A Casa dos 20"
