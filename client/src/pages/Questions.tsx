@@ -2255,7 +2255,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
         </button>
       </div>
       <p className="text-[10px] text-muted-foreground mt-4 text-center">
-        Cancele quando quiser.
+        Cancele quando quiser.{geo.currency !== "BRL" ? " Valor aproximado — cobrança em BRL." : ""}
       </p>
     </div>
   );

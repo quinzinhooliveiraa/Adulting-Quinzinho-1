@@ -709,6 +709,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       <Crown size={10} /> Premium
                     </p>
                     <p className="text-xs font-bold text-foreground">{geo.monthlyFormatted}<span className="text-muted-foreground font-normal">/mês</span></p>
+                    {geo.currency !== "BRL" && <p className="text-[9px] text-muted-foreground leading-tight">aprox. · cobrado em BRL</p>}
                   </div>
                   <div className="space-y-2">
                     {[

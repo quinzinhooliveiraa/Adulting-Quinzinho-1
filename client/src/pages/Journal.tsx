@@ -101,6 +101,11 @@ function JournalUpgradePopup({ limit, onClose }: { limit: number; onClose: () =>
           >
             {loading ? "Redirecionando..." : "Assinar Premium"}
           </button>
+          {geo.currency !== "BRL" && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Valor aproximado. A cobrança é feita em BRL pelo Stripe.
+            </p>
+          )}
           <button
             onClick={onClose}
             className="w-full py-2 text-sm text-muted-foreground"

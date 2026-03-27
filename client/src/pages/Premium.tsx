@@ -228,6 +228,12 @@ export default function Premium() {
           )}
         </div>
 
+        {geo.currency !== "BRL" && (
+          <p className="text-[10px] text-muted-foreground text-center mt-3 px-2">
+            Valor aproximado. A cobrança é feita em BRL pelo Stripe.
+          </p>
+        )}
+
         <div className="mt-6 border border-border rounded-xl overflow-hidden" data-testid="section-coupon">
           <button
             onClick={() => { setCouponOpen(!couponOpen); setCouponMsg(null); }}
