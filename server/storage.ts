@@ -611,12 +611,12 @@ export class DatabaseStorage implements IStorage {
       ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')`
       : "";
     const rows = await db.execute(drizzleSql`
-      SELECT TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
+      SELECT TO_CHAR((ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') as date,
              COUNT(DISTINCT ue.user_id) as count
       FROM user_events ue
       WHERE ue.created_at >= ${since} AND ue.created_at <= ${until} AND ue.user_id IS NOT NULL
       ${drizzleSql.raw(adminClause)}
-      GROUP BY TO_CHAR(ue.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
+      GROUP BY TO_CHAR((ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
       ORDER BY date ASC
     `);
     const dataMap = new Map<string, number>(
@@ -659,13 +659,13 @@ export class DatabaseStorage implements IStorage {
   async getHourlyActiveUsers(date: string, excludeAdmins: boolean = false): Promise<{ hour: number; count: number }[]> {
     const adminClause = excludeAdmins ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')` : "";
     const rows = await db.execute(drizzleSql`
-      SELECT EXTRACT(HOUR FROM ue.created_at AT TIME ZONE 'America/Sao_Paulo')::int AS hour,
+      SELECT EXTRACT(HOUR FROM (ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::int AS hour,
              COUNT(DISTINCT ue.user_id) as count
       FROM user_events ue
-      WHERE DATE(ue.created_at AT TIME ZONE 'America/Sao_Paulo') = ${date}
+      WHERE DATE((ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo') = ${date}
         AND ue.user_id IS NOT NULL
       ${drizzleSql.raw(adminClause)}
-      GROUP BY EXTRACT(HOUR FROM ue.created_at AT TIME ZONE 'America/Sao_Paulo')
+      GROUP BY EXTRACT(HOUR FROM (ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')
       ORDER BY hour ASC
     `);
     const dataMap = new Map<number, number>(

@@ -1831,9 +1831,9 @@ export async function registerRoutes(
   app.get("/api/admin/stats", requireAdmin, async (_req: Request, res: Response) => {
     try {
       const allUsers = await storage.getAllUsers();
-      const now = new Date();
       const totalUsers = allUsers.length;
-      const activeUsers = allUsers.filter(u => u.isActive).length;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const activeUsers = allUsers.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= thirtyDaysAgo).length;
       const premiumUsers = allUsers.filter(u => {
         const s = getUserPremiumStatus(u);
         return s.hasPremium && s.reason === "paid";

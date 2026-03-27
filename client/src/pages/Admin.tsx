@@ -1050,6 +1050,7 @@ export default function Admin() {
           {stats && (
             <div className="grid grid-cols-2 gap-2">
               <StatCard icon={Users} label="Total" value={stats.totalUsers} color="text-foreground" />
+              <StatCard icon={TrendingUp} label="Ativos 30d" value={stats.activeUsers} color="text-green-500" />
               <StatCard icon={Star} label="Premium" value={stats.premiumUsers} color="text-yellow-500" />
               <StatCard icon={Clock} label="Trial" value={stats.trialUsers} color="text-blue-500" />
               <StatCard icon={Check} label="Liberados" value={stats.grantedUsers} color="text-green-500" />
