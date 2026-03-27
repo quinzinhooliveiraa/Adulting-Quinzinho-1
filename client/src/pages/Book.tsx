@@ -844,18 +844,19 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
       ) : null}
 
       {/* Bottom navigation */}
-      <div className="shrink-0 border-t bk-sep bk-bg px-6 py-4 flex items-center justify-between">
+      <div className="shrink-0 border-t bk-sep bk-bg px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate("prev")} disabled={!hasPrev}
           data-testid="btn-prev-chapter"
-          className="flex items-center gap-1 text-sm disabled:opacity-20 active:opacity-50 transition-opacity bk-muted">
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border bk-sep text-sm font-medium disabled:opacity-20 active:scale-[0.97] transition-all bk-muted"
+          style={{ minWidth: 96 }}>
           <ChevronLeft size={16} /> Anterior
         </button>
-        <p className="text-[10px] bk-muted font-mono">{pageLabel()}</p>
+        <p className="flex-1 text-center text-[10px] bk-muted font-mono">{pageLabel()}</p>
         <button onClick={() => navigate("next")} disabled={!hasNext}
           data-testid="btn-next-chapter"
-          className="flex items-center gap-1 text-sm font-semibold disabled:opacity-20 active:opacity-50 transition-opacity"
-          style={{ color: hasNext ? "var(--bk-accent)" : "var(--bk-muted)" }}>
-          Próximo <ChevronRight size={16} />
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-20 active:scale-[0.97] transition-all text-white"
+          style={{ minWidth: 96, background: hasNext ? "var(--bk-accent)" : "var(--bk-muted)", opacity: hasNext ? 1 : 0.3 }}>
+          Próxima <ChevronRight size={16} />
         </button>
       </div>
     </div>
