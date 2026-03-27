@@ -6,7 +6,7 @@
  * Chapters with order < 1 (front matter) are skipped — they have custom content.
  */
 
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { db } from "../server/db";
 import { bookChapters } from "../shared/schema";
 import { asc, gte, eq, sql } from "drizzle-orm";
@@ -15,11 +15,13 @@ const PDF = "./attached_assets/EBOOK_-_CASA_DOS_20_Refletindo_sobre_os_Desafios_
 
 /** Extract raw text of a single PDF page, cleaned of noise. */
 function extractPage(page: number): string {
-  const raw = execSync(
-    `pdftotext -f ${page} -l ${page} -raw "${PDF}" -`,
+  const result = spawnSync(
+    "pdftotext",
+    ["-f", String(page), "-l", String(page), "-raw", PDF, "-"],
     { encoding: "utf8" }
   );
-  return cleanPage(raw);
+  if (result.error) throw result.error;
+  return cleanPage(result.stdout);
 }
 
 /** Remove PDF layout noise: spaced titles, page numbers, chapter numbers. */
