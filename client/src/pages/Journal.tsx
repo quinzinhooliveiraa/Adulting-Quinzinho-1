@@ -735,7 +735,7 @@ export default function Journal() {
                   {getSourceLabel(getEntrySource(viewingEntry))}
                 </span>
                 {viewingEntry.tags.filter(t => !["perguntas", "reflexão", "jornada"].includes(t)).map(tag => (
-                  <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
+                  <span key={tag} className="text-[10px] px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter max-w-[160px] truncate">
                     #{tag}
                   </span>
                 ))}
@@ -833,7 +833,7 @@ export default function Journal() {
                             {getSourceLabel(getEntrySource(entry))}
                           </span>
                           {entry.tags.filter(t => !["perguntas", "reflexão", "jornada"].includes(t)).map(tag => (
-                            <span key={tag} className="text-[9px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter">
+                            <span key={tag} className="text-[9px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground font-bold uppercase tracking-tighter max-w-[120px] truncate">
                               #{tag}
                             </span>
                           ))}

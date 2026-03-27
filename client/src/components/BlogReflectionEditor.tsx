@@ -996,7 +996,7 @@ export default function BlogReflectionEditor({
                   <button
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 max-w-[180px] truncate shrink-0 ${
                       selectedTags.includes(tag)
                         ? "bg-foreground text-background"
                         : "bg-muted border border-border text-muted-foreground hover:border-foreground/30"

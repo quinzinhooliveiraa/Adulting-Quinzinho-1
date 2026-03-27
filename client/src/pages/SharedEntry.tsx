@@ -144,7 +144,7 @@ export default function SharedEntry() {
           {data.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {data.tags.map(tag => (
-                <span key={tag} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                <span key={tag} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium max-w-[160px] truncate">
                   <Hash size={10} />
                   {tag}
                 </span>
