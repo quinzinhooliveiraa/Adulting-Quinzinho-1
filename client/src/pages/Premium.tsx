@@ -5,14 +5,21 @@ import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
+import SubscriptionCheckoutModal from "@/components/SubscriptionCheckoutModal";
 import { useGeoPrice } from "@/hooks/useGeoPrice";
 
 export default function Premium() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [loading, setLoading] = useState<string | null>(null);
   const { price: geo } = useGeoPrice();
   const [showCardModal, setShowCardModal] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<{
+    priceId: string;
+    label: string;
+    priceFormatted: string;
+    interval: "month" | "year";
+    badge?: string;
+  } | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -55,23 +62,13 @@ export default function Premium() {
   const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
   const yearlyPrice = products.find((p: any) => p.recurring?.interval === "year");
 
-  const handleCheckout = async (priceId: string, trialDays?: number) => {
-    setLoading(trialDays ? "trial" : priceId);
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ priceId, trialDays }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-    } finally {
-      setLoading(null);
-    }
+  const handleCheckout = (priceId: string, label: string, priceFormatted: string, interval: "month" | "year") => {
+    setCheckoutPlan({ priceId, label, priceFormatted, interval });
+  };
+
+  const handleCheckoutSuccess = () => {
+    setCheckoutPlan(null);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
   const handleSetupForBonus = () => {
@@ -102,6 +99,13 @@ export default function Premium() {
         <CardSetupModal
           onSuccess={handleCardSuccess}
           onClose={() => setShowCardModal(false)}
+        />
+      )}
+      {checkoutPlan && (
+        <SubscriptionCheckoutModal
+          plan={checkoutPlan}
+          onSuccess={handleCheckoutSuccess}
+          onClose={() => setCheckoutPlan(null)}
         />
       )}
       <div className="p-4">
@@ -180,8 +184,7 @@ export default function Premium() {
 
           {monthlyPrice && (
             <button
-              onClick={() => handleCheckout(monthlyPrice.price_id)}
-              disabled={!!loading}
+              onClick={() => handleCheckout(monthlyPrice.price_id, "Mensal", geo.monthlyFormatted, "month")}
               className="w-full p-4 rounded-xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-left"
               data-testid="button-checkout-monthly"
             >
@@ -195,16 +198,12 @@ export default function Premium() {
                   <p className="text-xs text-muted-foreground">/mês</p>
                 </div>
               </div>
-              {loading === monthlyPrice.price_id && (
-                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Redirecionando...</p>
-              )}
             </button>
           )}
 
           {yearlyPrice && (
             <button
-              onClick={() => handleCheckout(yearlyPrice.price_id)}
-              disabled={!!loading}
+              onClick={() => handleCheckout(yearlyPrice.price_id, "Anual", geo.yearlyFormatted, "year")}
               className="w-full p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 hover:bg-amber-500/10 transition-colors text-left relative overflow-hidden"
               data-testid="button-checkout-yearly"
             >
@@ -221,9 +220,6 @@ export default function Premium() {
                   <p className="text-xs text-muted-foreground">/ano (~{geo.yearlyMonthlyFormatted}/mês)</p>
                 </div>
               </div>
-              {loading === yearlyPrice.price_id && (
-                <p className="text-sm text-center mt-2 text-muted-foreground animate-pulse">Redirecionando...</p>
-              )}
             </button>
           )}
         </div>

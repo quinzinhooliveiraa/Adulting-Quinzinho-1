@@ -1046,6 +1046,92 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/stripe/create-subscription-intent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const stripe = await getUncachableStripeClient();
+      const { priceId } = req.body;
+      if (!priceId) return res.status(400).json({ message: "priceId obrigatório" });
+
+      let customerId = user.stripeCustomerId;
+
+      async function ensureCustomer() {
+        if (customerId) {
+          try {
+            await stripe.customers.retrieve(customerId);
+            return customerId;
+          } catch {}
+        }
+        const customer = await stripe.customers.create({
+          email: user!.email,
+          name: user!.name,
+          metadata: { userId: user!.id },
+        });
+        await storage.updateUser(user!.id, { stripeCustomerId: customer.id });
+        return customer.id;
+      }
+      customerId = await ensureCustomer();
+
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        expand: ["latest_invoice.payment_intent"],
+      });
+
+      const invoice = subscription.latest_invoice as any;
+      const paymentIntent = invoice?.payment_intent as any;
+
+      if (!paymentIntent?.client_secret) {
+        return res.status(500).json({ message: "Não foi possível iniciar o pagamento" });
+      }
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        subscriptionId: subscription.id,
+      });
+    } catch (error: any) {
+      console.error("create-subscription-intent error:", error);
+      res.status(500).json({ message: "Erro ao criar subscrição" });
+    }
+  });
+
+  app.post("/api/stripe/confirm-subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const stripe = await getUncachableStripeClient();
+      const { subscriptionId } = req.body;
+      if (!subscriptionId) return res.status(400).json({ message: "subscriptionId obrigatório" });
+
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (subscription.customer !== user.stripeCustomerId) {
+        return res.status(403).json({ message: "Subscrição não pertence a este utilizador" });
+      }
+
+      const isActive = subscription.status === "active" || subscription.status === "trialing";
+      if (!isActive) {
+        return res.status(400).json({ message: "Subscrição ainda não está ativa" });
+      }
+
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+      await storage.updateUser(user.id, {
+        stripeSubscriptionId: subscriptionId,
+        isPremium: true,
+        premiumUntil: periodEnd,
+      });
+
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("confirm-subscription error:", error);
+      res.status(500).json({ message: "Erro ao confirmar subscrição" });
+    }
+  });
+
   app.get("/api/stripe/products", async (_req: Request, res: Response) => {
     try {
       const stripe = await getUncachableStripeClient();
