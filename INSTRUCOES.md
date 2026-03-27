@@ -8,10 +8,13 @@
 
 ---
 
-## Secrets (Chaves Secretas)
+## Secrets e Configurations
 
-Todas as chaves estão guardadas em **Tools → Secrets** no Replit.
-Se alguma desaparecer, reintroduz o valor a partir do teu ficheiro `.env` local.
+No Replit, há dois tipos de variáveis de ambiente:
+- **Secrets** → informação sensível, nunca visível (Tools → Secrets)
+- **Configurations** → valores não sensíveis, visíveis (Tools → Secrets → "New configuration")
+
+### Secrets
 
 | Chave | Para que serve |
 |-------|---------------|
@@ -20,12 +23,18 @@ Se alguma desaparecer, reintroduz o valor a partir do teu ficheiro `.env` local.
 | `GOOGLE_CLIENT_SECRET` | Login com Google |
 | `GOOGLE_API_KEY` | Serviços Google adicionais |
 | `SESSION_SECRET` | Segurança das sessões de utilizador |
-| `VAPID_PUBLIC_KEY` | Notificações push (chave pública) |
-| `VAPID_PRIVATE_KEY` | Notificações push (chave privada) |
-| `VAPID_SUBJECT` | Email de contacto para notificações push |
+| `VAPID_PRIVATE_KEY` | Notificações push (chave privada — nunca partilhar) |
 | `STRIPE_SECRET_KEY` | Pagamentos (backend) |
 | `STRIPE_PUBLISHABLE_KEY` | Pagamentos (frontend) |
 | `BREVO_API_KEY` | Envio de emails (Brevo) |
+| `SLACK_TEST_API_KEY` | Notificações internas via Slack |
+
+### Configurations (valores não sensíveis)
+
+| Chave | Valor atual |
+|-------|-------------|
+| `VAPID_PUBLIC_KEY` | `BFWf1qCLJrnOiDrZZLmAeQHnAedp_ycyifaCZogdcyk_-aqx_J-c11XzQQpa8NcAb_TerKj-Zy3-QHFfXH8nBmk` |
+| `VAPID_SUBJECT` | `mailto:quinzinhooliveiraa@gmail.com` |
 
 > **Importante sobre VAPID:** O par de chaves público/privado tem de ser sempre o mesmo.
 > Se gerares novas chaves, todos os utilizadores perdem as subscrições de notificações
