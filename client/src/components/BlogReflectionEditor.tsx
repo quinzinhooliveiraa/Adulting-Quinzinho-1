@@ -876,11 +876,16 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          // Snap image to top-left or top-right when activating wrap mode
+                          // Only ONE image can be in wrap mode at a time (multi-float CSS conflicts)
+                          // Deactivate wrap on all others; snap this one to top-left or top-right
                           const containerW = canvasContainerRef.current?.offsetWidth ?? 400;
                           const isLeft = img.x < containerW / 2;
                           const snappedX = isLeft ? 0 : Math.max(0, containerW - img.width);
-                          updateImage(img.id, { textWrap: true, zIndex: 10, y: 24, x: snappedX });
+                          setImages(prev => prev.map(i =>
+                            i.id === img.id
+                              ? { ...i, textWrap: true, zIndex: 10, y: 24, x: snappedX }
+                              : { ...i, textWrap: false, zIndex: i.zIndex === 10 ? 20 : i.zIndex }
+                          ));
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
