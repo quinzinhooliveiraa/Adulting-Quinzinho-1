@@ -106,6 +106,8 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const [grantConfirmText, setGrantConfirmText] = useState("");
   const [grantingBonus, setGrantingBonus] = useState(false);
   const [grantingBook, setGrantingBook] = useState(false);
+  const [adminConfirmAction, setAdminConfirmAction] = useState<"grant" | "revoke" | null>(null);
+  const [adminConfirmText, setAdminConfirmText] = useState("");
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
@@ -416,9 +418,50 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                   <span className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 font-semibold flex items-center gap-1">
                     <Crown size={12} /> Admin Master
                   </span>
+                ) : adminConfirmAction ? (
+                  <div className="w-full bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 space-y-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      Escreve <strong className="text-foreground">"confirmar"</strong> para{" "}
+                      {adminConfirmAction === "grant" ? (
+                        <>tornar <strong className="text-foreground">{user.name}</strong> admin</>
+                      ) : (
+                        <>remover admin de <strong className="text-foreground">{user.name}</strong></>
+                      )}:
+                    </p>
+                    <input
+                      type="text"
+                      value={adminConfirmText}
+                      onChange={e => setAdminConfirmText(e.target.value)}
+                      placeholder="confirmar"
+                      className="w-full text-[11px] px-2 py-1.5 rounded-md border border-border bg-background"
+                      data-testid={`input-admin-confirm-${user.id}`}
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setAdminConfirmAction(null); setAdminConfirmText(""); }}
+                        className="flex-1 text-[11px] px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid={`button-cancel-admin-${user.id}`}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        disabled={adminConfirmText !== "confirmar"}
+                        onClick={() => {
+                          onUpdate(user.id, { role: adminConfirmAction === "grant" ? "admin" : "user" });
+                          setAdminConfirmAction(null);
+                          setAdminConfirmText("");
+                        }}
+                        className="flex-1 text-[11px] px-3 py-1.5 rounded-lg bg-purple-500 text-white font-medium disabled:opacity-40"
+                        data-testid={`button-confirm-admin-${user.id}`}
+                      >
+                        Confirmar
+                      </button>
+                    </div>
+                  </div>
                 ) : user.role !== "admin" ? (
                   <button
-                    onClick={() => onUpdate(user.id, { role: "admin" })}
+                    onClick={() => { setAdminConfirmAction("grant"); setAdminConfirmText(""); }}
                     className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 hover:bg-purple-500/20 transition-colors flex items-center gap-1"
                     data-testid={`button-promote-admin-${user.id}`}
                   >
@@ -426,7 +469,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                   </button>
                 ) : (
                   <button
-                    onClick={() => onUpdate(user.id, { role: "user" })}
+                    onClick={() => { setAdminConfirmAction("revoke"); setAdminConfirmText(""); }}
                     className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     data-testid={`button-demote-admin-${user.id}`}
                   >
