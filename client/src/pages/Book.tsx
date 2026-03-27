@@ -167,7 +167,7 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
   const epilogues = chapters.filter(c => c.pageType === "epilogue");
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 pb-12 bk-bg">
+    <div className="flex-1 overflow-y-auto px-6 pb-28 bk-bg">
       {/* Ornament */}
       <div className="flex items-center justify-center gap-2 py-10">
         <div className="h-px w-12 opacity-40" style={{ background: "var(--bk-accent)" }} />
