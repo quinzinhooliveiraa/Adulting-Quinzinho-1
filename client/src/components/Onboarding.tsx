@@ -715,7 +715,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       "Jornadas completas de 30 dias",
                       "1º relatório de jornada com IA grátis",
                       "Diário com fotos, desenhos e banners",
-                      "Todos os capítulos do livro",
                       "Notificações personalizadas"
                     ].map((item, i) => (
                       <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.4 + i * 0.08}s both` }}>
