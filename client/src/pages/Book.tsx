@@ -256,6 +256,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   const canRead = purchased || chapter.isPreview;
   const isFrontMatter = chapter.pageType === "front-matter" || chapter.pageType === "epilogue";
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [pendingHL, setPendingHL] = useState<PendingHL | null>(null);
   const [activeHLId, setActiveHLId] = useState<number | null>(null);
   const [activeHLPos, setActiveHLPos] = useState<{ x: number; y: number } | null>(null);
@@ -276,6 +277,10 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     if (rawContent === "__TOC__") onActualSubPageCount(1);
     else if (pdfPages.length > 0) onActualSubPageCount(pdfPages.length);
   }, [data?.content]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [subPage, chapter.id]);
 
   const safeSubPage = Math.min(subPage, Math.max(0, pdfPages.length - 1));
   const pageText = pdfPages[safeSubPage] ?? "";
@@ -460,7 +465,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 
   return (
     <>
-      <div className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+      <div ref={scrollRef} className={`flex-1 overflow-y-auto ${animClass}`} style={{ background: "var(--bk-bg)" }}>
         <div ref={contentRef} className="max-w-[62ch] mx-auto px-7 pb-16">
 
           {safeSubPage === 0 && (
