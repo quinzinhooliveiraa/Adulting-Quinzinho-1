@@ -904,7 +904,7 @@ export default function BlogReflectionEditor({
                       width: `${img.width}px`,
                       height: `${img.height}px`,
                       transform: `rotate(${img.rotation}deg)`,
-                      zIndex: 25,
+                      zIndex: selectedImage === img.id ? 22 : (img.zIndex ?? 10),
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
