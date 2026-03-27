@@ -214,8 +214,8 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         .stagger-5 { animation: staggerFade 0.5s ease-out 0.5s both; }
       `}</style>
 
-      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)", paddingBottom: "1rem" }}>
-        <div className={`w-full max-w-sm flex flex-col items-center transition-all duration-300 ease-out ${slideClass}`}>
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)", paddingBottom: "1rem" }}>
+        <div className={`w-full max-w-sm flex flex-col items-center my-auto transition-all duration-300 ease-out ${slideClass}`}>
 
           {currentStep === "welcome" && (
             <div className="flex flex-col items-center text-center space-y-6">
