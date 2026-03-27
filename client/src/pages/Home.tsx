@@ -19,6 +19,7 @@ import { JOURNEYS } from "./Journey";
 import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { useLocation } from "wouter";
+import CardSetupModal from "@/components/CardSetupModal";
 
 function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
   trialEndsAt: string | null;
@@ -132,6 +133,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [recommendedContent, setRecommendedContent] = useState<RecommendedContent | null>(null);
   const [showReflectionEditor, setShowReflectionEditor] = useState(false);
+  const [showCardModal, setShowCardModal] = useState(false);
   const reminderPreviewRef = useRef<HTMLCanvasElement>(null);
   const reflectionPreviewRef = useRef<HTMLCanvasElement>(null);
   
@@ -511,7 +513,15 @@ export default function Home() {
 
   return (
     <div className="px-6 md:px-10 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative overflow-x-hidden">
-      
+      {showCardModal && (
+        <CardSetupModal
+          onSuccess={() => {
+            setShowCardModal(false);
+            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          }}
+          onClose={() => setShowCardModal(false)}
+        />
+      )}
       <header className="space-y-2">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -531,15 +541,7 @@ export default function Home() {
           trialEndsAt={user.trialEndsAt}
           trialBonusClaimed={user.trialBonusClaimed}
           onUpgrade={() => navigate("/premium")}
-          onClaim={async () => {
-            try {
-              const res = await fetch("/api/stripe/setup-for-bonus", { method: "POST", credentials: "include" });
-              const data = await res.json();
-              if (res.ok && data.url) {
-                window.location.href = data.url;
-              }
-            } catch {}
-          }}
+          onClaim={() => setShowCardModal(true)}
         />
       )}
 
