@@ -153,7 +153,7 @@ export default function BlogReflectionEditor({
     if (!hasWrappedImages) return;
 
     const wrapImages = images.filter(img => img.textWrap);
-    // Sort so deeper images are inserted first (first-in-DOM = last inserted = deeper in stack)
+    // Insert higher-y images first so lower-y images end up as firstChild (DOM order matters)
     wrapImages.sort((a, b) => b.y - a.y);
 
     const editorPaddingTop = parseFloat(getComputedStyle(el).paddingTop) || 24;
@@ -162,29 +162,42 @@ export default function BlogReflectionEditor({
     const gap = 12;
 
     wrapImages.forEach(img => {
-      // Convert canvas-coords to content-area coords (subtract editor padding)
+      // Convert canvas-coords to content-area coords
       const imgTopInContent = Math.max(0, img.y - editorPaddingTop);
       const imgLeftInContent = img.x - editorPaddingLeft;
       const side = imgLeftInContent < contentWidth / 2 ? 'left' : 'right';
 
-      const spacer = document.createElement('div');
-      spacer.setAttribute('data-float-img', img.id);
-      spacer.contentEditable = 'false';
+      // Two-float technique:
+      // 1. A 1px-wide "anchor" float as tall as the space ABOVE the image — text flows full-width here.
+      // 2. A "wrap" float the width of the image area — text wraps to the other side here.
+      // clear: both on the wrap float ensures it starts BELOW the anchor.
 
-      // Use margin-top to offset the float to the image's vertical position.
-      // Float height = image height (text resumes below the image).
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-float-img', img.id);
+      wrap.contentEditable = 'false';
+
       if (side === 'right') {
         const floatW = Math.max(8, contentWidth - Math.max(0, imgLeftInContent) + gap);
-        spacer.style.cssText = `float: right; width: ${floatW}px; height: ${img.height}px; margin-top: ${imgTopInContent}px; pointer-events: none; opacity: 0;`;
+        wrap.style.cssText = `float: right; width: ${floatW}px; height: ${img.height}px; clear: right; pointer-events: none; opacity: 0;`;
       } else {
         const floatW = Math.max(8, Math.max(0, imgLeftInContent) + img.width + gap);
-        spacer.style.cssText = `float: left; width: ${floatW}px; height: ${img.height}px; margin-top: ${imgTopInContent}px; pointer-events: none; opacity: 0;`;
+        wrap.style.cssText = `float: left; width: ${floatW}px; height: ${img.height}px; clear: left; pointer-events: none; opacity: 0;`;
       }
 
+      // Insert wrap first (it will become 2nd in DOM after anchor is inserted)
       if (el.firstChild) {
-        el.insertBefore(spacer, el.firstChild);
+        el.insertBefore(wrap, el.firstChild);
       } else {
-        el.appendChild(spacer);
+        el.appendChild(wrap);
+      }
+
+      // Insert anchor last so it becomes firstChild (anchor BEFORE wrap in DOM)
+      if (imgTopInContent > 0) {
+        const anchor = document.createElement('div');
+        anchor.setAttribute('data-float-img', img.id);
+        anchor.contentEditable = 'false';
+        anchor.style.cssText = `float: ${side}; width: 1px; height: ${imgTopInContent}px; pointer-events: none; opacity: 0;`;
+        el.insertBefore(anchor, el.firstChild);
       }
     });
   }, [images, selectedImage, hasWrappedImages]);
