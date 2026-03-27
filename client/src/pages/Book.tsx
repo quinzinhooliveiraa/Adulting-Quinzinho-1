@@ -715,16 +715,16 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
         <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
         <div className="flex items-center gap-0.5">
           <button onClick={() => setShowHLPanel(true)} data-testid="btn-highlights-panel"
-            className="p-1.5 active:opacity-50 relative">
+            className="p-2.5 active:opacity-50 relative">
             <Highlighter size={18} className="bk-muted" />
             {allHighlights.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full text-[8px] font-bold flex items-center justify-center px-0.5"
+              <span className="absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-bold flex items-center justify-center px-0.5"
                 style={{ background: "var(--bk-accent)", color: "var(--bk-bg)" }}>
                 {allHighlights.length}
               </span>
             )}
           </button>
-          <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-1.5 active:opacity-50">
+          <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-2.5 active:opacity-50">
             <List size={20} className="bk-muted" />
           </button>
         </div>
@@ -737,11 +737,11 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
       {/* TOC overlay */}
       {showToc && (
-        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden">
+        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden pt-safe">
           <style>{BOOK_STYLES}</style>
           <div className="flex items-center justify-between px-5 py-4 border-b bk-sep shrink-0">
             <h2 className="bk-serif text-lg bk-ink font-bold">Índice</h2>
-            <button onClick={() => setShowToc(false)} className="p-1.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
+            <button onClick={() => setShowToc(false)} className="p-2.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
           </div>
           <TocPage chapters={chapters} purchased={purchased}
             onSelect={goToChapter} onBuy={() => { setShowToc(false); onBuy(); }} />
@@ -750,14 +750,14 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
       {/* Highlights panel */}
       {showHLPanel && (
-        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden">
+        <div className="absolute inset-0 z-20 flex flex-col bk-bg overflow-hidden pt-safe">
           <style>{BOOK_STYLES}</style>
           <div className="flex items-center justify-between px-5 py-4 border-b bk-sep shrink-0">
             <div className="flex items-center gap-2">
               <Highlighter size={16} style={{ color: "var(--bk-accent)" }} />
               <h2 className="bk-serif text-lg bk-ink font-bold">As Tuas Marcações</h2>
             </div>
-            <button onClick={() => setShowHLPanel(false)} className="p-1.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
+            <button onClick={() => setShowHLPanel(false)} className="p-2.5 active:opacity-50"><X size={20} className="bk-muted" /></button>
           </div>
           <div className="flex-1 overflow-y-auto px-5 pb-12">
             {allHighlights.length === 0 ? (
