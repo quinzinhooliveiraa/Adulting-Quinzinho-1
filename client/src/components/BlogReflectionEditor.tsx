@@ -159,19 +159,24 @@ export default function BlogReflectionEditor({
     const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
     const gap = 16;
 
-    // Track cumulative float heights per side so each spacer accounts for previous ones
-    let leftFloatEnd = 0;
-    let rightFloatEnd = 0;
-
     const fragment = document.createDocumentFragment();
 
     wrapImages.forEach(img => {
-      const side = img.x < containerWidth / 2 ? 'left' : 'right';
-      const currentFloatEnd = side === 'left' ? leftFloatEnd : rightFloatEnd;
+      // Compute rotated bounding box so text wraps around the visual shape
+      const rad = ((img.rotation || 0) * Math.PI) / 180;
+      const cosA = Math.abs(Math.cos(rad));
+      const sinA = Math.abs(Math.sin(rad));
+      const bw = img.width * cosA + img.height * sinA;
+      const bh = img.width * sinA + img.height * cosA;
+      // Bounding box position (rotation is around the center of img)
+      const bx = img.x + (img.width - bw) / 2;
+      const by = img.y + (img.height - bh) / 2;
 
-      const adjustedY = Math.max(0, img.y - elPadding - currentFloatEnd);
-      const adjustedX = Math.max(0, img.x - elPaddingLeft);
-      const spacerHeight = adjustedY + img.height + gap;
+      const adjustedY = Math.max(0, by - elPadding);
+      const adjustedX = Math.max(0, bx - elPaddingLeft);
+      const side = (bx + bw / 2) < containerWidth / 2 ? 'left' : 'right';
+      const imgRight = adjustedX + bw;
+      const imgBottom = adjustedY + bh;
 
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
@@ -179,18 +184,16 @@ export default function BlogReflectionEditor({
 
       if (side === 'right') {
         const w = containerWidth - adjustedX + gap;
-        spacer.style.cssText = `float: right; width: ${w}px; height: ${spacerHeight}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
-        rightFloatEnd += spacerHeight;
+        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       } else {
-        const w = adjustedX + img.width + gap;
-        spacer.style.cssText = `float: left; width: ${w}px; height: ${spacerHeight}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
-        leftFloatEnd += spacerHeight;
+        const w = imgRight + gap;
+        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       }
 
       fragment.appendChild(spacer);
     });
 
-    // Insert all spacers in correct y-ascending order before any existing content
+    // Insert all spacers in correct y-ascending order before existing content
     const firstContent = el.firstChild;
     if (firstContent) {
       el.insertBefore(fragment, firstContent);
@@ -862,7 +865,7 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          updateImage(img.id, { textWrap: true, zIndex: 10, rotation: 0 });
+                          updateImage(img.id, { textWrap: true, zIndex: 10 });
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
@@ -916,7 +919,7 @@ export default function BlogReflectionEditor({
                       top: `${img.y}px`,
                       width: `${img.width}px`,
                       height: `${img.height}px`,
-                      transform: `rotate(0deg)`,
+                      transform: `rotate(${img.rotation || 0}deg)`,
                       zIndex: 25,
                       borderRadius: '12px',
                       overflow: 'hidden',
