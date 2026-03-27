@@ -151,32 +151,45 @@ export default function BlogReflectionEditor({
     const el = editableRef.current;
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     if (!hasWrappedImages) return;
-    
+
     const wrapImages = images.filter(img => img.textWrap);
     wrapImages.sort((a, b) => a.y - b.y);
-    const containerWidth = el.offsetWidth || 600;
 
-    const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
-    const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    // Measure the actual offset between the canvas container and the editable's content area
+    const containerEl = canvasContainerRef.current;
+    const containerRect = containerEl?.getBoundingClientRect();
+    const editorRect = el.getBoundingClientRect();
+    const editorPaddingTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+    const editorPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+
+    // Vertical offset: how many px below the canvas container top does the editor's content area begin
+    const offsetTop = containerRect ? (editorRect.top - containerRect.top) + editorPaddingTop : editorPaddingTop;
+    // Horizontal offset: how many px from the left of the canvas container does the editor's content area begin
+    const offsetLeft = containerRect ? (editorRect.left - containerRect.left) + editorPaddingLeft : editorPaddingLeft;
+
+    const contentWidth = el.clientWidth - editorPaddingLeft * 2;
+    const gap = 12;
 
     wrapImages.forEach(img => {
-      const adjustedY = Math.max(0, img.y - elPadding);
-      const adjustedX = Math.max(0, img.x - elPaddingLeft);
-      const side = img.x < containerWidth / 2 ? 'left' : 'right';
-      const gap = 16;
-      const imgRight = adjustedX + img.width;
+      // Convert image canvas-coordinates to editor content-area coordinates
+      const imgTopInContent = img.y - offsetTop;
+      const imgLeftInContent = img.x - offsetLeft;
+      const adjustedY = Math.max(0, imgTopInContent);
+      const adjustedX = Math.max(0, imgLeftInContent);
       const imgBottom = adjustedY + img.height;
+
+      const side = imgLeftInContent < contentWidth / 2 ? 'left' : 'right';
 
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
       spacer.contentEditable = 'false';
 
       if (side === 'right') {
-        const w = containerWidth - adjustedX + gap;
-        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        const floatW = contentWidth - adjustedX + gap;
+        spacer.style.cssText = `float: right; width: ${floatW}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       } else {
-        const w = imgRight + gap;
-        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        const floatW = adjustedX + img.width + gap;
+        spacer.style.cssText = `float: left; width: ${floatW}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       }
 
       if (el.firstChild) {
