@@ -153,58 +153,49 @@ export default function BlogReflectionEditor({
     if (!hasWrappedImages) return;
 
     const wrapImages = images.filter(img => img.textWrap);
-    // Insert higher-y images first so lower-y images end up as firstChild (DOM order matters)
+    // Process higher-y images first so lower-y images become firstChild (reading order)
     wrapImages.sort((a, b) => b.y - a.y);
 
     const editorPaddingTop = parseFloat(getComputedStyle(el).paddingTop) || 24;
     const editorPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 24;
     const contentWidth = Math.max(100, el.clientWidth - editorPaddingLeft * 2);
     const gap = 12;
+    const containerW = canvasContainerRef.current?.offsetWidth ?? (contentWidth + editorPaddingLeft * 2);
 
     wrapImages.forEach(img => {
-      // Convert canvas-coords to content-area coords
       const imgTopInContent = Math.max(0, img.y - editorPaddingTop);
-      // Clamp imgX to the content area (image may start left of the padding)
       const imgXInContent = Math.max(0, img.x - editorPaddingLeft);
       const imgRightInContent = Math.min(contentWidth, imgXInContent + img.width);
-      // Determine side from canvas center (not content center) to avoid misclassification
-      const containerW = canvasContainerRef.current?.offsetWidth ?? (contentWidth + editorPaddingLeft * 2);
       const side = (img.x + img.width / 2) < containerW / 2 ? 'left' : 'right';
 
-      // Two-float technique:
-      // 1. Anchor (1px wide, imgTopInContent tall) — text flows full-width above image
-      // 2. Wrap float — text wraps beside image; clear ensures it starts after anchor
+      // Single-float technique using shape-outside: inset(0 0 0 0)
+      // margin-top positions the float at the image's y; shape-outside ensures text
+      // flows full-width in the margin area (above the image) — no blank space, no anchor needed.
+      // No `clear` is used, so multiple images on different sides coexist without conflict.
+      const spacer = document.createElement('div');
+      spacer.setAttribute('data-float-img', img.id);
+      spacer.contentEditable = 'false';
 
-      const wrap = document.createElement('div');
-      wrap.setAttribute('data-float-img', img.id);
-      wrap.contentEditable = 'false';
+      const floatW = side === 'right'
+        ? Math.max(8, contentWidth - imgXInContent + gap)
+        : Math.max(8, imgRightInContent + gap);
 
-      if (side === 'right') {
-        const floatW = Math.max(8, contentWidth - imgXInContent + gap);
-        wrap.style.cssText = `float: right; width: ${floatW}px; height: ${img.height}px; clear: right; pointer-events: none; opacity: 0;`;
-      } else {
-        const floatW = Math.max(8, imgRightInContent + gap);
-        wrap.style.cssText = `float: left; width: ${floatW}px; height: ${img.height}px; clear: left; pointer-events: none; opacity: 0;`;
-      }
+      spacer.style.cssText = [
+        `float: ${side}`,
+        `width: ${floatW}px`,
+        `height: ${img.height}px`,
+        `margin-top: ${imgTopInContent}px`,
+        `shape-outside: inset(0 0 0 0)`,
+        `pointer-events: none`,
+        `opacity: 0`,
+      ].join('; ');
 
-      // Insert wrap first (becomes 2nd in DOM after anchor is prepended)
       if (el.firstChild) {
-        el.insertBefore(wrap, el.firstChild);
+        el.insertBefore(spacer, el.firstChild);
       } else {
-        el.appendChild(wrap);
-      }
-
-      // Anchor is inserted AFTER wrap so it becomes firstChild (anchor before wrap in DOM)
-      if (imgTopInContent > 0) {
-        const anchor = document.createElement('div');
-        anchor.setAttribute('data-float-img', img.id);
-        anchor.contentEditable = 'false';
-        anchor.style.cssText = `float: ${side}; width: 1px; height: ${imgTopInContent}px; pointer-events: none; opacity: 0;`;
-        el.insertBefore(anchor, el.firstChild);
+        el.appendChild(spacer);
       }
     });
-  // Intentionally omit selectedImage — re-creating floats on every selection change
-  // causes interference with image selection events.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images, hasWrappedImages]);
 
@@ -870,13 +861,7 @@ export default function BlogReflectionEditor({
                       <button
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          // Only ONE image can be in wrap mode at a time
-                          // Keep the image at its current position — user chose where it should be
-                          setImages(prev => prev.map(i =>
-                            i.id === img.id
-                              ? { ...i, textWrap: true, zIndex: 10 }
-                              : { ...i, textWrap: false, zIndex: i.zIndex === 10 ? 20 : i.zIndex }
-                          ));
+                          updateImage(img.id, { textWrap: true, zIndex: 10 });
                         }}
                         className="p-2 bg-white dark:bg-background text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 rounded-full transition-colors touch-none"
                         title="Texto contorna imagem"
