@@ -910,7 +910,7 @@ export default function Home() {
 
       {/* Reminder Share Drawer */}
       {isReminderShareOpen && (
-        <div className="fixed inset-x-0 top-0 sm:bottom-0 z-50 flex items-end sm:items-center justify-center" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsReminderShareOpen(false)}
@@ -1096,7 +1096,7 @@ export default function Home() {
 
       {/* Share Drawer Overlay */}
       {isShareOpen && (
-        <div className="fixed inset-x-0 top-0 sm:bottom-0 z-50 flex items-end sm:items-center justify-center" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsShareOpen(false)}

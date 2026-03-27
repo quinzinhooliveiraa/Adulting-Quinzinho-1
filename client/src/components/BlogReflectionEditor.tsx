@@ -151,32 +151,21 @@ export default function BlogReflectionEditor({
     const el = editableRef.current;
     el.querySelectorAll('[data-float-img]').forEach(node => node.remove());
     if (!hasWrappedImages) return;
-
+    
     const wrapImages = images.filter(img => img.textWrap);
     wrapImages.sort((a, b) => a.y - b.y);
     const containerWidth = el.offsetWidth || 600;
+
     const elPadding = parseFloat(getComputedStyle(el).paddingTop) || 0;
     const elPaddingLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
-    const gap = 16;
-
-    const fragment = document.createDocumentFragment();
 
     wrapImages.forEach(img => {
-      // Compute rotated bounding box so text wraps around the visual shape
-      const rad = ((img.rotation || 0) * Math.PI) / 180;
-      const cosA = Math.abs(Math.cos(rad));
-      const sinA = Math.abs(Math.sin(rad));
-      const bw = img.width * cosA + img.height * sinA;
-      const bh = img.width * sinA + img.height * cosA;
-      // Bounding box position (rotation is around the center of img)
-      const bx = img.x + (img.width - bw) / 2;
-      const by = img.y + (img.height - bh) / 2;
-
-      const adjustedY = Math.max(0, by - elPadding);
-      const adjustedX = Math.max(0, bx - elPaddingLeft);
-      const side = (bx + bw / 2) < containerWidth / 2 ? 'left' : 'right';
-      const imgRight = adjustedX + bw;
-      const imgBottom = adjustedY + bh;
+      const adjustedY = Math.max(0, img.y - elPadding);
+      const adjustedX = Math.max(0, img.x - elPaddingLeft);
+      const side = img.x < containerWidth / 2 ? 'left' : 'right';
+      const gap = 16;
+      const imgRight = adjustedX + img.width;
+      const imgBottom = adjustedY + img.height;
 
       const spacer = document.createElement('div');
       spacer.setAttribute('data-float-img', img.id);
@@ -184,23 +173,19 @@ export default function BlogReflectionEditor({
 
       if (side === 'right') {
         const w = containerWidth - adjustedX + gap;
-        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        spacer.style.cssText = `float: right; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       } else {
         const w = imgRight + gap;
-        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + gap}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
+        spacer.style.cssText = `float: left; width: ${w}px; height: ${imgBottom + 12}px; shape-outside: inset(${adjustedY}px 0 0 0); pointer-events: none; opacity: 0;`;
       }
 
-      fragment.appendChild(spacer);
+      if (el.firstChild) {
+        el.insertBefore(spacer, el.firstChild);
+      } else {
+        el.appendChild(spacer);
+      }
     });
-
-    // Insert all spacers in correct y-ascending order before existing content
-    const firstContent = el.firstChild;
-    if (firstContent) {
-      el.insertBefore(fragment, firstContent);
-    } else {
-      el.appendChild(fragment);
-    }
-  }, [images, hasWrappedImages]);
+  }, [images, selectedImage, hasWrappedImages]);
 
   const handleContentInput = useCallback(() => {
     if (editableRef.current) {
@@ -448,7 +433,7 @@ export default function BlogReflectionEditor({
   }, []);
 
   return (
-    <div className="fixed inset-x-0 sm:inset-0 bg-black/50 z-[45] sm:z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" style={{ top: 'env(safe-area-inset-top, 0px)', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }} onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:inset-0 bg-black/50 z-[45] sm:z-50 flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-300" onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
       <div className="bg-background sm:rounded-xl h-full sm:h-auto sm:max-h-[95vh] overflow-y-auto w-full max-w-3xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col shadow-2xl overscroll-contain">
         
         <div className="sticky top-0 bg-background z-30 flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-border/40">
@@ -844,9 +829,8 @@ export default function BlogReflectionEditor({
 
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-1 z-30 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
                       onPointerDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <button
                         onPointerDown={(e) => {
@@ -913,42 +897,21 @@ export default function BlogReflectionEditor({
                 <div key={`wrap-${img.id}`}>
                   <div
                     data-img-overlay="true"
-                    className={`absolute pointer-events-auto ${img.locked ? "cursor-default" : "cursor-move"} ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                    className={`absolute pointer-events-auto ${selectedImage === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
                     style={{
                       left: `${img.x}px`,
                       top: `${img.y}px`,
                       width: `${img.width}px`,
                       height: `${img.height}px`,
-                      transform: `rotate(${img.rotation || 0}deg)`,
+                      transform: `rotate(${img.rotation}deg)`,
                       zIndex: 25,
                       borderRadius: '12px',
                       overflow: 'hidden',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      touchAction: 'none',
                     }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setSelectedImage(img.id);
-                      if (img.locked) return;
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      const startX = e.clientX;
-                      const startY = e.clientY;
-                      const initX = img.x;
-                      const initY = img.y;
-                      const container = canvasContainerRef.current;
-                      const containerW = container?.offsetWidth || 600;
-                      const handleMove = (mv: PointerEvent) => {
-                        updateImage(img.id, {
-                          x: Math.max(0, Math.min(containerW - img.width, initX + (mv.clientX - startX))),
-                          y: Math.max(0, initY + (mv.clientY - startY)),
-                        });
-                      };
-                      const handleUp = () => {
-                        document.removeEventListener('pointermove', handleMove);
-                        document.removeEventListener('pointerup', handleUp);
-                      };
-                      document.addEventListener('pointermove', handleMove);
-                      document.addEventListener('pointerup', handleUp);
                     }}
                   >
                     <img src={img.src} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -960,10 +923,9 @@ export default function BlogReflectionEditor({
                   </div>
                   {selectedImage === img.id && !isDrawingMode && (
                     <div 
-                      className="absolute flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
-                      style={{ zIndex: 35, top: `${img.y + img.height - 48}px`, left: `${img.x + img.width / 2}px`, transform: 'translateX(-50%)' }}
+                      className="absolute left-1/2 -translate-x-1/2 flex gap-1 bg-white/95 dark:bg-background/95 backdrop-blur p-1 rounded-full shadow-lg border border-border/50"
+                      style={{ zIndex: 35, top: `${img.y + img.height + 8}px` }}
                       onPointerDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <button
                         onPointerDown={(e) => {
