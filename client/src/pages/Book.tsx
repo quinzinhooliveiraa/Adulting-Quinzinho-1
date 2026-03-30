@@ -122,10 +122,14 @@ type PendingHL = {
 };
 
 const HL_COLORS = {
-  yellow: { bg: "rgba(255,236,90,0.55)",  dark: "rgba(255,236,90,0.3)",  label: "Amarelo" },
-  green:  { bg: "rgba(120,210,130,0.55)", dark: "rgba(120,210,130,0.3)", label: "Verde" },
-  pink:   { bg: "rgba(255,160,180,0.55)", dark: "rgba(255,160,180,0.3)", label: "Rosa" },
-  blue:   { bg: "rgba(100,190,240,0.55)", dark: "rgba(100,190,240,0.3)", label: "Azul" },
+  yellow:  { bg: "rgba(255,236,90,0.55)",   dark: "rgba(255,236,90,0.3)",   label: "Amarelo" },
+  green:   { bg: "rgba(120,210,130,0.55)",  dark: "rgba(120,210,130,0.3)",  label: "Verde" },
+  pink:    { bg: "rgba(255,160,180,0.55)",  dark: "rgba(255,160,180,0.3)",  label: "Rosa" },
+  blue:    { bg: "rgba(100,190,240,0.55)",  dark: "rgba(100,190,240,0.3)",  label: "Azul" },
+  orange:  { bg: "rgba(255,180,80,0.55)",   dark: "rgba(255,180,80,0.3)",   label: "Laranja" },
+  purple:  { bg: "rgba(190,130,240,0.55)",  dark: "rgba(190,130,240,0.3)",  label: "Roxo" },
+  teal:    { bg: "rgba(80,210,200,0.55)",   dark: "rgba(80,210,200,0.3)",   label: "Ciano" },
+  red:     { bg: "rgba(255,110,110,0.55)",  dark: "rgba(255,110,110,0.3)",  label: "Vermelho" },
 } as const;
 
 type HLColor = keyof typeof HL_COLORS;
@@ -186,15 +190,24 @@ const BOOK_STYLES = `
     55%  { opacity: 0.85; transform: perspective(900px) rotateY(-6deg) scaleX(0.99); }
     100% { opacity: 1;    transform: perspective(900px) rotateY(0deg) scaleX(1); }
   }
-  .bk-hl-yellow { background: rgba(255,236,90,0.55); border-radius: 2px; cursor: pointer; }
-  .bk-hl-green  { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
-  .bk-hl-pink   { background: rgba(255,160,180,0.55); border-radius: 2px; cursor: pointer; }
-  .bk-hl-blue   { background: rgba(100,190,240,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-yellow  { background: rgba(255,236,90,0.55);  border-radius: 2px; cursor: pointer; }
+  .bk-hl-green   { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-pink    { background: rgba(255,160,180,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-blue    { background: rgba(100,190,240,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-orange  { background: rgba(255,180,80,0.55);  border-radius: 2px; cursor: pointer; }
+  .bk-hl-purple  { background: rgba(190,130,240,0.55); border-radius: 2px; cursor: pointer; }
+  .bk-hl-teal    { background: rgba(80,210,200,0.55);  border-radius: 2px; cursor: pointer; }
+  .bk-hl-red     { background: rgba(255,110,110,0.55); border-radius: 2px; cursor: pointer; }
   .dark .bk-hl-yellow { background: rgba(255,236,90,0.28); }
   .dark .bk-hl-green  { background: rgba(120,210,130,0.28); }
   .dark .bk-hl-pink   { background: rgba(255,160,180,0.28); }
   .dark .bk-hl-blue   { background: rgba(100,190,240,0.28); }
-  .bk-hl-yellow:active,.bk-hl-green:active,.bk-hl-pink:active,.bk-hl-blue:active { opacity:0.7; }
+  .dark .bk-hl-orange { background: rgba(255,180,80,0.28); }
+  .dark .bk-hl-purple { background: rgba(190,130,240,0.28); }
+  .dark .bk-hl-teal   { background: rgba(80,210,200,0.28); }
+  .dark .bk-hl-red    { background: rgba(255,110,110,0.28); }
+  .bk-hl-yellow:active,.bk-hl-green:active,.bk-hl-pink:active,.bk-hl-blue:active,
+  .bk-hl-orange:active,.bk-hl-purple:active,.bk-hl-teal:active,.bk-hl-red:active { opacity:0.7; }
 `;
 
 /* ─────────────────────────────────────────────────────────────────
