@@ -722,7 +722,6 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
           e.stopPropagation();
         }
       }
-      // Detect PrintScreen
       if (e.key === "PrintScreen" || e.key === "Print") {
         e.preventDefault();
         const newCount = screenshotCount + 1;
@@ -735,6 +734,16 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       }
     };
 
+    // Block ALL copy/cut at native document level (catches mobile toolbar too)
+    const blockNativeCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Set empty clipboard so even if the event is not fully blocked, nothing is copied
+      try { if (e.clipboardData) e.clipboardData.setData("text/plain", ""); } catch {}
+      // Clear the selection so the native "Copy" toolbar disappears
+      window.getSelection()?.removeAllRanges();
+    };
+
     const blockContext = (e: MouseEvent) => e.preventDefault();
 
     // Mobile screenshot detection via visibility change
@@ -743,7 +752,6 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       if (document.hidden) {
         lastHidden = Date.now();
       } else {
-        // If screen was hidden for less than 1.5s it might be a screenshot
         if (lastHidden && Date.now() - lastHidden < 1500) {
           const newCount = screenshotCount + 1;
           setScreenshotCount(newCount);
@@ -757,10 +765,14 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
     };
 
     document.addEventListener("keydown", blockCopy, true);
+    document.addEventListener("copy", blockNativeCopy, true);
+    document.addEventListener("cut", blockNativeCopy, true);
     document.addEventListener("contextmenu", blockContext, true);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       document.removeEventListener("keydown", blockCopy, true);
+      document.removeEventListener("copy", blockNativeCopy, true);
+      document.removeEventListener("cut", blockNativeCopy, true);
       document.removeEventListener("contextmenu", blockContext, true);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
