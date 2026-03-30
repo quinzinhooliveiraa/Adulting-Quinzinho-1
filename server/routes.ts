@@ -396,7 +396,7 @@ export async function registerRoutes(
         role: isAdminEmail ? "admin" : "user",
         isPremium: isAdminEmail,
         isActive: true,
-        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         premiumUntil: null,
         invitedBy: data.inviteCode || null,
         emailVerified: isAdminEmail,
@@ -768,7 +768,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -881,7 +881,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -956,7 +956,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           premiumUntil: null,
           invitedBy: null,
           appleId,
@@ -1032,7 +1032,7 @@ export async function registerRoutes(
 
       if (req.body.trialDays) {
         sessionParams.subscription_data = {
-          trial_period_days: Math.min(req.body.trialDays, 14),
+          trial_period_days: Math.min(req.body.trialDays, 30),
         };
       }
 
