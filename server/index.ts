@@ -119,7 +119,7 @@ app.use((req, res, next) => {
     try {
       const { runMigrations } = await import("stripe-replit-sync");
       const { getStripeSync } = await import("./stripeClient");
-      const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+      const databaseUrl = process.env.DATABASE_URL;
       if (databaseUrl) {
         log("Initializing Stripe schema...", "stripe");
         await runMigrations({ databaseUrl, schema: "stripe" });
