@@ -524,20 +524,20 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
                 </div>
               </div>
             ) : (
-              <div className="pt-12 pb-8">
-                <div className="flex items-center gap-3 mb-5">
+              <div className="pt-12 pb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
                   <span className="text-[9px] uppercase tracking-[0.28em] font-bold bk-accent">
                     {chapter.tag ? chapter.tag : `Capítulo ${chapter.order}`}
                   </span>
                   <div className="h-px flex-1 opacity-25" style={{ background: "var(--bk-accent)" }} />
                 </div>
-                <h2 className={`bk-serif font-bold bk-ink leading-tight uppercase tracking-wide ${chapter.title.length > 60 ? "text-[15px]" : chapter.title.length > 40 ? "text-[17px]" : "text-[19px]"}`}
-                  style={{ letterSpacing: "0.04em" }}>
+                <h2 className={`bk-serif font-bold bk-ink leading-snug uppercase tracking-wide ${chapter.title.length > 60 ? "text-[14px]" : chapter.title.length > 40 ? "text-[16px]" : "text-[18px]"}`}
+                  style={{ letterSpacing: "0.03em" }}>
                   {chapter.title}
                 </h2>
                 {chapter.excerpt && (
-                  <p className="bk-serif text-[13px] italic bk-muted mt-4 leading-relaxed border-l-2 pl-3"
+                  <p className="bk-serif text-[13px] italic bk-muted mt-3 leading-relaxed border-l-2 pl-3"
                     style={{ borderColor: "var(--bk-accent)" }}>
                     {chapter.excerpt}
                   </p>
@@ -566,13 +566,16 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
               ))}
             </div>
           ) : (
-            <div className="pt-2 pb-2">
+            <div className="pt-3 pb-2">
               {paras.map((p, i) => (
-                <p key={i} data-para-idx={i} className="bk-serif bk-ink mb-5 last:mb-0"
+                <p key={i} data-para-idx={i} className="bk-serif bk-ink"
                   style={{
-                    fontSize: "16.5px", lineHeight: "1.92", textAlign: "justify",
-                    hyphens: "auto", letterSpacing: "0.008em",
-                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.5em",
+                    fontSize: "16px",
+                    lineHeight: "1.72",
+                    textAlign: "justify",
+                    hyphens: "auto",
+                    marginBottom: i < paras.length - 1 ? "0.85em" : "0",
+                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.6em",
                   } as React.CSSProperties}>
                   {renderPara(p, i)}
                 </p>
