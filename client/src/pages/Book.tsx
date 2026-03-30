@@ -631,12 +631,13 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 /* ─────────────────────────────────────────────────────────────────
    BOOK READER  (full-screen overlay)
 ───────────────────────────────────────────────────────────────── */
-function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
+function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: {
   chapters: Chapter[];
   startIdx: number;
   purchased: boolean;
   onClose: () => void;
   onBuy: () => void;
+  openToc?: boolean;
 }) {
   const initCounts = chapters.map((ch, i) => {
     if (!ch.pdfPage) return 1;
@@ -648,7 +649,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   const [chapterIdx, setChapterIdx] = useState(startIdx);
   const [subPage, setSubPage]       = useState(0);
   const [animClass, setAnimClass]   = useState("");
-  const [showToc, setShowToc]       = useState(false);
+  const [showToc, setShowToc]       = useState(openToc ?? false);
   const [showHLPanel, setShowHLPanel] = useState(false);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
@@ -659,20 +660,8 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
     return localStorage.getItem("bk-blocked") === "1";
   });
 
-  // ─── Save & restore reading progress ──────────────────────────
-  useEffect(() => {
-    const saved = localStorage.getItem("bk-progress");
-    if (saved) {
-      try {
-        const { ch, sp } = JSON.parse(saved);
-        if (typeof ch === "number" && ch < chapters.length) {
-          setChapterIdx(ch);
-          setSubPage(sp ?? 0);
-        }
-      } catch {}
-    }
-  }, []);
-
+  // ─── Save reading progress ─────────────────────────────────────
+  // (Restore is handled by the parent via startIdx prop)
   useEffect(() => {
     localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage }));
   }, [chapterIdx, subPage]);
@@ -984,6 +973,7 @@ export default function Book() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"sobre" | "ler">("ler");
   const [readerStartIdx, setReaderStartIdx] = useState<number | null>(null);
+  const [readerOpenToc, setReaderOpenToc] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<Chapter[]>({
@@ -1020,7 +1010,8 @@ export default function Book() {
     setReaderStartIdx(idx);
   }
 
-  function openReader(startIdx?: number) {
+  function openReader(startIdx?: number, showToc = false) {
+    setReaderOpenToc(showToc);
     if (startIdx !== undefined) {
       setReaderStartIdx(startIdx);
     } else {
@@ -1274,7 +1265,7 @@ export default function Book() {
             )}
 
             {/* Open reader from TOC */}
-            <button onClick={() => openReader()} data-testid="btn-open-toc"
+            <button onClick={() => openReader(undefined, true)} data-testid="btn-open-toc"
               className="w-full mb-5 p-4 border border-border bg-card rounded-2xl flex items-center gap-3 active:scale-[0.99] transition-transform">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: "var(--bk-accent-light,rgba(124,92,58,0.1))" }}>
@@ -1345,8 +1336,9 @@ export default function Book() {
           chapters={sortedChapters}
           startIdx={readerStartIdx}
           purchased={purchased}
-          onClose={() => setReaderStartIdx(null)}
-          onBuy={() => { setReaderStartIdx(null); setShowPurchaseModal(true); }}
+          openToc={readerOpenToc}
+          onClose={() => { setReaderStartIdx(null); setReaderOpenToc(false); }}
+          onBuy={() => { setReaderStartIdx(null); setReaderOpenToc(false); setShowPurchaseModal(true); }}
         />
       )}
 
