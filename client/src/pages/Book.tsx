@@ -1019,6 +1019,7 @@ export default function Book() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"sobre" | "ler">("ler");
   const [readerStartIdx, setReaderStartIdx] = useState<number | null>(null);
+  const [readerKey, setReaderKey] = useState(0);
   const [readerOpenToc, setReaderOpenToc] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
@@ -1053,11 +1054,14 @@ export default function Book() {
     const ch = sortedChapters[idx];
     if (!ch) return;
     if (!purchased && !ch.isPreview) { setShowPurchaseModal(true); return; }
+    setReaderKey(k => k + 1);
+    setReaderOpenToc(false);
     setReaderStartIdx(idx);
   }
 
   function openReader(startIdx?: number, showToc = false) {
     setReaderOpenToc(showToc);
+    setReaderKey(k => k + 1);
     if (startIdx !== undefined) {
       setReaderStartIdx(startIdx);
     } else {
@@ -1379,6 +1383,7 @@ export default function Book() {
       {/* Book reader overlay */}
       {readerStartIdx !== null && sortedChapters.length > 0 && (
         <BookReader
+          key={readerKey}
           chapters={sortedChapters}
           startIdx={readerStartIdx}
           purchased={purchased}
