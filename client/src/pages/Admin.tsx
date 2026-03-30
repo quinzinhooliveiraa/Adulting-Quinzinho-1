@@ -7,7 +7,7 @@ import {
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
   Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp,
   BookOpen, Lock, ChevronRight, ChevronUp, Pencil, CreditCard,
-  Bold, Italic
+  Bold, Italic, List
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -858,18 +858,16 @@ function renderInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[]
 
 // Versão previsível para o editor admin:
 // SOMENTE \n\n cria novo parágrafo. \n simples = continuação da linha (vira espaço).
-// Assim o editor controla exatamente onde quer a quebra.
+// Linhas iniciadas com "- " formam lista de bullet points.
 function processContentEditor(raw: string): string[] {
   if (!raw.trim()) return [];
   return raw
     .split(/\n\n+/)
-    .map(block =>
-      block
-        .split("\n")
-        .map(l => l.trim())
-        .filter(l => l.length > 0)
-        .join(" ")
-    )
+    .map(block => {
+      const lines = block.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length > 0 && lines.every(l => l.startsWith("- "))) return lines.join("\n");
+      return lines.join(" ");
+    })
     .filter(p => p.trim().length > 0);
 }
 
@@ -900,6 +898,39 @@ export default function Admin() {
       const cur = selected ? start + tag.length : start + tag.length;
       el.setSelectionRange(cur, selected ? end + tag.length : cur);
     });
+  }
+
+  function applyBullet() {
+    const el = bookTextareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const value = el.value;
+    const selected = value.slice(start, end);
+    if (selected.trim()) {
+      // Prefix each selected line with "- "
+      const newSelected = selected
+        .split("\n")
+        .map(l => (l.trim() ? (l.trimStart().startsWith("- ") ? l : "- " + l.trim()) : l))
+        .join("\n");
+      const before = value.slice(0, start);
+      const needsBreak = before.length > 0 && !before.endsWith("\n\n");
+      const prefix = needsBreak ? "\n\n" : "";
+      const newContent = before + prefix + newSelected + value.slice(end);
+      setBookForm(f => ({ ...f, content: newContent }));
+      requestAnimationFrame(() => { el.focus(); el.setSelectionRange(start + prefix.length, start + prefix.length + newSelected.length); });
+    } else {
+      // Insert a new bullet item at cursor
+      const before = value.slice(0, start);
+      const after = value.slice(end);
+      // If previous line is also a bullet, just add \n- ; otherwise add \n\n-
+      const prevLine = before.split("\n").pop() ?? "";
+      const isInList = prevLine.trimStart().startsWith("- ");
+      const insert = isInList ? "\n- " : (before.length > 0 && !before.endsWith("\n\n") ? "\n\n- " : "- ");
+      const newContent = before + insert + after;
+      setBookForm(f => ({ ...f, content: newContent }));
+      requestAnimationFrame(() => { el.focus(); const pos = start + insert.length; el.setSelectionRange(pos, pos); });
+    }
   }
   const [bookExpandedId, setBookExpandedId] = useState<number | null>(null);
   const [analyticsDays, setAnalyticsDays] = useState(30);
@@ -1915,9 +1946,10 @@ export default function Admin() {
                 {!bookPreview && (
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-[10px] text-muted-foreground">
-                      <code className="bg-muted px-1 rounded">Enter Enter</code> = novo parágrafo &nbsp;·&nbsp;
-                      <code className="bg-muted px-1 rounded">*texto*</code> = <em>itálico</em> &nbsp;·&nbsp;
-                      <code className="bg-muted px-1 rounded">**texto**</code> = <strong>negrito</strong>
+                      <code className="bg-muted px-1 rounded">Enter Enter</code> = parágrafo &nbsp;·&nbsp;
+                      <code className="bg-muted px-1 rounded">*i*</code> <em>itálico</em> &nbsp;·&nbsp;
+                      <code className="bg-muted px-1 rounded">**n**</code> <strong>negrito</strong> &nbsp;·&nbsp;
+                      <code className="bg-muted px-1 rounded">- item</code> lista
                     </p>
                     <div className="flex gap-1">
                       <button
@@ -1935,6 +1967,14 @@ export default function Admin() {
                         title="Itálico (*texto*)"
                       >
                         <Italic size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); applyBullet(); }}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-muted-foreground/20 text-foreground text-xs"
+                        title="Lista (- item)"
+                      >
+                        <List size={13} />
                       </button>
                     </div>
                   </div>
@@ -1963,22 +2003,27 @@ export default function Admin() {
                     {processContentEditor(bookForm.content).length === 0 ? (
                       <p className="text-sm text-muted-foreground italic text-center py-8">Nenhum conteúdo para exibir.</p>
                     ) : (
-                      processContentEditor(bookForm.content).map((para, i, arr) => (
-                        <p
-                          key={i}
-                          className="font-serif text-stone-800 dark:text-stone-100"
-                          style={{
-                            fontSize: "16px",
-                            lineHeight: "1.72",
-                            textAlign: "justify",
-                            hyphens: "auto",
-                            marginBottom: i < arr.length - 1 ? "0.85em" : 0,
-                            textIndent: i === 0 ? "0" : "1.6em",
-                          }}
-                        >
-                          {renderInlineMarkdown(para, `p${i}`)}
-                        </p>
-                      ))
+                      processContentEditor(bookForm.content).map((para, i, arr) => {
+                        const mb = i < arr.length - 1 ? "0.85em" : 0;
+                        if (para.trimStart().startsWith("- ")) {
+                          const items = para.split("\n").map(l => l.trim()).filter(l => l.startsWith("- ")).map(l => l.slice(2));
+                          return (
+                            <ul key={i} className="font-serif text-stone-800 dark:text-stone-100"
+                              style={{ fontSize: "16px", lineHeight: "1.72", paddingLeft: "1.4em", marginBottom: mb, listStyleType: "disc" }}>
+                              {items.map((item, j) => (
+                                <li key={j}>{renderInlineMarkdown(item, `p${i}li${j}`)}</li>
+                              ))}
+                            </ul>
+                          );
+                        }
+                        return (
+                          <p key={i} className="font-serif text-stone-800 dark:text-stone-100"
+                            style={{ fontSize: "16px", lineHeight: "1.72", textAlign: "justify", hyphens: "auto", marginBottom: mb, textIndent: i === 0 ? "0" : "1.6em" }}
+                          >
+                            {renderInlineMarkdown(para, `p${i}`)}
+                          </p>
+                        );
+                      })
                     )}
                   </div>
                 ) : (

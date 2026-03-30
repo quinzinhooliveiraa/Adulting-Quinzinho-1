@@ -61,12 +61,12 @@ function processContent(raw: string): string[] {
     // Format 1: explicit paragraph breaks
     return raw
       .split(/\n\n+/)
-      .map(block =>
-        block.split("\n")
-          .map(l => l.trim())
-          .filter(l => l.length > 0)
-          .join(" ")
-      )
+      .map(block => {
+        const lines = block.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+        // Preserve bullet lists as \n-separated items
+        if (lines.length > 0 && lines.every(l => l.startsWith("- "))) return lines.join("\n");
+        return lines.join(" ");
+      })
       .filter(p => p.trim().length > 0);
   }
 
@@ -595,19 +595,33 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
             </div>
           ) : (
             <div className="pt-3 pb-2">
-              {paras.map((p, i) => (
-                <p key={i} data-para-idx={i} className="bk-serif bk-ink"
-                  style={{
-                    fontSize: "16px",
-                    lineHeight: "1.72",
-                    textAlign: "justify",
-                    hyphens: "auto",
-                    marginBottom: i < paras.length - 1 ? "0.85em" : "0",
-                    textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.6em",
-                  } as React.CSSProperties}>
-                  {renderPara(p, i)}
-                </p>
-              ))}
+              {paras.map((p, i) => {
+                const isBullet = p.trimStart().startsWith("- ");
+                if (isBullet) {
+                  const items = p.split("\n").map(l => l.trim()).filter(l => l.startsWith("- ")).map(l => l.slice(2));
+                  return (
+                    <ul key={i} data-para-idx={i} className="bk-serif bk-ink"
+                      style={{ fontSize: "16px", lineHeight: "1.72", paddingLeft: "1.4em", marginBottom: i < paras.length - 1 ? "0.85em" : "0", listStyleType: "disc" }}>
+                      {items.map((item, j) => (
+                        <li key={j}>{inlineMd(item, `p${i}li${j}`)}</li>
+                      ))}
+                    </ul>
+                  );
+                }
+                return (
+                  <p key={i} data-para-idx={i} className="bk-serif bk-ink"
+                    style={{
+                      fontSize: "16px",
+                      lineHeight: "1.72",
+                      textAlign: "justify",
+                      hyphens: "auto",
+                      marginBottom: i < paras.length - 1 ? "0.85em" : "0",
+                      textIndent: i === 0 && safeSubPage === 0 ? "0" : "1.6em",
+                    } as React.CSSProperties}>
+                    {renderPara(p, i)}
+                  </p>
+                );
+              })}
             </div>
           )}
 
