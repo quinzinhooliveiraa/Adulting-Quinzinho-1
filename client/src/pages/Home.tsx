@@ -12,7 +12,7 @@ import BlogReflectionEditor from "@/components/BlogReflectionEditor";
 import { generateShareImage, renderShareImageToCanvas, type ShareImageTheme } from "@/utils/shareImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateEntry } from "@/hooks/useJournal";
-import { useCreateCheckin, useLatestCheckin } from "@/hooks/useCheckins";
+import { useCreateCheckin, useLatestCheckin, useCheckins } from "@/hooks/useCheckins";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { JOURNEYS } from "./Journey";
@@ -112,6 +112,7 @@ export default function Home() {
   const createEntry = useCreateEntry();
   const createCheckin = useCreateCheckin();
   const { data: latestCheckin } = useLatestCheckin();
+  const { data: allCheckins = [] } = useCheckins();
 
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
@@ -625,19 +626,19 @@ export default function Home() {
         </section>
       )}
 
-      {checkIns.length > 0 && (
+      {allCheckins.length > 0 && (
         <section className="animate-in fade-in slide-in-from-top-2">
           <div className="bg-primary/5 rounded-3xl p-6 border border-primary/10 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-primary" />
-                <h3 className="font-serif text-lg">Resumo Semanal</h3>
+                <BarChart3 size={16} className="text-primary" />
+                <h3 className="font-serif text-lg">Relatório de Humor</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setIsSummaryOpen(true)}
                 className="text-[10px] font-bold text-primary underline uppercase tracking-wider"
               >
-                Ver Detalhes
+                Ver Relatório
               </button>
             </div>
           </div>
@@ -1044,53 +1045,88 @@ export default function Home() {
       )}
 
       {/* Weekly Summary Modal */}
-      {isSummaryOpen && weeklySummary && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
-          <div 
+      {isSummaryOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+          <div
             className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
             onClick={() => setIsSummaryOpen(false)}
           />
-          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
-            <button 
-              onClick={() => setIsSummaryOpen(false)}
-              className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
-            >
-              <X size={18} />
-            </button>
-            
-            <div className="space-y-8">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles size={32} className="text-primary" />
+          <div className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl shadow-2xl animate-in slide-in-from-bottom-full duration-400 flex flex-col"
+            style={{ maxHeight: "90dvh" }}>
+
+            {/* Header fixo */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+              <div>
+                <h3 className="text-xl font-serif text-foreground">Relatório de Humor</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{allCheckins.length} registro{allCheckins.length !== 1 ? "s" : ""} no total</p>
+              </div>
+              <button
+                onClick={() => setIsSummaryOpen(false)}
+                className="p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Resumo rápido */}
+            {weeklySummary && (
+              <div className="px-6 py-4 border-b border-border/40 shrink-0">
+                <div className="flex gap-3 flex-wrap">
+                  {weeklySummary.counts.slice(0, 4).map((item, i) => (
+                    <div key={i} className="flex items-center gap-1.5 bg-primary/5 rounded-full px-3 py-1">
+                      <span className="text-xs font-semibold text-foreground">{item.label}</span>
+                      <span className="text-xs text-primary font-bold">{item.percent}%</span>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-2xl font-serif text-foreground">Sua Semana</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                  Baseado nos seus check-ins, você tem se sentido predominantemente <span className="text-primary font-bold">{weeklySummary.predominant}</span>.
-                </p>
               </div>
+            )}
 
-              <div className="space-y-6">
-                {weeklySummary.counts.map((item, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between text-xs font-medium uppercase tracking-wider">
-                      <span>{item.label}</span>
-                      <span className="text-primary">{item.percent}%</span>
+            {/* Lista de entradas scrollável */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3 pb-8">
+              {allCheckins.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum check-in registrado ainda.</p>
+              ) : (
+                allCheckins.map((c) => {
+                  const moodInfo = moodIcons.find(m => m.id === c.mood);
+                  const MoodIcon = moodInfo?.icon ?? Smile;
+                  const dateObj = new Date(c.createdAt);
+                  const dateLabel = format(dateObj, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
+                  const timeLabel = format(dateObj, "HH:mm", { locale: ptBR });
+                  return (
+                    <div key={c.id} className="bg-background border border-border/50 rounded-2xl p-4 space-y-2">
+                      {/* Data e hora */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{dateLabel}</span>
+                        <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
+                      </div>
+                      {/* Humor */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <MoodIcon size={16} className="text-primary" />
+                        </div>
+                        <span className="text-sm font-semibold text-foreground">{moodInfo?.label ?? c.mood}</span>
+                      </div>
+                      {/* Contexto/motivo */}
+                      {c.entry && c.entry.trim() && (
+                        <p className="text-sm text-foreground/80 leading-relaxed pl-10">
+                          "{c.entry.trim()}"
+                        </p>
+                      )}
+                      {/* Tags */}
+                      {c.tags && c.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pl-10">
+                          {c.tags.map((tag, ti) => (
+                            <span key={ti} className="text-[10px] bg-primary/8 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/15">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all duration-1000" 
-                        style={{ width: `${item.percent}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 text-center">
-                <p className="text-[10px] text-muted-foreground italic">
-                  Seu estado emocional parece {weeklySummary.trend} no momento.
-                </p>
-              </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
