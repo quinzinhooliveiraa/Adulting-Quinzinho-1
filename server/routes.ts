@@ -238,7 +238,7 @@ export async function registerRoutes(
   app.set("trust proxy", 1);
   app.use(
     session({
-      store: new PgStore({ pool, createTableIfMissing: true }),
+      store: new PgStore({ pool }),
       secret: process.env.SESSION_SECRET || "casa-dos-20-secret-key-change-in-prod",
       resave: false,
       saveUninitialized: false,
