@@ -27,6 +27,33 @@ type Chapter = {
  *  1. Paragraphs separated by \n\n (some chapters)
  *  2. Only single \n line-wraps, paragraphs detected by sentence-end + capital-start
  */
+function splitByFrases(text: string): string[] {
+  // Split a continuous string into readable paragraphs.
+  // A paragraph break occurs when a sentence ends with . ! ? and the next
+  // sentence starts with an uppercase letter, provided the current chunk is
+  // long enough (≥ 60 chars) to avoid splitting very short items.
+  const result: string[] = [];
+  let buf = "";
+  let i = 0;
+  while (i < text.length) {
+    buf += text[i];
+    if (/[.!?]/.test(text[i]) && i + 1 < text.length) {
+      let j = i + 1;
+      while (j < text.length && text[j] === " ") j++;
+      const nextChar = text[j];
+      if (nextChar && /[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ"—]/.test(nextChar) && buf.trim().length >= 60) {
+        result.push(buf.trim());
+        buf = "";
+        i = j;
+        continue;
+      }
+    }
+    i++;
+  }
+  if (buf.trim()) result.push(buf.trim());
+  return result.filter(p => p.length > 0);
+}
+
 function processContent(raw: string): string[] {
   if (!raw.trim()) return [];
 
@@ -43,9 +70,12 @@ function processContent(raw: string): string[] {
       .filter(p => p.trim().length > 0);
   }
 
+  if (!raw.includes("\n")) {
+    // Format 3: single long string (PDF extracted without newlines) — split by sentences
+    return splitByFrases(raw);
+  }
+
   // Format 2: only single \n — join PDF-wrapped lines into paragraphs
-  // A new paragraph starts when the previous line ends with sentence punctuation
-  // AND the next line starts with a capital (or special) letter
   const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   const paragraphs: string[] = [];
   let current = "";
