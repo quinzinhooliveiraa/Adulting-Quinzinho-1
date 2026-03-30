@@ -40,12 +40,13 @@ function AuthGate() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const googleNewUser = params.get("google_new_user");
+    const googleLogin = params.get("google_login");
     const err = params.get("google_error");
     const bonus = params.get("bonus");
     const checkout = params.get("checkout");
     const fromPwa = params.get("pwa") === "1";
 
-    if (googleNewUser || err !== null || bonus || checkout || fromPwa) {
+    if (googleNewUser || googleLogin || err !== null || bonus || checkout || fromPwa) {
       window.history.replaceState({}, "", window.location.pathname);
       if (googleNewUser) {
         localStorage.setItem("casa-dos-20-needs-onboarding", "true");

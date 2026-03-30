@@ -902,7 +902,7 @@ export async function registerRoutes(
         if (isNewUser) {
           res.redirect(fromPwa ? "/?google_new_user=1&pwa=1" : "/?google_new_user=1");
         } else {
-          res.redirect(fromPwa ? "/?pwa=1" : "/");
+          res.redirect(fromPwa ? "/?google_login=1&pwa=1" : "/?google_login=1");
         }
       });
     } catch (err) {
