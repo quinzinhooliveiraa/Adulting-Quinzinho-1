@@ -399,13 +399,14 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   // ─── Render paragraph with highlights ─────────────────────────
   function inlineMd(text: string, prefix: string): React.ReactNode[] {
     const nodes: React.ReactNode[] = [];
-    const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+    const regex = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*/g;
     let lastIdx = 0; let ki = 0;
     let m;
     while ((m = regex.exec(text)) !== null) {
       if (m.index > lastIdx) nodes.push(text.slice(lastIdx, m.index));
-      if (m[1] !== undefined) nodes.push(<strong key={`${prefix}b${ki++}`} style={{ fontWeight: 700 }}>{m[1]}</strong>);
-      else if (m[2] !== undefined) nodes.push(<em key={`${prefix}i${ki++}`}>{m[2]}</em>);
+      if (m[1] !== undefined) nodes.push(<strong key={`${prefix}bi${ki++}`} style={{ fontWeight: 700 }}><em>{m[1]}</em></strong>);
+      else if (m[2] !== undefined) nodes.push(<strong key={`${prefix}b${ki++}`} style={{ fontWeight: 700 }}>{m[2]}</strong>);
+      else if (m[3] !== undefined) nodes.push(<em key={`${prefix}i${ki++}`}>{m[3]}</em>);
       lastIdx = regex.lastIndex;
     }
     if (lastIdx < text.length) nodes.push(text.slice(lastIdx));

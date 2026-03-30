@@ -842,14 +842,15 @@ function processContent(raw: string): string[] {
 
 function renderInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+  const regex = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*/g;
   let lastIndex = 0;
   let match;
   let ki = 0;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
-    if (match[1] !== undefined) nodes.push(<strong key={`${keyPrefix}-b${ki++}`} style={{ fontWeight: 700 }}>{match[1]}</strong>);
-    else if (match[2] !== undefined) nodes.push(<em key={`${keyPrefix}-i${ki++}`}>{match[2]}</em>);
+    if (match[1] !== undefined) nodes.push(<strong key={`${keyPrefix}-bi${ki++}`} style={{ fontWeight: 700 }}><em>{match[1]}</em></strong>);
+    else if (match[2] !== undefined) nodes.push(<strong key={`${keyPrefix}-b${ki++}`} style={{ fontWeight: 700 }}>{match[2]}</strong>);
+    else if (match[3] !== undefined) nodes.push(<em key={`${keyPrefix}-i${ki++}`}>{match[3]}</em>);
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
