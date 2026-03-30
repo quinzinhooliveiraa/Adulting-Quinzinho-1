@@ -138,10 +138,24 @@ const BOOK_STYLES = `
   .bk-sep   { border-color: var(--bk-sep); }
   .bk-accent{ color: var(--bk-accent); }
   .bk-serif { font-family: 'Georgia', 'Times New Roman', serif; }
-  .pg-enter-right { animation: pgR .2s ease-out both; }
-  .pg-enter-left  { animation: pgL .2s ease-out both; }
-  @keyframes pgR { from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:none } }
-  @keyframes pgL { from { opacity:0; transform:translateX(-18px) } to { opacity:1; transform:none } }
+  .pg-enter-right {
+    animation: pgFlipR 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    transform-origin: left center;
+  }
+  .pg-enter-left {
+    animation: pgFlipL 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    transform-origin: right center;
+  }
+  @keyframes pgFlipR {
+    0%   { opacity: 0.15; transform: perspective(900px) rotateY(40deg) scaleX(0.92); }
+    55%  { opacity: 0.85; transform: perspective(900px) rotateY(6deg) scaleX(0.99); }
+    100% { opacity: 1;    transform: perspective(900px) rotateY(0deg) scaleX(1); }
+  }
+  @keyframes pgFlipL {
+    0%   { opacity: 0.15; transform: perspective(900px) rotateY(-40deg) scaleX(0.92); }
+    55%  { opacity: 0.85; transform: perspective(900px) rotateY(-6deg) scaleX(0.99); }
+    100% { opacity: 1;    transform: perspective(900px) rotateY(0deg) scaleX(1); }
+  }
   .bk-hl-yellow { background: rgba(255,236,90,0.55); border-radius: 2px; cursor: pointer; }
   .bk-hl-green  { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
   .bk-hl-pink   { background: rgba(255,160,180,0.55); border-radius: 2px; cursor: pointer; }
@@ -751,7 +765,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
   function navigate(dir: "prev" | "next") {
     setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
-    setTimeout(() => setAnimClass(""), 220);
+    setTimeout(() => setAnimClass(""), 400);
     if (dir === "next") {
       if (subPage < subPageCount - 1) setSubPage(p => p + 1);
       else if (chapterIdx < chapters.length - 1) { setChapterIdx(i => i + 1); setSubPage(0); }
@@ -774,7 +788,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
   function goToChapter(idx: number) {
     setAnimClass("pg-enter-right");
-    setTimeout(() => setAnimClass(""), 220);
+    setTimeout(() => setAnimClass(""), 400);
     setChapterIdx(idx); setSubPage(0); setShowToc(false);
   }
 
