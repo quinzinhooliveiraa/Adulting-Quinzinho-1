@@ -949,100 +949,129 @@ export default function Home() {
         </div>
       )}
 
-      {isReportOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
-            onClick={() => setIsReportOpen(false)}
-          />
-          <div className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
-            <button 
+      {isReportOpen && (() => {
+        const now = new Date();
+        const thisMonthCheckins = allCheckins.filter(c => {
+          const d = new Date(c.createdAt);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        });
+        return (
+          <div className="fixed inset-0 z-[60] flex items-end justify-center">
+            <div
+              className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300"
               onClick={() => setIsReportOpen(false)}
-              className="absolute top-5 right-5 p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+            />
+            <div
+              className="relative w-full max-w-md bg-card border border-border/50 rounded-t-3xl shadow-2xl animate-in slide-in-from-bottom-full duration-400 flex flex-col"
+              style={{ maxHeight: "92dvh" }}
             >
-              <X size={18} />
-            </button>
-            
-            <div className="space-y-5">
-              <div className="text-center space-y-1.5">
-                <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <BarChart3 size={28} className="text-primary" />
+              {/* Header fixo */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+                <div>
+                  <h3 className="text-xl font-serif text-foreground">Relatório Mensal</h3>
+                  {monthlyReport.month && (
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{monthlyReport.month}</p>
+                  )}
                 </div>
-                <h3 className="text-xl font-serif text-foreground">Relatório Mensal</h3>
-                {monthlyReport.month && (
-                  <p className="text-xs text-muted-foreground capitalize">{monthlyReport.month}</p>
+                <button
+                  onClick={() => setIsReportOpen(false)}
+                  className="p-2 text-muted-foreground hover:text-foreground bg-secondary/50 rounded-full"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Stats + tags + insight — scrollável junto com os check-ins */}
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5 pb-8">
+
+                {/* Métricas */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                    <FileText size={16} className="text-primary mx-auto mb-1" />
+                    <p className="text-lg font-bold text-foreground">{monthlyReport.totalEntries}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Reflexões</p>
+                  </div>
+                  <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                    <Calendar size={16} className="text-primary mx-auto mb-1" />
+                    <p className="text-lg font-bold text-foreground">{monthlyReport.activeDays}/{monthlyReport.totalDays}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Dias Ativos</p>
+                  </div>
+                  <div className="bg-secondary/30 p-3 rounded-xl text-center">
+                    <TrendingUp size={16} className="text-primary mx-auto mb-1" />
+                    <p className="text-lg font-bold text-foreground">{monthlyReport.totalWords}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Palavras</p>
+                  </div>
+                </div>
+
+                {/* Temas frequentes */}
+                {monthlyReport.topTags.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Temas mais frequentes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {monthlyReport.topTags.map((t: { tag: string; count: number }) => (
+                        <span key={t.tag} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                          #{t.tag} ({t.count})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-secondary/30 p-3 rounded-xl text-center">
-                  <FileText size={16} className="text-primary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-foreground">{monthlyReport.totalEntries}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Reflexões</p>
+                {/* Insight */}
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                  <p className="text-sm text-foreground leading-relaxed italic text-center">
+                    "{monthlyReport.insight}"
+                  </p>
                 </div>
-                <div className="bg-secondary/30 p-3 rounded-xl text-center">
-                  <Calendar size={16} className="text-primary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-foreground">{monthlyReport.activeDays}/{monthlyReport.totalDays}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Dias Ativos</p>
-                </div>
-                <div className="bg-secondary/30 p-3 rounded-xl text-center">
-                  <TrendingUp size={16} className="text-primary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-foreground">{monthlyReport.totalWords}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Palavras</p>
-                </div>
-              </div>
 
-              {monthlyReport.checkinsThisMonth > 0 && (
-                <div className="bg-secondary/20 p-4 rounded-2xl space-y-2">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Humor — {monthlyReport.checkinsThisMonth} check-ins</p>
-                  <div className="flex gap-1.5">
-                    {Object.entries(monthlyReport.moodCounts).map(([mood, count]) => {
-                      const total = monthlyReport.checkinsThisMonth;
-                      const pct = total > 0 ? Math.round((count as number / total) * 100) : 0;
-                      const moodEmojis: Record<string, string> = { great: "😊", good: "🙂", neutral: "😐", bad: "😞", awful: "😢" };
+                {/* Check-ins do mês — detalhados */}
+                {thisMonthCheckins.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+                      Check-ins do mês — {thisMonthCheckins.length} registro{thisMonthCheckins.length !== 1 ? "s" : ""}
+                    </p>
+                    {thisMonthCheckins.map((c) => {
+                      const moodInfo = moodIcons.find(m => m.id === c.mood);
+                      const MoodIcon = moodInfo?.icon ?? Smile;
+                      const dateObj = new Date(c.createdAt);
+                      const dateLabel = format(dateObj, "d 'de' MMMM", { locale: ptBR });
+                      const timeLabel = format(dateObj, "HH:mm", { locale: ptBR });
                       return (
-                        <div key={mood} className="flex-1 text-center">
-                          <div className="text-lg">{moodEmojis[mood] || "❓"}</div>
-                          <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                            <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                        <div key={c.id} className="bg-background border border-border/50 rounded-2xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{dateLabel}</span>
+                            <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
                           </div>
-                          <p className="text-[9px] text-muted-foreground mt-0.5">{pct}%</p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <MoodIcon size={16} className="text-primary" />
+                            </div>
+                            <span className="text-sm font-semibold text-foreground">{moodInfo?.label ?? c.mood}</span>
+                          </div>
+                          {c.entry && c.entry.trim() && (
+                            <p className="text-sm text-foreground/80 leading-relaxed pl-10">
+                              "{c.entry.trim()}"
+                            </p>
+                          )}
+                          {c.tags && c.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pl-10">
+                              {c.tags.map((tag, ti) => (
+                                <span key={ti} className="text-[10px] bg-primary/5 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/15">
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
-
-              {monthlyReport.topTags.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Temas mais frequentes</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {monthlyReport.topTags.map((t: { tag: string; count: number }) => (
-                      <span key={t.tag} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                        #{t.tag} ({t.count})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                <p className="text-sm text-foreground leading-relaxed italic text-center">
-                  "{monthlyReport.insight}"
-                </p>
+                )}
               </div>
-
-              <Button 
-                onClick={() => setIsReportOpen(false)}
-                className="w-full bg-primary text-primary-foreground rounded-full h-11 font-medium text-sm"
-              >
-                Continuar Jornada
-              </Button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Weekly Summary Modal */}
       {isSummaryOpen && (
