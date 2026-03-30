@@ -792,6 +792,70 @@ function FeedbackCard({ ticket, onUpdate }: { ticket: FeedbackTicket; onUpdate: 
   );
 }
 
+function splitByFrases(text: string): string[] {
+  const result: string[] = [];
+  let buf = "";
+  let i = 0;
+  while (i < text.length) {
+    buf += text[i];
+    if (/[.!?]/.test(text[i]) && i + 1 < text.length) {
+      let j = i + 1;
+      while (j < text.length && text[j] === " ") j++;
+      const nextChar = text[j];
+      if (nextChar && /[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ"—]/.test(nextChar) && buf.trim().length >= 60) {
+        result.push(buf.trim());
+        buf = "";
+        i = j;
+        continue;
+      }
+    }
+    i++;
+  }
+  if (buf.trim()) result.push(buf.trim());
+  return result.filter(p => p.length > 0);
+}
+
+function processContent(raw: string): string[] {
+  if (!raw.trim()) return [];
+  if (raw.includes("\n\n")) {
+    return raw.split(/\n\n+/).map(block =>
+      block.split("\n").map(l => l.trim()).filter(l => l.length > 0).join(" ")
+    ).filter(p => p.trim().length > 0);
+  }
+  if (!raw.includes("\n")) return splitByFrases(raw);
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const paragraphs: string[] = [];
+  let current = "";
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    current = current ? current + " " + line : line;
+    const next = lines[i + 1];
+    if (!next) { paragraphs.push(current); break; }
+    const endsWithPunct = /[.!?]["»"']?$/.test(line);
+    const nextStartsCap = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ""—]/.test(next);
+    if (endsWithPunct && nextStartsCap) { paragraphs.push(current); current = ""; }
+  }
+  if (current.trim()) paragraphs.push(current.trim());
+  return paragraphs.filter(p => p.length > 0);
+}
+
+// Versão previsível para o editor admin:
+// SOMENTE \n\n cria novo parágrafo. \n simples = continuação da linha (vira espaço).
+// Assim o editor controla exatamente onde quer a quebra.
+function processContentEditor(raw: string): string[] {
+  if (!raw.trim()) return [];
+  return raw
+    .split(/\n\n+/)
+    .map(block =>
+      block
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .join(" ")
+    )
+    .filter(p => p.trim().length > 0);
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { user: authUser } = useAuth();
@@ -802,6 +866,7 @@ export default function Admin() {
   const [bookEditId, setBookEditId] = useState<number | null>(null);
   const [bookForm, setBookForm] = useState({ order: 1, title: "", tag: "", excerpt: "", content: "", isPreview: false });
   const [bookFormOpen, setBookFormOpen] = useState(false);
+  const [bookPreview, setBookPreview] = useState(false);
   const [bookExpandedId, setBookExpandedId] = useState<number | null>(null);
   const [analyticsDays, setAnalyticsDays] = useState(30);
   const [excludeAdmins, setExcludeAdmins] = useState(true);
@@ -1790,11 +1855,88 @@ export default function Admin() {
                 <input type="text" value={bookForm.excerpt} onChange={e => setBookForm(f => ({ ...f, excerpt: e.target.value }))} placeholder="Frase de destaque..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-chapter-excerpt" />
               </div>
               <div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conteúdo completo</label>
-                  <span className="text-[10px] text-muted-foreground">{bookForm.content.length} car.</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">{bookForm.content.length} car. · {processContentEditor(bookForm.content).length} parág.</span>
+                    <div className="flex rounded-md overflow-hidden border border-border text-[10px] font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setBookPreview(false)}
+                        className={`px-2 py-1 transition-colors ${!bookPreview ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookPreview(true)}
+                        className={`px-2 py-1 transition-colors ${bookPreview ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                      >
+                        Pré-visualizar
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <textarea value={bookForm.content} onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))} rows={20} placeholder="Colar o texto completo do capítulo aqui..." className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm resize-y font-mono" style={{ minHeight: 200 }} data-testid="input-chapter-content" />
+
+                {!bookPreview && (
+                  <p className="text-[10px] text-muted-foreground mb-1">
+                    Linha em branco entre textos (<code className="bg-muted px-1 rounded">Enter Enter</code>) = novo parágrafo. &nbsp;
+                    Enter simples = continua no mesmo parágrafo.
+                  </p>
+                )}
+
+                {bookPreview ? (
+                  <div
+                    className="w-full border border-border rounded-lg bg-[#fdf8f2] dark:bg-[#1a1510] overflow-y-auto"
+                    style={{ minHeight: 400, maxHeight: 600, padding: "24px 20px" }}
+                  >
+                    {bookForm.title && (
+                      <div className="mb-5 pb-4 border-b border-border/40">
+                        {bookForm.tag && (
+                          <p className="text-[9px] uppercase tracking-[0.28em] font-bold mb-2 text-amber-700 dark:text-amber-400">{bookForm.tag}</p>
+                        )}
+                        <h2 className="font-serif font-bold text-[18px] text-stone-800 dark:text-stone-100 leading-snug uppercase tracking-wide">
+                          {bookForm.title}
+                        </h2>
+                        {bookForm.excerpt && (
+                          <p className="font-serif text-[13px] italic text-stone-500 dark:text-stone-400 mt-2 leading-relaxed border-l-2 border-amber-600/40 pl-3">
+                            {bookForm.excerpt}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {processContentEditor(bookForm.content).length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic text-center py-8">Nenhum conteúdo para exibir.</p>
+                    ) : (
+                      processContentEditor(bookForm.content).map((para, i, arr) => (
+                        <p
+                          key={i}
+                          className="font-serif text-stone-800 dark:text-stone-100"
+                          style={{
+                            fontSize: "16px",
+                            lineHeight: "1.72",
+                            textAlign: "justify",
+                            hyphens: "auto",
+                            marginBottom: i < arr.length - 1 ? "0.85em" : 0,
+                            textIndent: i === 0 ? "0" : "1.6em",
+                          }}
+                        >
+                          {para}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    value={bookForm.content}
+                    onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))}
+                    rows={20}
+                    placeholder="Colar o texto completo do capítulo aqui..."
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-y font-mono"
+                    style={{ minHeight: 400 }}
+                    data-testid="input-chapter-content"
+                  />
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1812,7 +1954,9 @@ export default function Admin() {
                     if (!bookForm.title.trim()) return;
                     const url = bookEditId ? `/api/admin/book/chapters/${bookEditId}` : "/api/admin/book/chapters";
                     const method = bookEditId ? "PATCH" : "POST";
-                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookForm) });
+                    // Normaliza para \n\n: garante que o leitor sempre use o formato previsível
+                    const normalizedContent = processContentEditor(bookForm.content).join("\n\n");
+                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...bookForm, content: normalizedContent }) });
                     setBookFormOpen(false);
                     setBookEditId(null);
                     refetchBookChapters();
