@@ -1954,9 +1954,7 @@ export default function Admin() {
                     if (!bookForm.title.trim()) return;
                     const url = bookEditId ? `/api/admin/book/chapters/${bookEditId}` : "/api/admin/book/chapters";
                     const method = bookEditId ? "PATCH" : "POST";
-                    // Normaliza para \n\n: garante que o leitor sempre use o formato previsível
-                    const normalizedContent = processContentEditor(bookForm.content).join("\n\n");
-                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...bookForm, content: normalizedContent }) });
+                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookForm) });
                     setBookFormOpen(false);
                     setBookEditId(null);
                     refetchBookChapters();
@@ -1999,7 +1997,7 @@ export default function Admin() {
                       </button>
                       <span className="text-[10px] text-muted-foreground">{ch.content.length}c</span>
                       <button
-                        onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: ch.content, isPreview: ch.isPreview }); setBookFormOpen(true); setBookExpandedId(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: processContent(ch.content).join("\n\n"), isPreview: ch.isPreview }); setBookPreview(false); setBookFormOpen(true); setBookExpandedId(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                         className="p-1.5 rounded-lg bg-primary/5 hover:bg-primary/15 transition-colors"
                         data-testid={`btn-edit-chapter-${ch.id}`}
                         title="Editar"
