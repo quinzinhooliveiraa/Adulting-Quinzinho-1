@@ -15,7 +15,7 @@ export async function getUncachableStripeClient(): Promise<Stripe> {
 
 export async function getStripeSync(): Promise<StripeSync> {
   const apiKey = getStripeKey();
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL required");
   return new StripeSync({ stripeSecretKey: apiKey, databaseUrl, autoExpandLists: false });
 }
