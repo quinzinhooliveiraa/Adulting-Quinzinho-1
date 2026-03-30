@@ -397,18 +397,33 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   }, []);
 
   // ─── Render paragraph with highlights ─────────────────────────
+  function inlineMd(text: string, prefix: string): React.ReactNode[] {
+    const nodes: React.ReactNode[] = [];
+    const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+    let lastIdx = 0; let ki = 0;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      if (m.index > lastIdx) nodes.push(text.slice(lastIdx, m.index));
+      if (m[1] !== undefined) nodes.push(<strong key={`${prefix}b${ki++}`} style={{ fontWeight: 700 }}>{m[1]}</strong>);
+      else if (m[2] !== undefined) nodes.push(<em key={`${prefix}i${ki++}`}>{m[2]}</em>);
+      lastIdx = regex.lastIndex;
+    }
+    if (lastIdx < text.length) nodes.push(text.slice(lastIdx));
+    return nodes;
+  }
+
   function renderPara(text: string, paraIdx: number): React.ReactNode {
     const hls = highlights
       .filter(h => h.chapterId === chapter.id && h.subPage === safeSubPage && h.paraIndex === paraIdx)
       .sort((a, b) => a.startOffset - b.startOffset);
-    if (!hls.length) return text;
+    if (!hls.length) return inlineMd(text, `p${paraIdx}-`);
     const nodes: React.ReactNode[] = [];
     let cursor = 0;
     for (const hl of hls) {
       const s = Math.max(hl.startOffset, cursor);
       const e = Math.min(hl.endOffset, text.length);
       if (s >= e) continue;
-      if (s > cursor) nodes.push(text.slice(cursor, s));
+      if (s > cursor) nodes.push(...inlineMd(text.slice(cursor, s), `p${paraIdx}-pre${s}-`));
       nodes.push(
         <mark key={hl.id} className={`bk-hl-${hl.color}`} data-highlight-id={hl.id}
           onClick={(ev) => {
@@ -422,12 +437,12 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
               setActiveHLPos({ x: r.left + r.width / 2, y: r.top });
             }
           }}>
-          {text.slice(s, e)}
+          {inlineMd(text.slice(s, e), `p${paraIdx}-hl${hl.id}-`)}
         </mark>
       );
       cursor = e;
     }
-    if (cursor < text.length) nodes.push(text.slice(cursor));
+    if (cursor < text.length) nodes.push(...inlineMd(text.slice(cursor), `p${paraIdx}-post${cursor}-`));
     return nodes;
   }
 

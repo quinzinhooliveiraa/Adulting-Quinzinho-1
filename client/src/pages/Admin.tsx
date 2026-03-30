@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
@@ -6,7 +6,8 @@ import {
   BarChart3, Clock, Star, XCircle, Search, Send, Trash2,
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
   Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp,
-  BookOpen, Lock, ChevronRight, ChevronUp, Pencil, CreditCard
+  BookOpen, Lock, ChevronRight, ChevronUp, Pencil, CreditCard,
+  Bold, Italic
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -839,6 +840,22 @@ function processContent(raw: string): string[] {
   return paragraphs.filter(p => p.length > 0);
 }
 
+function renderInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+  let lastIndex = 0;
+  let match;
+  let ki = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
+    if (match[1] !== undefined) nodes.push(<strong key={`${keyPrefix}-b${ki++}`} style={{ fontWeight: 700 }}>{match[1]}</strong>);
+    else if (match[2] !== undefined) nodes.push(<em key={`${keyPrefix}-i${ki++}`}>{match[2]}</em>);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes;
+}
+
 // Versão previsível para o editor admin:
 // SOMENTE \n\n cria novo parágrafo. \n simples = continuação da linha (vira espaço).
 // Assim o editor controla exatamente onde quer a quebra.
@@ -867,6 +884,23 @@ export default function Admin() {
   const [bookForm, setBookForm] = useState({ order: 1, title: "", tag: "", excerpt: "", content: "", isPreview: false });
   const [bookFormOpen, setBookFormOpen] = useState(false);
   const [bookPreview, setBookPreview] = useState(false);
+  const bookTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function applyFormat(tag: "**" | "*") {
+    const el = bookTextareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const value = el.value;
+    const selected = value.slice(start, end);
+    const newContent = value.slice(0, start) + tag + selected + tag + value.slice(end);
+    setBookForm(f => ({ ...f, content: newContent }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const cur = selected ? start + tag.length : start + tag.length;
+      el.setSelectionRange(cur, selected ? end + tag.length : cur);
+    });
+  }
   const [bookExpandedId, setBookExpandedId] = useState<number | null>(null);
   const [analyticsDays, setAnalyticsDays] = useState(30);
   const [excludeAdmins, setExcludeAdmins] = useState(true);
@@ -1879,10 +1913,31 @@ export default function Admin() {
                 </div>
 
                 {!bookPreview && (
-                  <p className="text-[10px] text-muted-foreground mb-1">
-                    Linha em branco entre textos (<code className="bg-muted px-1 rounded">Enter Enter</code>) = novo parágrafo. &nbsp;
-                    Enter simples = continua no mesmo parágrafo.
-                  </p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground">
+                      <code className="bg-muted px-1 rounded">Enter Enter</code> = novo parágrafo &nbsp;·&nbsp;
+                      <code className="bg-muted px-1 rounded">*texto*</code> = <em>itálico</em> &nbsp;·&nbsp;
+                      <code className="bg-muted px-1 rounded">**texto**</code> = <strong>negrito</strong>
+                    </p>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); applyFormat("**"); }}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-muted-foreground/20 text-foreground font-bold text-xs"
+                        title="Negrito (**texto**)"
+                      >
+                        <Bold size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); applyFormat("*"); }}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-muted-foreground/20 text-foreground text-xs"
+                        title="Itálico (*texto*)"
+                      >
+                        <Italic size={13} />
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {bookPreview ? (
@@ -1921,13 +1976,14 @@ export default function Admin() {
                             textIndent: i === 0 ? "0" : "1.6em",
                           }}
                         >
-                          {para}
+                          {renderInlineMarkdown(para, `p${i}`)}
                         </p>
                       ))
                     )}
                   </div>
                 ) : (
                   <textarea
+                    ref={bookTextareaRef}
                     value={bookForm.content}
                     onChange={e => setBookForm(f => ({ ...f, content: e.target.value }))}
                     rows={20}
