@@ -638,6 +638,84 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
   const [showHLPanel, setShowHLPanel] = useState(false);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
+  const [screenshotCount, setScreenshotCount] = useState(() => {
+    return parseInt(localStorage.getItem("bk-ss-count") || "0", 10);
+  });
+  const [isBlocked, setIsBlocked] = useState(() => {
+    return localStorage.getItem("bk-blocked") === "1";
+  });
+
+  // ─── Save & restore reading progress ──────────────────────────
+  useEffect(() => {
+    const saved = localStorage.getItem("bk-progress");
+    if (saved) {
+      try {
+        const { ch, sp } = JSON.parse(saved);
+        if (typeof ch === "number" && ch < chapters.length) {
+          setChapterIdx(ch);
+          setSubPage(sp ?? 0);
+        }
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage }));
+  }, [chapterIdx, subPage]);
+
+  // ─── Anti-piracy: block copy/paste & screenshot detection ─────
+  useEffect(() => {
+    const blockCopy = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (e.ctrlKey || e.metaKey) {
+        if (["c", "a", "x", "p", "s", "u"].includes(key)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+      // Detect PrintScreen
+      if (e.key === "PrintScreen" || e.key === "Print") {
+        e.preventDefault();
+        const newCount = screenshotCount + 1;
+        setScreenshotCount(newCount);
+        localStorage.setItem("bk-ss-count", String(newCount));
+        if (newCount >= 15) {
+          setIsBlocked(true);
+          localStorage.setItem("bk-blocked", "1");
+        }
+      }
+    };
+
+    const blockContext = (e: MouseEvent) => e.preventDefault();
+
+    // Mobile screenshot detection via visibility change
+    let lastHidden = 0;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        lastHidden = Date.now();
+      } else {
+        // If screen was hidden for less than 1.5s it might be a screenshot
+        if (lastHidden && Date.now() - lastHidden < 1500) {
+          const newCount = screenshotCount + 1;
+          setScreenshotCount(newCount);
+          localStorage.setItem("bk-ss-count", String(newCount));
+          if (newCount >= 15) {
+            setIsBlocked(true);
+            localStorage.setItem("bk-blocked", "1");
+          }
+        }
+      }
+    };
+
+    document.addEventListener("keydown", blockCopy, true);
+    document.addEventListener("contextmenu", blockContext, true);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("keydown", blockCopy, true);
+      document.removeEventListener("contextmenu", blockContext, true);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [screenshotCount]);
 
   const chapter      = chapters[chapterIdx];
   const subPageCount = subPageCounts[chapterIdx] ?? 1;
@@ -709,8 +787,30 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy }: {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bk-bg pt-safe"
-      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}>
       <style>{BOOK_STYLES}</style>
+
+      {/* Screenshot / piracy block overlay */}
+      {isBlocked && (
+        <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center px-8 text-center"
+          style={{ background: "var(--bk-bg)" }}>
+          <div className="text-5xl mb-6">🔒</div>
+          <h2 className="bk-serif text-xl font-bold bk-ink mb-3">Acesso Bloqueado</h2>
+          <p className="bk-serif text-sm bk-muted leading-relaxed mb-6">
+            Detetámos atividade suspeita nesta sessão de leitura. O acesso ao livro foi suspenso para proteger os direitos de autor.
+          </p>
+          <p className="text-xs bk-muted">
+            Se acreditas que isto é um engano, contacta o suporte.
+          </p>
+          <button onClick={onClose}
+            className="mt-8 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ background: "var(--bk-accent)" }}>
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b bk-sep bk-bg shrink-0">
@@ -906,8 +1006,19 @@ export default function Book() {
     setReaderStartIdx(idx);
   }
 
-  function openReader(startIdx = 0) {
-    setReaderStartIdx(startIdx);
+  function openReader(startIdx?: number) {
+    if (startIdx !== undefined) {
+      setReaderStartIdx(startIdx);
+    } else {
+      // Restore saved progress
+      try {
+        const saved = localStorage.getItem("bk-progress");
+        const { ch } = saved ? JSON.parse(saved) : { ch: 0 };
+        setReaderStartIdx(typeof ch === "number" && ch < sortedChapters.length ? ch : 0);
+      } catch {
+        setReaderStartIdx(0);
+      }
+    }
   }
 
   function handlePurchaseSuccess() {
@@ -969,10 +1080,10 @@ export default function Book() {
                   <p className="text-sm font-semibold text-green-700 dark:text-green-400">Livro desbloqueado</p>
                   <p className="text-xs text-muted-foreground">Tens acesso completo a todos os capítulos.</p>
                 </div>
-                <button onClick={() => openReader(0)} data-testid="btn-read-now"
+                <button onClick={() => openReader()} data-testid="btn-read-now"
                   className="text-xs px-3 py-2 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
                   style={{ background: "var(--bk-accent, #7c5c3a)" }}>
-                  Ler
+                  Continuar
                 </button>
               </div>
             ) : (
@@ -1149,7 +1260,7 @@ export default function Book() {
             )}
 
             {/* Open reader from TOC */}
-            <button onClick={() => openReader(0)} data-testid="btn-open-toc"
+            <button onClick={() => openReader()} data-testid="btn-open-toc"
               className="w-full mb-5 p-4 border border-border bg-card rounded-2xl flex items-center gap-3 active:scale-[0.99] transition-transform">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: "var(--bk-accent-light,rgba(124,92,58,0.1))" }}>
