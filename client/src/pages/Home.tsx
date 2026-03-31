@@ -874,6 +874,24 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-border/60">
         <section>
           <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-serif text-foreground">Lembrete do dia</h2>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsReminderShareOpen(true)}
+              className="text-primary h-8 px-2 hover:bg-primary/5 rounded-lg"
+            >
+              <Share size={14} className="mr-1.5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Compartilhar</span>
+            </Button>
+          </div>
+          <p className="text-muted-foreground reading-text text-sm md:text-base italic">
+            "{dailyReminder}"
+          </p>
+        </section>
+
+        <section>
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-serif text-foreground">Relatório Mensal</h2>
             <Button 
               variant="ghost" 
@@ -890,24 +908,6 @@ export default function Home() {
               "{monthlyReport.insight}"
             </p>
           </div>
-        </section>
-
-        <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-serif text-foreground">Lembrete do dia</h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setIsReminderShareOpen(true)}
-              className="text-primary h-8 px-2 hover:bg-primary/5 rounded-lg"
-            >
-              <Share size={14} className="mr-1.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Compartilhar</span>
-            </Button>
-          </div>
-          <p className="text-muted-foreground reading-text text-sm md:text-base italic">
-            "{dailyReminder}"
-          </p>
         </section>
       </div>
 
