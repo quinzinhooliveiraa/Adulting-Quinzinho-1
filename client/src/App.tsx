@@ -63,9 +63,15 @@ function AuthGate() {
       }
       if (bonus === "success") {
         setBonusBanner("success");
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        }, 2500);
+        fetch("/api/stripe/sync-subscription", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        }).finally(() => {
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          }, 500);
+        });
         setTimeout(() => setBonusBanner(null), 8000);
       } else if (bonus === "cancel") {
         setBonusBanner("cancel");

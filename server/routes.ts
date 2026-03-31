@@ -1301,13 +1301,20 @@ export async function registerRoutes(
       const sub = subscriptions.data[0];
       const periodEnd = new Date(sub.current_period_end * 1000);
 
-      await storage.updateUser(user.id, {
+      const isTrialBonus = (sub.metadata as any)?.purpose === "trial_bonus";
+      const updates: Record<string, any> = {
         stripeSubscriptionId: sub.id,
         isPremium: true,
         premiumUntil: periodEnd,
-      });
+      };
+      if (isTrialBonus && !user.trialBonusClaimed) {
+        updates.trialBonusClaimed = true;
+        updates.trialEndsAt = periodEnd;
+      }
 
-      return res.json({ synced: true, premiumUntil: periodEnd });
+      await storage.updateUser(user.id, updates);
+
+      return res.json({ synced: true, premiumUntil: periodEnd, trialBonusClaimed: updates.trialBonusClaimed ?? user.trialBonusClaimed });
     } catch (error: any) {
       console.error("sync-subscription error:", error);
       res.status(500).json({ message: "Erro ao sincronizar subscrição" });
