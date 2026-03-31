@@ -213,6 +213,43 @@ async function validateEmailDomain(email: string): Promise<{ valid: boolean; sug
   }
 }
 
+async function reconcileStripeCustomer(userId: string, email: string): Promise<void> {
+  try {
+    const stripe = await getUncachableStripeClient();
+    const customers = await stripe.customers.list({ email, limit: 10 });
+    if (!customers.data.length) return;
+
+    // Prefer customer with an active/trialing subscription, then most recent
+    let best = customers.data[0];
+    for (const c of customers.data) {
+      const subs = await stripe.subscriptions.list({ customer: c.id, limit: 1, status: "all" });
+      const activeSub = subs.data.find(s => ["active", "trialing"].includes(s.status));
+      if (activeSub) { best = c; break; }
+    }
+
+    const updates: Record<string, any> = { stripeCustomerId: best.id };
+
+    // Restore subscription state if present
+    const subs = await stripe.subscriptions.list({ customer: best.id, limit: 5, status: "all" });
+    const activeSub = subs.data.find(s => ["active", "trialing"].includes(s.status));
+    if (activeSub) {
+      const periodEnd = new Date(activeSub.current_period_end * 1000);
+      updates.stripeSubscriptionId = activeSub.id;
+      updates.isPremium = true;
+      updates.premiumUntil = periodEnd;
+      if (activeSub.status === "trialing") {
+        updates.trialEndsAt = periodEnd;
+        updates.trialBonusClaimed = true;
+      }
+    }
+
+    await storage.updateUser(userId, updates);
+    console.log(`[stripe-reconcile] Linked ${email} → customer ${best.id}${activeSub ? ` sub ${activeSub.id}` : ""}`);
+  } catch (err: any) {
+    console.error(`[stripe-reconcile] Failed for ${email}:`, err.message);
+  }
+}
+
 function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEndsAt: Date | null; premiumUntil: Date | null; isActive: boolean }) {
   if (user.role === "admin") return { hasPremium: true, reason: "admin" as const };
   if (!user.isActive) return { hasPremium: false, reason: "blocked" as const };
@@ -498,6 +535,11 @@ export async function registerRoutes(
 
       if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role !== "admin") {
         user = (await storage.updateUser(user.id, { role: "admin", isPremium: true })) || user;
+      }
+
+      // Reconnect Stripe customer if missing (handles DB migration data loss)
+      if (!user.stripeCustomerId) {
+        reconcileStripeCustomer(user.id, user.email).catch(() => {});
       }
 
       req.session.userId = user.id;
@@ -940,6 +982,11 @@ export async function registerRoutes(
         return res.redirect("/?google_error=inactive");
       }
 
+      // Reconnect Stripe customer if missing (handles DB migration data loss)
+      if (!user.stripeCustomerId) {
+        reconcileStripeCustomer(user.id, email).catch(() => {});
+      }
+
       req.session.userId = user.id;
       console.log(`[google-oauth] success user=${user.id} isNew=${isNewUser} fromPwa=${fromPwa}`);
       req.session.save((saveErr) => {
@@ -1013,6 +1060,11 @@ export async function registerRoutes(
 
       if (!user.isActive) {
         return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
+
+      // Reconnect Stripe customer if missing (handles DB migration data loss)
+      if (!user.stripeCustomerId) {
+        reconcileStripeCustomer(user.id, email).catch(() => {});
       }
 
       req.session.userId = user.id;
