@@ -759,89 +759,118 @@ const HL_SOLID: Record<string, string> = {
   red:     "#e03030",
 };
 
-function generateHighlightImage(hl: BookHighlight, chapterLabel: string) {
+function buildHighlightCanvas(hl: BookHighlight, chapterLabel: string): HTMLCanvasElement {
   const W = 1080, H = 1080;
+  const PAD = 88;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
+  const accentColor = HL_SOLID[hl.color] ?? "#7c5c3a";
+
   // ── Background ──────────────────────────────────────────────────
   const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-  bgGrad.addColorStop(0, "#fdf6ed");
-  bgGrad.addColorStop(1, "#f0e4cf");
+  bgGrad.addColorStop(0, "#fdf8f2");
+  bgGrad.addColorStop(1, "#eee0c8");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
   // ── Accent strip at top ─────────────────────────────────────────
-  const accentColor = HL_SOLID[hl.color] ?? "#7c5c3a";
   ctx.fillStyle = accentColor;
-  ctx.fillRect(0, 0, W, 14);
+  ctx.fillRect(0, 0, W, 12);
 
-  // ── Decorative large quotation mark ─────────────────────────────
-  ctx.fillStyle = "rgba(124,92,58,0.09)";
-  ctx.font = `bold 380px Georgia, 'Times New Roman', serif`;
-  ctx.fillText("\u201C", 52, 370);
+  // ── Decorative large quotation mark (background, top-left) ─────
+  ctx.save();
+  ctx.fillStyle = "rgba(124,92,58,0.07)";
+  ctx.font = `bold 280px Georgia, serif`;
+  ctx.fillText("\u201C", PAD - 20, PAD + 220);
+  ctx.restore();
 
   // ── Chapter label ───────────────────────────────────────────────
+  const labelY = PAD + 46;
   ctx.fillStyle = accentColor;
-  ctx.font = `bold 28px -apple-system, Arial, sans-serif`;
-  ctx.fillText(chapterLabel.toUpperCase().slice(0, 60), 80, 450);
+  ctx.font = `700 26px Arial, sans-serif`;
+  const labelText = chapterLabel.toUpperCase().slice(0, 55);
+  ctx.fillText(labelText, PAD, labelY);
 
-  // ── Quoted text ─────────────────────────────────────────────────
-  ctx.fillStyle = "#2d1e0f";
-  ctx.font = `italic 48px Georgia, 'Times New Roman', serif`;
-  const maxW = W - 160;
-  const lineH = 70;
-  const rawText = `"${hl.text}"`;
-  const words = rawText.split(" ");
-  const lines: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    const test = cur ? `${cur} ${w}` : w;
-    if (ctx.measureText(test).width > maxW) { lines.push(cur); cur = w; }
-    else cur = test;
-  }
-  if (cur) lines.push(cur);
-
-  // Clamp to max 10 lines
-  const displayLines = lines.slice(0, 10);
-  if (lines.length > 10) displayLines[9] = displayLines[9] + "…";
-
-  const blockH = displayLines.length * lineH;
-  const textStartY = Math.max(500, (H - blockH) / 2 + 30);
-  for (let i = 0; i < displayLines.length; i++) {
-    ctx.fillText(displayLines[i], 80, textStartY + i * lineH);
-  }
-
-  // ── Divider ─────────────────────────────────────────────────────
-  ctx.strokeStyle = "rgba(124,92,58,0.25)";
-  ctx.lineWidth = 2;
+  // ── Thin divider under label ─────────────────────────────────────
+  ctx.strokeStyle = accentColor;
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(80, H - 170);
-  ctx.lineTo(W - 80, H - 170);
+  ctx.moveTo(PAD, labelY + 16);
+  ctx.lineTo(PAD + ctx.measureText(labelText).width + 40, labelY + 16);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // ── Quoted text (word-wrapped, auto font-size) ──────────────────
+  const textAreaTop    = labelY + 46;
+  const textAreaBottom = H - 200;
+  const textAreaH      = textAreaBottom - textAreaTop;
+  const maxW           = W - PAD * 2;
+
+  function wrapLines(fontSize: number): string[] {
+    ctx.font = `italic ${fontSize}px Georgia, serif`;
+    const rawText = `\u201C${hl.text}\u201D`;
+    const words = rawText.split(" ");
+    const ls: string[] = [];
+    let cur = "";
+    for (const w of words) {
+      const test = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(test).width > maxW) { if (cur) ls.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) ls.push(cur);
+    return ls;
+  }
+
+  // Pick largest font that fits
+  let fontSize = 52, lineH = 76, lines: string[] = [];
+  for (const fs of [52, 46, 40, 34, 28]) {
+    lines = wrapLines(fs);
+    lineH = Math.round(fs * 1.48);
+    if (lines.length * lineH <= textAreaH) { fontSize = fs; break; }
+  }
+  // Clamp to 12 lines max
+  if (lines.length > 12) { lines = lines.slice(0, 12); lines[11] += "…"; }
+
+  const blockH   = lines.length * lineH;
+  const textStartY = textAreaTop + Math.max(0, (textAreaH - blockH) / 2);
+
+  ctx.fillStyle = "#2a1a08";
+  ctx.font = `italic ${fontSize}px Georgia, serif`;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], PAD, textStartY + lineH * i + fontSize);
+  }
+
+  // ── Bottom section ──────────────────────────────────────────────
+  const bottomY = H - 160;
+
+  // Divider
+  ctx.strokeStyle = "rgba(124,92,58,0.22)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD, bottomY);
+  ctx.lineTo(W - PAD, bottomY);
   ctx.stroke();
 
-  // ── Book title ──────────────────────────────────────────────────
-  ctx.fillStyle = "rgba(61,40,18,0.85)";
-  ctx.font = `bold 38px Georgia, 'Times New Roman', serif`;
-  ctx.fillText("A Casa dos 20", 80, H - 118);
+  // Book title
+  ctx.fillStyle = "rgba(42,26,8,0.88)";
+  ctx.font = `700 36px Georgia, serif`;
+  ctx.fillText("A Casa dos 20", PAD, bottomY + 54);
 
-  // ── Author ──────────────────────────────────────────────────────
-  ctx.fillStyle = "rgba(124,92,58,0.65)";
-  ctx.font = `30px Georgia, 'Times New Roman', serif`;
-  ctx.fillText("Quinzinho Oliveira", 80, H - 72);
+  // Author
+  ctx.fillStyle = "rgba(124,92,58,0.70)";
+  ctx.font = `400 28px Georgia, serif`;
+  ctx.fillText("Quinzinho Oliveira", PAD, bottomY + 96);
 
-  // ── Accent dot right ────────────────────────────────────────────
+  // Accent circle (right side)
   ctx.fillStyle = accentColor;
   ctx.beginPath();
-  ctx.arc(W - 80, H - 95, 18, 0, Math.PI * 2);
+  ctx.arc(W - PAD, bottomY + 74, 20, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Download ────────────────────────────────────────────────────
-  const link = document.createElement("a");
-  link.download = `marcacao-casados20.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  return canvas;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -869,6 +898,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   const [showHLPanel, setShowHLPanel] = useState(false);
   const [immersive, setImmersive]   = useState(false);
   const [outgoing, setOutgoing]     = useState<{ chIdx: number; sp: number; exitCls: string; foldCls: string; shadowCls: string } | null>(null);
+  const [hlImgPreview, setHlImgPreview] = useState<{ dataUrl: string; filename: string } | null>(null);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
   const [screenshotCount, setScreenshotCount] = useState(() => {
@@ -1172,7 +1202,11 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                                   const label = ch
                                     ? (ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title}` : ch.title)
                                     : "A Casa dos 20";
-                                  generateHighlightImage(hl, label);
+                                  const cvs = buildHighlightCanvas(hl, label);
+                                  setHlImgPreview({
+                                    dataUrl: cvs.toDataURL("image/png"),
+                                    filename: `marcacao-casados20.png`,
+                                  });
                                 }}>
                                 <ImageDown size={12} /> Imagem
                               </button>
@@ -1269,6 +1303,51 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
           </button>
         </div>
       </div>
+
+      {/* ── Highlight image preview modal ── */}
+      {hlImgPreview && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.82)" }}
+          onClick={() => setHlImgPreview(null)}>
+          <div
+            className="flex flex-col items-center gap-4 p-4 rounded-2xl"
+            style={{ maxWidth: "92vw", background: "var(--bk-bg)" }}
+            onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="w-full flex items-center justify-between">
+              <span className="text-sm font-semibold" style={{ color: "var(--bk-ink)" }}>
+                Prévia da imagem
+              </span>
+              <button
+                className="p-1.5 rounded-full active:opacity-60"
+                style={{ color: "var(--bk-muted)" }}
+                onClick={() => setHlImgPreview(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            {/* Image */}
+            <img
+              src={hlImgPreview.dataUrl}
+              alt="Marcação exportada"
+              className="rounded-xl border"
+              style={{ width: "100%", maxWidth: 360, aspectRatio: "1/1", objectFit: "cover",
+                borderColor: "var(--bk-sep)" }} />
+            {/* Download button */}
+            <button
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white active:opacity-80"
+              style={{ background: "var(--bk-accent)" }}
+              onClick={() => {
+                const link = document.createElement("a");
+                link.download = hlImgPreview.filename;
+                link.href = hlImgPreview.dataUrl;
+                link.click();
+              }}>
+              <ImageDown size={16} /> Baixar imagem
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
