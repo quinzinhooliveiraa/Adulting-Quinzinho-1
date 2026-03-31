@@ -173,22 +173,40 @@ const BOOK_STYLES = `
   .bk-accent{ color: var(--bk-accent); }
   .bk-serif { font-family: 'Georgia', 'Times New Roman', serif; }
   .pg-enter-right {
-    animation: pgFlipR 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation: pgEnterR 0.40s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     transform-origin: left center;
   }
   .pg-enter-left {
-    animation: pgFlipL 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation: pgEnterL 0.40s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     transform-origin: right center;
   }
-  @keyframes pgFlipR {
-    0%   { opacity: 0.15; transform: perspective(900px) rotateY(40deg) scaleX(0.92); }
-    55%  { opacity: 0.85; transform: perspective(900px) rotateY(6deg) scaleX(0.99); }
-    100% { opacity: 1;    transform: perspective(900px) rotateY(0deg) scaleX(1); }
+  .pg-exit-left {
+    animation: pgExitL 0.40s cubic-bezier(0.55, 0, 0.75, 0.05) both;
+    transform-origin: left center;
   }
-  @keyframes pgFlipL {
-    0%   { opacity: 0.15; transform: perspective(900px) rotateY(-40deg) scaleX(0.92); }
-    55%  { opacity: 0.85; transform: perspective(900px) rotateY(-6deg) scaleX(0.99); }
-    100% { opacity: 1;    transform: perspective(900px) rotateY(0deg) scaleX(1); }
+  .pg-exit-right {
+    animation: pgExitR 0.40s cubic-bezier(0.55, 0, 0.75, 0.05) both;
+    transform-origin: right center;
+  }
+  @keyframes pgEnterR {
+    0%   { opacity: 0;    transform: perspective(1400px) rotateY(42deg) translateX(12%) scaleX(0.86); }
+    45%  { opacity: 0.85; transform: perspective(1400px) rotateY(7deg)  translateX(2%)  scaleX(0.98); }
+    100% { opacity: 1;    transform: perspective(1400px) rotateY(0deg)  translateX(0)   scaleX(1); }
+  }
+  @keyframes pgEnterL {
+    0%   { opacity: 0;    transform: perspective(1400px) rotateY(-42deg) translateX(-12%) scaleX(0.86); }
+    45%  { opacity: 0.85; transform: perspective(1400px) rotateY(-7deg)  translateX(-2%)  scaleX(0.98); }
+    100% { opacity: 1;    transform: perspective(1400px) rotateY(0deg)   translateX(0)    scaleX(1); }
+  }
+  @keyframes pgExitL {
+    0%   { opacity: 1;  transform: perspective(1400px) rotateY(0deg)   translateX(0)    scaleX(1); }
+    45%  { opacity: 0.7; transform: perspective(1400px) rotateY(-9deg)  translateX(-6%)  scaleX(0.96); }
+    100% { opacity: 0;  transform: perspective(1400px) rotateY(-38deg) translateX(-70%) scaleX(0.82); }
+  }
+  @keyframes pgExitR {
+    0%   { opacity: 1;  transform: perspective(1400px) rotateY(0deg)  translateX(0)   scaleX(1); }
+    45%  { opacity: 0.7; transform: perspective(1400px) rotateY(9deg)  translateX(6%)  scaleX(0.96); }
+    100% { opacity: 0;  transform: perspective(1400px) rotateY(38deg) translateX(70%) scaleX(0.82); }
   }
   .bk-hl-yellow  { background: rgba(255,236,90,0.55);  border-radius: 2px; cursor: pointer; }
   .bk-hl-green   { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
@@ -824,6 +842,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   const [showToc, setShowToc]       = useState(openToc ?? false);
   const [showHLPanel, setShowHLPanel] = useState(false);
   const [immersive, setImmersive]   = useState(false);
+  const [outgoing, setOutgoing]     = useState<{ chIdx: number; sp: number; exitCls: string } | null>(null);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
   const [screenshotCount, setScreenshotCount] = useState(() => {
@@ -937,9 +956,12 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
     setSubPage(p => Math.min(p, n - 1));
   }
 
+  const FLIP_MS = 420;
+
   function navigate(dir: "prev" | "next") {
+    setOutgoing({ chIdx: chapterIdx, sp: subPage, exitCls: dir === "next" ? "pg-exit-left" : "pg-exit-right" });
     setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
-    setTimeout(() => setAnimClass(""), 400);
+    setTimeout(() => { setAnimClass(""); setOutgoing(null); }, FLIP_MS);
     if (dir === "next") {
       if (subPage < subPageCount - 1) setSubPage(p => p + 1);
       else if (chapterIdx < chapters.length - 1) { setChapterIdx(i => i + 1); setSubPage(0); }
@@ -961,8 +983,9 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   }
 
   function goToChapter(idx: number) {
-    setAnimClass("pg-enter-right");
-    setTimeout(() => setAnimClass(""), 400);
+    setOutgoing({ chIdx: chapterIdx, sp: subPage, exitCls: idx > chapterIdx ? "pg-exit-left" : "pg-exit-right" });
+    setAnimClass(idx > chapterIdx ? "pg-enter-right" : "pg-enter-left");
+    setTimeout(() => { setAnimClass(""); setOutgoing(null); }, FLIP_MS);
     setChapterIdx(idx); setSubPage(0); setShowToc(false);
   }
 
@@ -1136,7 +1159,33 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       )}
 
       {/* Page content */}
-      <div className="flex-1 min-h-0 flex flex-col relative" onClick={handleContentTap}>
+      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden" onClick={handleContentTap}>
+
+        {/* Outgoing page — animates away while new page enters */}
+        {outgoing && chapters[outgoing.chIdx] && (
+          <div className={`absolute inset-0 z-10 pointer-events-none ${outgoing.exitCls}`}>
+            <ChapterPage
+              chapter={chapters[outgoing.chIdx]}
+              purchased={purchased}
+              onBuy={() => {}}
+              animClass=""
+              subPage={outgoing.sp}
+              onActualSubPageCount={() => {}}
+              allChapters={chapters}
+              onGoToChapter={() => {}}
+              highlights={allHighlights}
+              onSaveHighlight={() => {}}
+              onDeleteHighlight={() => {}}
+            />
+            {/* Edge shadow simulating page depth */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: outgoing.exitCls.includes("left")
+                ? "linear-gradient(to left, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 30%, transparent 65%)"
+                : "linear-gradient(to right, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 30%, transparent 65%)"
+            }} />
+          </div>
+        )}
+
         {chapter ? (
           <ChapterPage
             chapter={chapter}
