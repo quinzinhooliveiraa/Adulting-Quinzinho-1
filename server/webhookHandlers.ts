@@ -67,13 +67,24 @@ export class WebhookHandlers {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const periodEnd = new Date(subscription.current_period_end * 1000);
 
-        await storage.updateUser(user.id, {
+        const isTrialBonus = session.metadata?.purpose === "trial_bonus";
+        const updates: Record<string, any> = {
           stripeSubscriptionId: subscriptionId,
           isPremium: true,
           premiumUntil: periodEnd,
-        });
-        console.log(`[stripe] User ${user.email} activated premium until ${periodEnd.toISOString()}`);
-        notifyAdminNewSubscription(user.name, user.email).catch(() => {});
+        };
+        if (isTrialBonus) {
+          updates.trialBonusClaimed = true;
+          updates.trialEndsAt = periodEnd;
+        }
+
+        await storage.updateUser(user.id, updates);
+        console.log(`[stripe] User ${user.email} activated premium until ${periodEnd.toISOString()}${isTrialBonus ? " (trial_bonus)" : ""}`);
+        if (isTrialBonus) {
+          notifyAdminCardAdded(user.name, user.email).catch(() => {});
+        } else {
+          notifyAdminNewSubscription(user.name, user.email).catch(() => {});
+        }
         break;
       }
 

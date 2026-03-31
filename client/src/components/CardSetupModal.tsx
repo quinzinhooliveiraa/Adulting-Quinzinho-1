@@ -86,9 +86,9 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           </div>
           <div>
             <h2 className="text-lg font-bold font-serif text-foreground leading-tight">
-              Guardar cartão — sem cobrar nada
+              Ativa os teus 30 dias grátis
             </h2>
-            <p className="text-xs text-muted-foreground">Para activar os teus 30 dias grátis</p>
+            <p className="text-xs text-muted-foreground">Cartão necessário para iniciar o trial</p>
           </div>
         </div>
 
@@ -96,7 +96,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           <div className="flex items-start gap-2">
             <ShieldCheck size={15} className="text-green-600 shrink-0 mt-0.5" />
             <p className="text-xs text-green-700 dark:text-green-400 leading-relaxed">
-              <strong>Nenhuma cobrança hoje.</strong> Guardamos o cartão para o futuro — só pagas se quiseres continuar depois dos 30 dias grátis.
+              <strong>30 dias gratuitos a começar agora.</strong> Após o trial, a assinatura é cobrada automaticamente. Podes cancelar a qualquer momento pelo app.
             </p>
           </div>
         </div>
@@ -142,7 +142,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           className="w-full py-3.5 rounded-2xl bg-foreground text-background font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <CreditCard size={18} />
-          {loading ? "A guardar..." : "Guardar cartão e ganhar 30 dias"}
+          {loading ? "A ativar..." : "Começar 30 dias grátis"}
         </button>
 
         <button

@@ -1321,18 +1321,31 @@ export async function registerRoutes(
         await storage.updateUser(user.id, { stripeCustomerId: customerId });
       }
 
+      // Fetch cheapest active monthly price
+      const allPrices = await stripe.prices.list({ active: true, type: "recurring", limit: 50 });
+      const monthlyPrices = allPrices.data
+        .filter(p => p.recurring?.interval === "month")
+        .sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+      const priceId = monthlyPrices[0]?.id;
+      if (!priceId) {
+        return res.status(500).json({ message: "Nenhum plano mensal disponível. Tente novamente." });
+      }
+
       const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ["card"],
-        mode: "setup",
+        mode: "subscription",
+        line_items: [{ price: priceId, quantity: 1 }],
+        subscription_data: {
+          trial_period_days: 30,
+          metadata: { purpose: "trial_bonus", userId: user.id },
+        },
         success_url: `${domain}/?bonus=success`,
         cancel_url: `${domain}/?bonus=cancel`,
         metadata: { purpose: "trial_bonus", userId: user.id },
-        currency: "brl",
-        consent_collection: { terms_of_service: "none" },
         custom_text: {
-          submit: { message: "✅ Nenhuma cobrança hoje. Estás apenas a guardar o cartão para ativar os 30 dias grátis. Só pagas se quiseres continuar depois do trial." },
+          submit: { message: "✅ 30 dias gratuitos. Após o trial, sua assinatura é cobrada automaticamente. Cancele quando quiser pelo app." },
         },
       } as any);
 
@@ -1414,7 +1427,50 @@ export async function registerRoutes(
         : new Date(now);
       const daysToAdd = user.trialEndsAt ? 16 : 30;
       const newTrialEnd = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-      await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+
+      // Set payment method as customer default and create subscription with trial
+      const paymentMethodId = setupIntent.payment_method as string;
+      if (paymentMethodId) {
+        await stripe.customers.update(customerId, {
+          invoice_settings: { default_payment_method: paymentMethodId },
+        });
+
+        // Fetch cheapest monthly price
+        const allPrices = await stripe.prices.list({ active: true, type: "recurring", limit: 50 });
+        const monthlyPrices = allPrices.data
+          .filter(p => p.recurring?.interval === "month")
+          .sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+        const priceId = monthlyPrices[0]?.id;
+
+        if (priceId) {
+          try {
+            const subscription = await stripe.subscriptions.create({
+              customer: customerId,
+              items: [{ price: priceId }],
+              default_payment_method: paymentMethodId,
+              trial_end: Math.floor(newTrialEnd.getTime() / 1000),
+              metadata: { purpose: "trial_bonus", userId: user.id },
+            });
+            await storage.updateUser(user.id, {
+              stripeSubscriptionId: subscription.id,
+              isPremium: true,
+              premiumUntil: newTrialEnd,
+              trialEndsAt: newTrialEnd,
+              trialBonusClaimed: true,
+            });
+            console.log(`[stripe] confirm-bonus: ${user.email} subscription ${subscription.id} criada, trial até ${newTrialEnd.toISOString()}`);
+          } catch (subErr: any) {
+            console.error("[stripe] confirm-bonus: erro ao criar subscription:", subErr.message);
+            // Fallback: save trial without subscription
+            await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+          }
+        } else {
+          await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+        }
+      } else {
+        await storage.updateUser(user.id, { trialEndsAt: newTrialEnd, trialBonusClaimed: true });
+      }
+
       console.log(`[stripe] confirm-bonus: ${user.email} +${daysToAdd} dias, trial até ${newTrialEnd.toISOString()}`);
 
       const { notifyAdminCardAdded } = await import("./adminNotify");
