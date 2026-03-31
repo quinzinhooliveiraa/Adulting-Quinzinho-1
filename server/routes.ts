@@ -4012,6 +4012,86 @@ REGRAS:
     }
   });
 
+  app.post("/api/admin/send-book-recovery-emails", requireAdmin, async (req, res) => {
+    try {
+      const excludeUserIds: string[] = Array.isArray(req.body?.excludeUserIds) ? req.body.excludeUserIds : [];
+      const customSubject: string = req.body?.subject || "O livro A Casa dos 20 espera por ti";
+      const customBody: string = req.body?.body || "Começaste a tua jornada mas não a concluíste. O livro ainda está aqui para ti.";
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
+      const now = new Date();
+
+      const abandonedUserIds = new Set<string>();
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      while (hasMore) {
+        const intents = await stripe.paymentIntents.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        for (const pi of intents.data) {
+          if ((pi.metadata as any)?.product !== "book_acasados20") continue;
+          if (pi.status === "succeeded" || pi.status === "canceled") continue;
+          const userId = (pi.metadata as any)?.userId;
+          if (userId) abandonedUserIds.add(userId);
+        }
+        hasMore = intents.has_more;
+        if (hasMore && intents.data.length > 0) startingAfter = intents.data[intents.data.length - 1].id;
+      }
+
+      const appDomain = getAppDomain();
+      const bookUrl = `https://${appDomain}/livro`;
+
+      let sent = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const userId of abandonedUserIds) {
+        if (excludeUserIds.includes(userId)) { skipped++; continue; }
+        const user = await storage.getUser(userId);
+        if (!user) { skipped++; continue; }
+        const hasBook = bookOwnerIds.has(userId) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+        if (hasBook) { skipped++; continue; }
+
+        const subs = await storage.getPushSubscriptions(userId);
+        if (subs.length > 0) { skipped++; continue; } // has push, skip email
+
+        const plainEmail = decryptField(user.email);
+        if (!plainEmail || !plainEmail.includes("@")) { skipped++; continue; }
+
+        const html = `
+          <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px; color: #1a1a1a;">
+            <h2 style="color: #1a1a1a; margin-bottom: 8px;">Olá, ${user.name}!</h2>
+            <p style="color: #444; line-height: 1.7; margin-bottom: 24px;">${customBody}</p>
+            <p style="color: #444; line-height: 1.7; margin-bottom: 32px;">
+              <strong>A Casa dos 20</strong> é um guia honesto para navegar os teus vinte anos — o amor, as amizades, os medos e as escolhas que moldam quem és.
+            </p>
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${bookUrl}" style="background: #7c3aed; color: white; padding: 14px 32px; border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 15px;">Adquirir o Livro</a>
+            </div>
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 32px;">
+              Casa dos 20 · Se não quiseres receber estes emails, ignora esta mensagem.
+            </p>
+          </div>
+        `;
+
+        try {
+          await sendBrevoEmail({ to: plainEmail, toName: user.name, subject: customSubject, html });
+          sent++;
+        } catch (err: any) {
+          errors.push(`${user.name}: ${err.message}`);
+          skipped++;
+        }
+      }
+
+      res.json({ ok: true, sent, skipped, errors });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/admin/reconcile-trial-bonus", requireAdmin, async (_req, res) => {
     try {
       const { getUncachableStripeClient } = await import("./stripeClient");

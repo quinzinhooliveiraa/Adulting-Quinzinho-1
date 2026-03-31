@@ -2697,11 +2697,16 @@ function RecoveryNotificationCard() {
 function BookRecoveryNotificationCard() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailResult, setEmailResult] = useState<string | null>(null);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [customTitle, setCustomTitle] = useState("O livro A Casa dos 20 espera por ti");
   const [customBody, setCustomBody] = useState("Adquire o livro e leva a tua relação mais longe. Acede agora.");
   const [customUrl, setCustomUrl] = useState("/livro");
+  const [customEmailSubject, setCustomEmailSubject] = useState("O livro A Casa dos 20 espera por ti");
+  const [customEmailBody, setCustomEmailBody] = useState("Começaste a tua jornada mas não a concluíste. O livro ainda está aqui para ti.");
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showEmailCustomize, setShowEmailCustomize] = useState(false);
   const [showDiag, setShowDiag] = useState(false);
   const [diagLoading, setDiagLoading] = useState(false);
   const [diagData, setDiagData] = useState<{ totalScanned: number; totalBook: number; rows: any[] } | null>(null);
@@ -2752,6 +2757,26 @@ function BookRecoveryNotificationCard() {
       setResult("Erro ao enviar.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    setEmailResult(null);
+    try {
+      const res = await fetch("/api/admin/send-book-recovery-emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ excludeUserIds: Array.from(excludedIds), subject: customEmailSubject, body: customEmailBody }),
+      });
+      const data = await res.json();
+      if (data.error) { setEmailResult(`Erro: ${data.error}`); return; }
+      setEmailResult(`Email enviado para ${data.sent} utilizador(es).${data.errors?.length ? ` ${data.errors.length} falha(s).` : ""}`);
+    } catch {
+      setEmailResult("Erro ao enviar emails.");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -2859,6 +2884,56 @@ function BookRecoveryNotificationCard() {
         >
           {sending ? "Enviando..." : `Enviar Notificação${willReceive.length > 0 ? ` (${willReceive.length})` : ""}`}
         </button>
+
+        {/* Email recovery for users without push */}
+        {withoutPush.length > 0 && (
+          <div className="border-t border-border pt-3 space-y-2">
+            <p className="text-[11px] text-foreground font-medium">Email de recuperação</p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Para os {withoutPush.length} utilizador(es) sem notificações push, podes enviar um email de recuperação.
+            </p>
+            <button
+              onClick={() => setShowEmailCustomize(!showEmailCustomize)}
+              className="text-[11px] text-muted-foreground underline underline-offset-2"
+              data-testid="button-customize-book-recovery-email"
+            >
+              {showEmailCustomize ? "Ocultar personalização" : "Personalizar email"}
+            </button>
+            {showEmailCustomize && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Assunto</label>
+                  <input
+                    value={customEmailSubject}
+                    onChange={e => setCustomEmailSubject(e.target.value)}
+                    className="w-full mt-1 px-2 py-1.5 bg-background border border-border rounded-lg text-[11px]"
+                    data-testid="input-book-recovery-email-subject"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Mensagem</label>
+                  <textarea
+                    value={customEmailBody}
+                    onChange={e => setCustomEmailBody(e.target.value)}
+                    className="w-full mt-1 px-2 py-1.5 bg-background border border-border rounded-lg text-[11px] resize-none min-h-12"
+                    data-testid="input-book-recovery-email-body"
+                  />
+                </div>
+              </div>
+            )}
+            {emailResult && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">{emailResult}</p>
+            )}
+            <button
+              onClick={handleSendEmail}
+              disabled={sendingEmail || isLoading}
+              className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+              data-testid="button-send-book-recovery-email"
+            >
+              {sendingEmail ? "Enviando emails..." : `Enviar Email (${withoutPush.length})`}
+            </button>
+          </div>
+        )}
 
         {/* Stripe diagnostics */}
         <div className="border-t border-border pt-3 space-y-2">
