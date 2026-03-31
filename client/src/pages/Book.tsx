@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
   ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft,
-  Highlighter, Trash2, Star, ImageDown
+  Highlighter, Trash2, Star, ImageDown, Search
 } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import authorImg from "../assets/author.webp";
@@ -899,6 +899,9 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   const [immersive, setImmersive]   = useState(false);
   const [outgoing, setOutgoing]     = useState<{ chIdx: number; sp: number; exitCls: string; foldCls: string; shadowCls: string } | null>(null);
   const [hlImgPreview, setHlImgPreview] = useState<{ dataUrl: string; filename: string } | null>(null);
+  const [showSearch, setShowSearch]   = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
   const [screenshotCount, setScreenshotCount] = useState(() => {
@@ -1104,6 +1107,10 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
           </button>
           <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
           <div className="flex items-center gap-0.5">
+            <button onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 80); }}
+              data-testid="btn-search" className="p-2.5 active:opacity-50">
+              <Search size={18} className="bk-muted" />
+            </button>
             <button onClick={() => setShowHLPanel(true)} data-testid="btn-highlights-panel"
               className="p-2.5 active:opacity-50 relative">
               <Highlighter size={18} className="bk-muted" />
@@ -1304,6 +1311,91 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
         </div>
       </div>
 
+      {/* ── Search panel ── */}
+      {showSearch && (
+        <div className="fixed inset-0 z-[9990] flex flex-col" style={{ background: "var(--bk-bg)" }}>
+          {/* Search header */}
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "var(--bk-sep)" }}>
+            <Search size={17} style={{ color: "var(--bk-muted)", flexShrink: 0 }} />
+            <input
+              ref={searchInputRef}
+              data-testid="input-search-book"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar no livro…"
+              className="flex-1 bg-transparent text-[15px] outline-none"
+              style={{ color: "var(--bk-ink)" }}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {searchQuery && (
+              <button className="p-1 active:opacity-50" onClick={() => setSearchQuery("")}>
+                <X size={15} style={{ color: "var(--bk-muted)" }} />
+              </button>
+            )}
+            <button className="pl-2 text-[13px] font-medium active:opacity-50"
+              style={{ color: "var(--bk-accent)" }}
+              onClick={() => { setShowSearch(false); setSearchQuery(""); }}>
+              Fechar
+            </button>
+          </div>
+
+          {/* Results */}
+          <div className="flex-1 overflow-y-auto">
+            {(() => {
+              const q = searchQuery.trim();
+              if (q.length < 2) return (
+                <div className="flex flex-col items-center justify-center h-full gap-2 pb-20">
+                  <Search size={36} style={{ color: "var(--bk-sep)" }} />
+                  <p className="text-sm bk-muted">Digite pelo menos 2 letras para pesquisar</p>
+                </div>
+              );
+              const results = searchChapters(chapters, q, purchased);
+              if (results.length === 0) return (
+                <div className="flex flex-col items-center justify-center h-full gap-2 pb-20">
+                  <Search size={36} style={{ color: "var(--bk-sep)" }} />
+                  <p className="text-sm bk-muted">Nenhum resultado encontrado</p>
+                </div>
+              );
+              return (
+                <div className="py-2">
+                  <p className="px-4 py-2 text-[11px] bk-muted">
+                    {results.length === 60 ? "60+ resultados" : `${results.length} resultado${results.length !== 1 ? "s" : ""}`}
+                  </p>
+                  {results.map((r, i) => (
+                    <button key={i}
+                      data-testid={`btn-search-result-${i}`}
+                      className="w-full text-left px-4 py-3 border-b active:opacity-60"
+                      style={{ borderColor: "var(--bk-sep)" }}
+                      onClick={() => {
+                        setShowSearch(false);
+                        setSearchQuery("");
+                        goToChapter(r.chIdx);
+                      }}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {r.locked && <LockKeyhole size={10} style={{ color: "var(--bk-muted)", flexShrink: 0 }} />}
+                        <span className="text-[11px] font-semibold uppercase tracking-wide"
+                          style={{ color: "var(--bk-accent)" }}>
+                          {r.label}
+                        </span>
+                      </div>
+                      <p className="text-[13px] leading-snug" style={{ color: "var(--bk-muted)" }}>
+                        {r.before}
+                        <span className="font-bold rounded-sm px-0.5"
+                          style={{ color: "var(--bk-ink)", background: "rgba(255,220,50,0.45)" }}>
+                          {r.match}
+                        </span>
+                        {r.after}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* ── Highlight image preview modal ── */}
       {hlImgPreview && (
         <div
@@ -1350,6 +1442,49 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       )}
     </div>
   );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SEARCH
+───────────────────────────────────────────────────────────────── */
+type SearchResult = { chIdx: number; label: string; before: string; match: string; after: string; locked: boolean };
+
+function normalize(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function stripMd(s: string) {
+  return s.replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1").replace(/^- /gm, "");
+}
+
+function searchChapters(chapters: Chapter[], query: string, purchased: boolean): SearchResult[] {
+  const q = normalize(query.trim());
+  if (q.length < 2) return [];
+  const results: SearchResult[] = [];
+  for (let ci = 0; ci < chapters.length; ci++) {
+    const ch = chapters[ci];
+    const locked = !purchased && !ch.isPreview;
+    const plainContent = stripMd(ch.content ?? "");
+    const normalContent = normalize(plainContent);
+    let searchFrom = 0;
+    while (results.length < 60) {
+      const pos = normalContent.indexOf(q, searchFrom);
+      if (pos === -1) break;
+      searchFrom = pos + q.length;
+      // snippet: 60 chars before, exact match, 60 chars after
+      const snipStart = Math.max(0, pos - 60);
+      const snipEnd   = Math.min(plainContent.length, pos + q.length + 60);
+      const before = (snipStart > 0 ? "…" : "") + plainContent.slice(snipStart, pos);
+      const match  = plainContent.slice(pos, pos + q.length);
+      const after  = plainContent.slice(pos + q.length, snipEnd) + (snipEnd < plainContent.length ? "…" : "");
+      const label  = ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title}` : ch.title;
+      results.push({ chIdx: ci, label, before, match, after, locked });
+      // max 3 snippets per chapter
+      if (results.filter(r => r.chIdx === ci).length >= 3) break;
+    }
+    if (results.length >= 60) break;
+  }
+  return results;
 }
 
 /* ─────────────────────────────────────────────────────────────────
