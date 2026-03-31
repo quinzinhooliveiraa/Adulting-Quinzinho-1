@@ -3829,18 +3829,40 @@ REGRAS:
     }
   });
 
-  // Book cart recovery — users without book access that have push subscriptions
+  // Book cart recovery — users who went to book checkout but didn't complete the purchase
   app.get("/api/admin/book-no-access-users", requireAdmin, async (_req, res) => {
     try {
-      const allUsers = await storage.getAllUsers();
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
       const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
       const now = new Date();
+
+      // Collect userIds from abandoned book PaymentIntents
+      const abandonedUserIds = new Set<string>();
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      while (hasMore) {
+        const intents = await stripe.paymentIntents.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        for (const pi of intents.data) {
+          if ((pi.metadata as any)?.product !== "book_acasados20") continue;
+          if (pi.status === "succeeded" || pi.status === "canceled") continue;
+          const userId = (pi.metadata as any)?.userId;
+          if (userId) abandonedUserIds.add(userId);
+        }
+        hasMore = intents.has_more;
+        if (hasMore && intents.data.length > 0) startingAfter = intents.data[intents.data.length - 1].id;
+      }
+
       const result = [];
-      for (const user of allUsers) {
-        if (user.role === "admin") continue;
-        const hasBook = bookOwnerIds.has(user.id) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
-        if (hasBook) continue;
-        const subs = await storage.getPushSubscriptions(user.id);
+      for (const userId of abandonedUserIds) {
+        const user = await storage.getUser(userId);
+        if (!user) continue;
+        const hasBook = bookOwnerIds.has(userId) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+        if (hasBook) continue; // already owns it
+        const subs = await storage.getPushSubscriptions(userId);
         result.push({ id: user.id, name: user.name, email: user.email, hasPush: subs.length > 0 });
       }
       res.json({ total: result.length, users: result });
@@ -3856,6 +3878,8 @@ REGRAS:
       const customBody: string = req.body?.body || "Adquire o livro e leva a tua relação mais longe. Acede agora.";
       const customUrl: string = req.body?.url || "/livro";
 
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
       const webpushModule = await import("web-push");
       const webpush = webpushModule.default || webpushModule;
       webpush.setVapidDetails(
@@ -3864,21 +3888,39 @@ REGRAS:
         process.env.VAPID_PRIVATE_KEY || ""
       );
 
-      const allUsers = await storage.getAllUsers();
       const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
       const now = new Date();
 
-      const payload = JSON.stringify({ title: customTitle, body: customBody, url: customUrl });
+      // Collect userIds from abandoned book PaymentIntents
+      const abandonedUserIds = new Set<string>();
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      while (hasMore) {
+        const intents = await stripe.paymentIntents.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        for (const pi of intents.data) {
+          if ((pi.metadata as any)?.product !== "book_acasados20") continue;
+          if (pi.status === "succeeded" || pi.status === "canceled") continue;
+          const userId = (pi.metadata as any)?.userId;
+          if (userId) abandonedUserIds.add(userId);
+        }
+        hasMore = intents.has_more;
+        if (hasMore && intents.data.length > 0) startingAfter = intents.data[intents.data.length - 1].id;
+      }
 
+      const payload = JSON.stringify({ title: customTitle, body: customBody, url: customUrl });
       let sent = 0;
       let skipped = 0;
 
-      for (const user of allUsers) {
-        if (user.role === "admin") continue;
-        const hasBook = bookOwnerIds.has(user.id) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+      for (const userId of abandonedUserIds) {
+        if (excludeUserIds.includes(userId)) { skipped++; continue; }
+        const user = await storage.getUser(userId);
+        if (!user) { skipped++; continue; }
+        const hasBook = bookOwnerIds.has(userId) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
         if (hasBook) { skipped++; continue; }
-        if (excludeUserIds.includes(user.id)) { skipped++; continue; }
-        const subs = await storage.getPushSubscriptions(user.id);
+        const subs = await storage.getPushSubscriptions(userId);
         if (subs.length === 0) { skipped++; continue; }
         for (const sub of subs) {
           try {

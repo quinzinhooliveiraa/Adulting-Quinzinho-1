@@ -2744,7 +2744,7 @@ function BookRecoveryNotificationCard() {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Utilizadores sem acesso ao livro que têm notificações push ativas. Desmarca quem não deve receber.
+          Utilizadores que iniciaram o checkout do livro mas não completaram o pagamento. Desmarca quem não deve receber.
         </p>
 
         <button
