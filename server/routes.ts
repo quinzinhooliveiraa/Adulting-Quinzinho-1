@@ -2031,6 +2031,24 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/users/:id/fix-email", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const { email } = req.body;
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ message: "Email inválido" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "Utilizador não encontrado" });
+      const updated = await storage.updateUser(userId, { email: email.trim().toLowerCase() });
+      if (!updated) return res.status(500).json({ message: "Erro ao atualizar email" });
+      console.log(`[admin] Fixed email for user ${userId} → ${email.trim().toLowerCase()}`);
+      res.json({ ok: true, email: updated.email });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao corrigir email" });
+    }
+  });
+
   app.post("/api/admin/invite", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { email, name, grantPremium } = req.body;

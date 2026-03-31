@@ -128,6 +128,11 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
   const [grantingBook, setGrantingBook] = useState(false);
   const [adminConfirmAction, setAdminConfirmAction] = useState<"grant" | "revoke" | null>(null);
   const [adminConfirmText, setAdminConfirmText] = useState("");
+  const [showFixEmail, setShowFixEmail] = useState(false);
+  const [fixEmailText, setFixEmailText] = useState("");
+  const [fixingEmail, setFixingEmail] = useState(false);
+
+  const emailIsProtected = !user.email || user.email.startsWith("enc:");
 
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
@@ -172,13 +177,68 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
               <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-medium">Inativo</span>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground truncate">{displayEmail(user.email)}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-[11px] text-muted-foreground truncate">{displayEmail(user.email)}</p>
+            {emailIsProtected && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowFixEmail(!showFixEmail); setFixEmailText(""); }}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                title="Corrigir email"
+                data-testid={`button-fix-email-${user.id}`}
+              >
+                <Pencil size={10} />
+              </button>
+            )}
+          </div>
         </div>
         <ChevronLeft size={14} className={`text-muted-foreground transition-transform shrink-0 ${expanded ? "-rotate-90" : "rotate-180"}`} />
       </button>
 
       {expanded && (
         <div className="px-3 pb-3 space-y-3 border-t border-border pt-3 animate-in fade-in duration-200">
+          {showFixEmail && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-orange-500/5 border border-orange-500/20">
+              <input
+                type="email"
+                value={fixEmailText}
+                onChange={e => setFixEmailText(e.target.value)}
+                placeholder="email@exemplo.com"
+                className="flex-1 text-[11px] px-2 py-1 rounded bg-background border border-border text-foreground"
+                data-testid={`input-fix-email-${user.id}`}
+                autoFocus
+              />
+              <button
+                disabled={fixingEmail || !fixEmailText.includes("@")}
+                onClick={async () => {
+                  setFixingEmail(true);
+                  try {
+                    const res = await fetch(`/api/admin/users/${user.id}/fix-email`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ email: fixEmailText.trim() }),
+                    });
+                    if (res.ok) {
+                      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                      setShowFixEmail(false);
+                    }
+                  } finally {
+                    setFixingEmail(false);
+                  }
+                }}
+                className="text-[11px] px-2.5 py-1 rounded bg-orange-500 text-white font-medium disabled:opacity-50"
+                data-testid={`button-confirm-fix-email-${user.id}`}
+              >
+                {fixingEmail ? "..." : "Salvar"}
+              </button>
+              <button
+                onClick={() => setShowFixEmail(false)}
+                className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2 text-[11px]">
             <div className="min-w-0">
               <span className="text-muted-foreground">Plano:</span>
