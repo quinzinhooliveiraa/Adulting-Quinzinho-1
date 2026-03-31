@@ -1825,6 +1825,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/users/:id/stripe-info", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ error: "Utilizador não encontrado" });
+      if (!user.stripeCustomerId) return res.json({ hasCard: false });
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const paymentMethods = await stripe.paymentMethods.list({ customer: user.stripeCustomerId, type: "card", limit: 1 });
+      if (paymentMethods.data.length === 0) return res.json({ hasCard: false });
+      const card = paymentMethods.data[0].card;
+      res.json({ hasCard: true, brand: card?.brand || null, last4: card?.last4 || null, expMonth: card?.exp_month || null, expYear: card?.exp_year || null });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/admin/users/:id/grant-book", requireAdmin, async (req: Request, res: Response) => {
     try {
       const userId = req.params.id;

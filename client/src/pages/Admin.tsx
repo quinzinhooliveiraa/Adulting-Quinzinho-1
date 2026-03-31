@@ -105,6 +105,8 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
 
 function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void; currentUserEmail: string; allUsers: AdminUser[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [stripeInfo, setStripeInfo] = useState<{ hasCard: boolean; brand?: string | null; last4?: string | null; expMonth?: number | null; expYear?: number | null } | null>(null);
+  const [loadingStripe, setLoadingStripe] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showTrialPicker, setShowTrialPicker] = useState(false);
@@ -139,7 +141,18 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   return (
     <div className="border border-border rounded-xl bg-background">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          if (next && stripeInfo === null && !loadingStripe) {
+            setLoadingStripe(true);
+            fetch(`/api/admin/users/${user.id}/stripe-info`, { credentials: "include" })
+              .then(r => r.json())
+              .then(d => setStripeInfo(d))
+              .catch(() => setStripeInfo({ hasCard: false }))
+              .finally(() => setLoadingStripe(false));
+          }
+        }}
         className="w-full p-3 flex items-center gap-2.5 text-left hover:bg-muted/50 transition-colors rounded-xl"
         data-testid={`user-card-${user.id}`}
       >
@@ -197,6 +210,19 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
               <p className={`font-medium ${user.hasBook ? "text-emerald-500" : "text-muted-foreground"}`}>
                 {user.hasBook ? "Comprado" : "Não"}
               </p>
+            </div>
+            <div className="min-w-0">
+              <span className="text-muted-foreground">Cartão:</span>
+              {loadingStripe ? (
+                <p className="text-muted-foreground">…</p>
+              ) : stripeInfo?.hasCard ? (
+                <p className="text-green-500 font-medium">
+                  {stripeInfo.brand ? stripeInfo.brand.charAt(0).toUpperCase() + stripeInfo.brand.slice(1) : ""} •••• {stripeInfo.last4}
+                  {stripeInfo.expMonth && stripeInfo.expYear ? <span className="text-muted-foreground font-normal"> {stripeInfo.expMonth}/{String(stripeInfo.expYear).slice(-2)}</span> : null}
+                </p>
+              ) : (
+                <p className="text-muted-foreground font-medium">Não</p>
+              )}
             </div>
             <div className="min-w-0">
               <span className="text-muted-foreground">PWA:</span>
