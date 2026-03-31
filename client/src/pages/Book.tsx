@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
   ShoppingBag, ExternalLink, Instagram, CheckCircle2, List, BookMarked, AlignLeft,
-  Highlighter, Trash2, Star
+  Highlighter, Trash2, Star, ImageDown
 } from "lucide-react";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import authorImg from "../assets/author.webp";
@@ -704,6 +704,102 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
 }
 
 
+const HL_SOLID: Record<string, string> = {
+  yellow:  "#e6c100",
+  green:   "#3aad4a",
+  pink:    "#e85580",
+  blue:    "#2e9fd4",
+  orange:  "#e07b10",
+  purple:  "#8b3fd6",
+  teal:    "#10a89e",
+  red:     "#e03030",
+};
+
+function generateHighlightImage(hl: BookHighlight, chapterLabel: string) {
+  const W = 1080, H = 1080;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // ── Background ──────────────────────────────────────────────────
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, "#fdf6ed");
+  bgGrad.addColorStop(1, "#f0e4cf");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Accent strip at top ─────────────────────────────────────────
+  const accentColor = HL_SOLID[hl.color] ?? "#7c5c3a";
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(0, 0, W, 14);
+
+  // ── Decorative large quotation mark ─────────────────────────────
+  ctx.fillStyle = "rgba(124,92,58,0.09)";
+  ctx.font = `bold 380px Georgia, 'Times New Roman', serif`;
+  ctx.fillText("\u201C", 52, 370);
+
+  // ── Chapter label ───────────────────────────────────────────────
+  ctx.fillStyle = accentColor;
+  ctx.font = `bold 28px -apple-system, Arial, sans-serif`;
+  ctx.fillText(chapterLabel.toUpperCase().slice(0, 60), 80, 450);
+
+  // ── Quoted text ─────────────────────────────────────────────────
+  ctx.fillStyle = "#2d1e0f";
+  ctx.font = `italic 48px Georgia, 'Times New Roman', serif`;
+  const maxW = W - 160;
+  const lineH = 70;
+  const rawText = `"${hl.text}"`;
+  const words = rawText.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(test).width > maxW) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+
+  // Clamp to max 10 lines
+  const displayLines = lines.slice(0, 10);
+  if (lines.length > 10) displayLines[9] = displayLines[9] + "…";
+
+  const blockH = displayLines.length * lineH;
+  const textStartY = Math.max(500, (H - blockH) / 2 + 30);
+  for (let i = 0; i < displayLines.length; i++) {
+    ctx.fillText(displayLines[i], 80, textStartY + i * lineH);
+  }
+
+  // ── Divider ─────────────────────────────────────────────────────
+  ctx.strokeStyle = "rgba(124,92,58,0.25)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(80, H - 170);
+  ctx.lineTo(W - 80, H - 170);
+  ctx.stroke();
+
+  // ── Book title ──────────────────────────────────────────────────
+  ctx.fillStyle = "rgba(61,40,18,0.85)";
+  ctx.font = `bold 38px Georgia, 'Times New Roman', serif`;
+  ctx.fillText("A Casa dos 20", 80, H - 118);
+
+  // ── Author ──────────────────────────────────────────────────────
+  ctx.fillStyle = "rgba(124,92,58,0.65)";
+  ctx.font = `30px Georgia, 'Times New Roman', serif`;
+  ctx.fillText("Quinzinho Oliveira", 80, H - 72);
+
+  // ── Accent dot right ────────────────────────────────────────────
+  ctx.fillStyle = accentColor;
+  ctx.beginPath();
+  ctx.arc(W - 80, H - 95, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Download ────────────────────────────────────────────────────
+  const link = document.createElement("a");
+  link.download = `marcacao-casados20.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 /* ─────────────────────────────────────────────────────────────────
    BOOK READER  (full-screen overlay)
 ───────────────────────────────────────────────────────────────── */
@@ -1000,7 +1096,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                             <p className="text-[11px] bk-muted">
                               {new Date(hl.createdAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
                             </p>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                               {ch && (
                                 <button className="text-[11px] font-semibold active:opacity-60"
                                   style={{ color: "var(--bk-accent)" }}
@@ -1011,6 +1107,16 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                                   Ir ao capítulo
                                 </button>
                               )}
+                              <button className="flex items-center gap-1 text-[11px] font-semibold active:opacity-60"
+                                style={{ color: "var(--bk-accent)" }}
+                                onClick={() => {
+                                  const label = ch
+                                    ? (ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title}` : ch.title)
+                                    : "A Casa dos 20";
+                                  generateHighlightImage(hl, label);
+                                }}>
+                                <ImageDown size={12} /> Imagem
+                              </button>
                               <button className="flex items-center gap-1 text-[11px] active:opacity-60"
                                 style={{ color: "var(--bk-muted)" }}
                                 onClick={() => deleteHL.mutate(hl.id)}>
