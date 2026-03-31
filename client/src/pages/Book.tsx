@@ -70,34 +70,8 @@ function processContent(raw: string): string[] {
       .filter(p => p.trim().length > 0);
   }
 
-  if (!raw.includes("\n")) {
-    // Format 3: single long string with no explicit breaks — render as one flowing paragraph
-    return [raw.trim()];
-  }
-
-  // Format 2: only single \n — join PDF-wrapped lines into paragraphs
-  const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  const paragraphs: string[] = [];
-  let current = "";
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    current = current ? current + " " + line : line;
-
-    const next = lines[i + 1];
-    if (!next) { paragraphs.push(current); break; }
-
-    const endsWithPunct = /[.!?]["»"']?$/.test(line);
-    const nextStartsCap  = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ""—]/.test(next);
-
-    if (endsWithPunct && nextStartsCap) {
-      paragraphs.push(current);
-      current = "";
-    }
-  }
-
-  if (current.trim()) paragraphs.push(current.trim());
-  return paragraphs.filter(p => p.length > 0);
+  // No \n\n found: join all lines into one flowing paragraph (corrido)
+  return [raw.split("\n").map(l => l.trim()).filter(l => l.length > 0).join(" ")];
 }
 
 type BookHighlight = {

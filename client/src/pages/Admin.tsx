@@ -973,21 +973,8 @@ function processContent(raw: string): string[] {
       block.split("\n").map(l => l.trim()).filter(l => l.length > 0).join(" ")
     ).filter(p => p.trim().length > 0);
   }
-  if (!raw.includes("\n")) return [raw.trim()];
-  const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  const paragraphs: string[] = [];
-  let current = "";
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    current = current ? current + " " + line : line;
-    const next = lines[i + 1];
-    if (!next) { paragraphs.push(current); break; }
-    const endsWithPunct = /[.!?]["»"']?$/.test(line);
-    const nextStartsCap = /^[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ""—]/.test(next);
-    if (endsWithPunct && nextStartsCap) { paragraphs.push(current); current = ""; }
-  }
-  if (current.trim()) paragraphs.push(current.trim());
-  return paragraphs.filter(p => p.length > 0);
+  // No \n\n found: join all lines into one flowing paragraph (corrido)
+  return [raw.split("\n").map(l => l.trim()).filter(l => l.length > 0).join(" ")];
 }
 
 function renderInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] {
