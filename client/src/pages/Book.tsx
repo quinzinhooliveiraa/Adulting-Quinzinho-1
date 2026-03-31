@@ -362,13 +362,18 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
   const [activeHLId, setActiveHLId] = useState<number | null>(null);
   const [activeHLPos, setActiveHLPos] = useState<{ x: number; y: number } | null>(null);
 
-  const { data, isLoading } = useQuery<{ content: string }>({
+  const { data, isLoading, isError, refetch } = useQuery<{ content: string }>({
     queryKey: ["/api/book/chapters", chapter.id, "content"],
-    queryFn: () => fetch(`/api/book/chapters/${chapter.id}/content`, { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/book/chapters/${chapter.id}/content`, { credentials: "include" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
     enabled: canRead,
+    retry: 2,
   });
 
-  const rawContent = data?.content ?? "";
+  const rawContent = (data as any)?.content ?? "";
   const pdfPages: string[] = rawContent
     ? rawContent.split("\f").map(p => p.trim()).filter(p => p.length > 0)
     : [];
@@ -524,6 +529,19 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     </div>
   );
 
+  if (isError) return (
+    <div className={`flex-1 flex flex-col items-center justify-center gap-4 px-8 text-center ${animClass}`} style={{ background: "var(--bk-bg)" }}>
+      <p className="bk-serif bk-ink text-base opacity-70">Não foi possível carregar o conteúdo.</p>
+      <button
+        onClick={() => refetch()}
+        className="text-sm px-4 py-2 rounded-md border"
+        style={{ borderColor: "var(--bk-accent)", color: "var(--bk-accent)", background: "transparent" }}
+      >
+        Tentar novamente
+      </button>
+    </div>
+  );
+
   // Sumário
   if (rawContent === "__TOC__" && allChapters) {
     const fmChapters = allChapters.filter(c => c.pageType === "front-matter" && c.title !== "Sumário");
@@ -640,6 +658,9 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
             </div>
           ) : (
             <div className="pt-3 pb-2">
+              {paras.length === 0 && data && (
+                <p className="bk-serif bk-ink opacity-40 text-center pt-8 text-sm">Conteúdo não disponível.</p>
+              )}
               {paras.map((p, i) => {
                 const isBullet = p.trimStart().startsWith("- ");
                 if (isBullet) {
