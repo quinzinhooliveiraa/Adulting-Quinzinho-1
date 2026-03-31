@@ -2694,6 +2694,17 @@ function BookRecoveryNotificationCard() {
   const [customBody, setCustomBody] = useState("Adquire o livro e leva a tua relação mais longe. Acede agora.");
   const [customUrl, setCustomUrl] = useState("/livro");
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showDiag, setShowDiag] = useState(false);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagData, setDiagData] = useState<{ totalScanned: number; totalBook: number; rows: any[] } | null>(null);
+
+  const loadDiag = async () => {
+    setDiagLoading(true);
+    try {
+      const res = await fetch("/api/admin/book-stripe-intents", { credentials: "include" });
+      if (res.ok) setDiagData(await res.json());
+    } finally { setDiagLoading(false); }
+  };
 
   const { data: bookData, isLoading } = useQuery<{ total: number; users: { id: string; name: string; email: string; hasPush: boolean }[] }>({
     queryKey: ["/api/admin/book-no-access-users"],
@@ -2840,6 +2851,71 @@ function BookRecoveryNotificationCard() {
         >
           {sending ? "Enviando..." : `Enviar Notificação${willReceive.length > 0 ? ` (${willReceive.length})` : ""}`}
         </button>
+
+        {/* Stripe diagnostics */}
+        <div className="border-t border-border pt-3 space-y-2">
+          <button
+            onClick={() => { setShowDiag(!showDiag); if (!showDiag && !diagData) loadDiag(); }}
+            className="text-[11px] text-muted-foreground underline underline-offset-2 flex items-center gap-1"
+            data-testid="button-show-stripe-diag"
+          >
+            <Search size={10} /> {showDiag ? "Ocultar diagnóstico Stripe" : "Ver todos os PaymentIntents do livro no Stripe"}
+          </button>
+          {showDiag && (
+            <div className="space-y-2">
+              {diagLoading && <p className="text-[11px] text-muted-foreground">A consultar Stripe...</p>}
+              {diagData && (
+                <>
+                  <p className="text-[10px] text-muted-foreground">
+                    Percorridos <span className="font-medium text-foreground">{diagData.totalScanned}</span> PIs no Stripe •{" "}
+                    <span className="font-medium text-foreground">{diagData.totalBook}</span> com produto livro
+                  </p>
+                  <button
+                    onClick={loadDiag}
+                    disabled={diagLoading}
+                    className="text-[10px] text-muted-foreground underline underline-offset-2"
+                    data-testid="button-refresh-stripe-diag"
+                  >
+                    Atualizar
+                  </button>
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                    {diagData.rows.map(row => (
+                      <div
+                        key={row.piId}
+                        className={`text-[10px] px-2 py-1.5 rounded-md border ${row.included ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-muted/30"}`}
+                        data-testid={`diag-pi-${row.piId}`}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-mono ${row.included ? "text-emerald-600" : "text-muted-foreground line-through"}`}>
+                            {row.userName ?? row.userId ?? "—"}
+                          </span>
+                          <span className={`px-1 rounded text-[9px] font-medium ${
+                            row.status === "succeeded" ? "bg-green-500/20 text-green-600" :
+                            row.status === "canceled" ? "bg-red-500/20 text-red-500" :
+                            row.status === "requires_payment_method" ? "bg-orange-500/20 text-orange-500" :
+                            "bg-muted text-muted-foreground"
+                          }`}>{row.status}</span>
+                          {row.included ? (
+                            <span className="text-emerald-600 text-[9px]">incluído</span>
+                          ) : (
+                            <span className="text-muted-foreground text-[9px]">{row.excludedReason}</span>
+                          )}
+                          <span className="text-muted-foreground text-[9px] ml-auto shrink-0">
+                            {new Date(row.createdAt).toLocaleDateString("pt-PT")}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground font-mono mt-0.5 text-[9px] truncate">{row.piId}</p>
+                      </div>
+                    ))}
+                    {diagData.rows.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground">Nenhum PaymentIntent do livro encontrado no Stripe.</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

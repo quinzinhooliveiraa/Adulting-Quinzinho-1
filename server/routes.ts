@@ -3829,6 +3829,76 @@ REGRAS:
     }
   });
 
+  // Book Stripe diagnostics — all book PaymentIntents with status breakdown
+  app.get("/api/admin/book-stripe-intents", requireAdmin, async (_req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
+      const now = new Date();
+
+      const rows: any[] = [];
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      let totalScanned = 0;
+
+      while (hasMore) {
+        const intents = await stripe.paymentIntents.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+        totalScanned += intents.data.length;
+        for (const pi of intents.data) {
+          if ((pi.metadata as any)?.product !== "book_acasados20") continue;
+          const userId = (pi.metadata as any)?.userId ?? null;
+          let userName: string | null = null;
+          let hasBook = false;
+          let hasPush = false;
+          let excludedReason: string | null = null;
+
+          if (pi.status === "succeeded") excludedReason = "já pagou (succeeded)";
+          else if (pi.status === "canceled") excludedReason = "cancelado";
+
+          if (userId) {
+            const user = await storage.getUser(userId);
+            if (user) {
+              userName = user.name;
+              hasBook = bookOwnerIds.has(userId) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+              if (hasBook && !excludedReason) excludedReason = "já tem acesso ao livro";
+              const subs = await storage.getPushSubscriptions(userId);
+              hasPush = subs.length > 0;
+              if (!hasPush && !excludedReason) excludedReason = "sem push ativo";
+            } else {
+              excludedReason = "utilizador não encontrado";
+            }
+          } else {
+            excludedReason = "sem userId no metadata";
+          }
+
+          rows.push({
+            piId: pi.id,
+            status: pi.status,
+            amount: pi.amount,
+            createdAt: new Date(pi.created * 1000).toISOString(),
+            userId,
+            userName,
+            hasBook,
+            hasPush,
+            included: !excludedReason,
+            excludedReason,
+          });
+        }
+        hasMore = intents.has_more;
+        if (hasMore && intents.data.length > 0) startingAfter = intents.data[intents.data.length - 1].id;
+      }
+
+      rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json({ totalScanned, totalBook: rows.length, rows });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Book cart recovery — users who went to book checkout but didn't complete the purchase
   app.get("/api/admin/book-no-access-users", requireAdmin, async (_req, res) => {
     try {
