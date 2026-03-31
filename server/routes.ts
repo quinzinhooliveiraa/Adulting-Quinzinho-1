@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
@@ -231,11 +233,52 @@ function getUserPremiumStatus(user: { role: string; isPremium: boolean; trialEnd
   return { hasPremium: false, reason: "expired" as const };
 }
 
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Muitas tentativas. Tente novamente em 15 minutos." },
+  skip: (req) => process.env.NODE_ENV === "test",
+});
+
+const adminRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Muitas requisições ao painel admin. Aguarde alguns minutos." },
+});
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   app.set("trust proxy", 1);
+
+  app.use("/api/admin", adminRateLimit);
+
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://js.stripe.com"],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://accounts.google.com", "wss:", "ws:"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET must be set in production");
+  }
+
   app.use(
     session({
       store: new PgStore({ pool }),
@@ -369,7 +412,7 @@ export async function registerRoutes(
     inviteCode: z.string().optional(),
   });
 
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
+  app.post("/api/auth/register", authRateLimit, async (req: Request, res: Response) => {
     try {
       const data = registerSchema.parse(req.body);
 
@@ -438,7 +481,7 @@ export async function registerRoutes(
     password: z.string().min(1),
   });
 
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
+  app.post("/api/auth/login", authRateLimit, async (req: Request, res: Response) => {
     try {
       const data = loginSchema.parse(req.body);
 
@@ -651,7 +694,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/forgot-password", authRateLimit, async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ message: "Email obrigatório" });
