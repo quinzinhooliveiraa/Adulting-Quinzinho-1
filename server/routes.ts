@@ -1590,6 +1590,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/book/search", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const q = String(req.query.q || "").trim();
+      if (q.length < 2) return res.json([]);
+      const user = await storage.getUser(req.session.userId!);
+      const isAdmin = user?.role === "admin";
+      let hasPurchased = isAdmin;
+      if (!hasPurchased) {
+        const purchase = await storage.getUserBookPurchase(req.session.userId!);
+        hasPurchased = !!purchase;
+      }
+      const results = await storage.searchBookChapters(q, hasPurchased);
+      res.json(results);
+    } catch {
+      res.status(500).json({ error: "Erro na pesquisa" });
+    }
+  });
+
   app.get("/api/book/chapters/:id/content", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);

@@ -137,6 +137,7 @@ export interface IStorage {
   getAgeGroupActivity(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ range: string; eventCount: number; userCount: number }[]>;
 
   getBookChapters(): Promise<Omit<BookChapter, "content">[]>;
+  searchBookChapters(query: string, hasPurchased: boolean): Promise<{ chapterId: number; order: number; title: string; pageType: string; isPreview: boolean; before: string; match: string; after: string }[]>;
   getBookChapter(id: number): Promise<BookChapter | undefined>;
   createBookChapter(data: InsertBookChapter): Promise<BookChapter>;
   updateBookChapter(id: number, data: Partial<InsertBookChapter>): Promise<BookChapter | undefined>;
@@ -799,6 +800,46 @@ export class DatabaseStorage implements IStorage {
       .from(bookChapters)
       .orderBy(bookChapters.order);
     return rows;
+  }
+
+  async searchBookChapters(query: string, hasPurchased: boolean): Promise<{ chapterId: number; order: number; title: string; pageType: string; isPreview: boolean; before: string; match: string; after: string }[]> {
+    const q = query.trim();
+    if (q.length < 2) return [];
+
+    const allChapters = await db.select().from(bookChapters).orderBy(bookChapters.order);
+    const results: { chapterId: number; order: number; title: string; pageType: string; isPreview: boolean; before: string; match: string; after: string }[] = [];
+
+    const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const stripMd = (s: string) => s.replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1").replace(/^- /gm, "").replace(/^#+\s*/gm, "");
+    const normalQ = normalize(q);
+
+    for (const ch of allChapters) {
+      if (!hasPurchased && !ch.isPreview) continue;
+      const plain = stripMd(ch.content ?? "");
+      const normalPlain = normalize(plain);
+      let searchFrom = 0;
+      let chapterHits = 0;
+      while (results.length < 60 && chapterHits < 3) {
+        const pos = normalPlain.indexOf(normalQ, searchFrom);
+        if (pos === -1) break;
+        searchFrom = pos + normalQ.length;
+        const snipStart = Math.max(0, pos - 60);
+        const snipEnd = Math.min(plain.length, pos + q.length + 60);
+        results.push({
+          chapterId: ch.id,
+          order: ch.order,
+          title: ch.title,
+          pageType: ch.pageType ?? "chapter",
+          isPreview: ch.isPreview ?? false,
+          before: (snipStart > 0 ? "…" : "") + plain.slice(snipStart, pos),
+          match: plain.slice(pos, pos + q.length),
+          after: plain.slice(pos + q.length, snipEnd) + (snipEnd < plain.length ? "…" : ""),
+        });
+        chapterHits++;
+      }
+      if (results.length >= 60) break;
+    }
+    return results;
   }
 
   async getBookChapter(id: number): Promise<BookChapter | undefined> {
