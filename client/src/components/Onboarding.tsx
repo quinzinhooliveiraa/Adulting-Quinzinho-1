@@ -238,6 +238,26 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   Baseado no livro de Quinzinho Oliveira
                 </p>
               </div>
+              <div className="w-full bg-primary/5 border border-primary/15 rounded-xl p-3 stagger-3">
+                <div className="flex items-center justify-center gap-1.5 mb-2">
+                  <ShieldCheck size={14} className="text-primary" />
+                  <span className="text-xs font-semibold text-primary">Seus dados estão protegidos</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                    <ShieldCheck size={16} className="text-primary/70" />
+                    <span className="text-[10px] text-muted-foreground leading-tight">E-mail criptografado</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <ShieldCheck size={16} className="text-primary/70" />
+                    <span className="text-[10px] text-muted-foreground leading-tight">Senha protegida</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <ShieldCheck size={16} className="text-primary/70" />
+                    <span className="text-[10px] text-muted-foreground leading-tight">Cartão via Stripe</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -544,18 +544,55 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
                 </ul>
               </div>
 
+              <div className="bg-muted/40 border border-border rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Shield size={16} className="text-primary" />
+                  3. Proteção técnica dos seus dados
+                </h3>
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-3">
+                    <Shield size={14} className="text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground text-xs">E-mail criptografado</p>
+                      <p className="text-foreground/70 text-xs">Seu e-mail é armazenado com criptografia AES-256-GCM — o mesmo padrão usado por bancos. Mesmo que alguém acesse o banco de dados, não consegue ler seu e-mail.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Shield size={14} className="text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground text-xs">Senha nunca armazenada</p>
+                      <p className="text-foreground/70 text-xs">Sua senha passa por hashing irreversível (scrypt) antes de ser salva. Nem nós conseguimos saber qual é a sua senha.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Shield size={14} className="text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground text-xs">Proteção contra ataques</p>
+                      <p className="text-foreground/70 text-xs">O sistema bloqueia automaticamente tentativas repetidas de login ou acesso não autorizado.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Shield size={14} className="text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground text-xs">Dados de cartão protegidos pela Stripe</p>
+                      <p className="text-foreground/70 text-xs">Não armazenamos nenhum dado de cartão. Os pagamentos são processados diretamente pela Stripe (certificada PCI DSS nível 1).</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <h3 className="font-semibold text-foreground mb-2">3. Dados coletados</h3>
+                <h3 className="font-semibold text-foreground mb-2">4. Dados coletados</h3>
                 <p>Coletamos apenas o mínimo necessário para o funcionamento do app:</p>
                 <ul className="mt-2 space-y-1 text-foreground/80">
-                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Nome e e-mail (para criar sua conta)</li>
+                  <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Nome e e-mail (armazenado de forma criptografada)</li>
                   <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Dados de progresso (quais jornadas e capítulos você completou)</li>
                   <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Preferências de notificação</li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground mb-2">4. Uso do aplicativo</h3>
+                <h3 className="font-semibold text-foreground mb-2">5. Uso do aplicativo</h3>
                 <ul className="space-y-1 text-foreground/80">
                   <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>O app é gratuito com recursos premium opcionais.</li>
                   <li className="flex items-start gap-2"><span className="text-muted-foreground mt-0.5">•</span>Você pode excluir sua conta e todos os seus dados a qualquer momento.</li>
@@ -564,12 +601,12 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground mb-2">5. Pagamentos</h3>
-                <p>Assinaturas premium são processadas pela Stripe de forma segura. Não armazenamos dados de cartão de crédito. Você pode cancelar sua assinatura a qualquer momento.</p>
+                <h3 className="font-semibold text-foreground mb-2">6. Pagamentos</h3>
+                <p>Assinaturas premium são processadas pela Stripe (certificada PCI DSS nível 1). Nenhum dado de cartão é armazenado nos nossos servidores — apenas um identificador de referência da Stripe. Você pode cancelar a qualquer momento.</p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground mb-2">6. Contato</h3>
+                <h3 className="font-semibold text-foreground mb-2">7. Contato</h3>
                 <p>Em caso de dúvidas, entre em contato pelo e-mail: <span className="text-primary font-medium">quinzinhooliveiraa@gmail.com</span></p>
               </div>
 
