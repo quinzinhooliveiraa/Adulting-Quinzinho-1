@@ -4061,21 +4061,71 @@ REGRAS:
         const plainEmail = decryptField(user.email);
         if (!plainEmail || !plainEmail.includes("@")) { skipped++; continue; }
 
-        const html = `
-          <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px; color: #1a1a1a;">
-            <h2 style="color: #1a1a1a; margin-bottom: 8px;">Olá, ${user.name}!</h2>
-            <p style="color: #444; line-height: 1.7; margin-bottom: 24px;">${customBody}</p>
-            <p style="color: #444; line-height: 1.7; margin-bottom: 32px;">
-              <strong>A Casa dos 20</strong> é um guia honesto para navegar os teus vinte anos — o amor, as amizades, os medos e as escolhas que moldam quem és.
-            </p>
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${bookUrl}" style="background: #7c3aed; color: white; padding: 14px 32px; border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 15px;">Adquirir o Livro</a>
-            </div>
-            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 32px;">
-              Casa dos 20 · Se não quiseres receber estes emails, ignora esta mensagem.
-            </p>
-          </div>
-        `;
+        const firstName = user.name.split(" ")[0];
+        const html = `<!DOCTYPE html>
+<html lang="pt">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${customSubject}</title></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;">
+    <tr><td align="center" style="padding:32px 16px;">
+
+      <!-- Card container -->
+      <table role="presentation" width="100%" style="max-width:520px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+        <!-- Hero header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f0f0f 0%,#1c1218 60%,#2d1b3d 100%);padding:48px 40px 40px;text-align:center;">
+            <p style="margin:0 0 12px;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#a78bfa;font-family:Arial,sans-serif;font-weight:600;">A Casa dos 20</p>
+            <h1 style="margin:0 0 8px;font-size:28px;line-height:1.25;color:#ffffff;font-weight:bold;letter-spacing:-0.02em;">O livro que começaste<br>ainda está aqui.</h1>
+            <div style="width:40px;height:2px;background:#7c3aed;margin:20px auto 0;border-radius:2px;"></div>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:40px 40px 32px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#1a1a1a;line-height:1.3;">Olá, ${firstName}.</p>
+            <p style="margin:0 0 20px;font-size:15px;color:#444444;line-height:1.75;">${customBody}</p>
+            <p style="margin:0 0 28px;font-size:15px;color:#444444;line-height:1.75;"><strong style="color:#1a1a1a;">A Casa dos 20</strong> é um guia honesto para quem está a navegar os seus vinte anos — o amor, as amizades, os medos e as escolhas que moldam quem somos.</p>
+
+            <!-- Quote block -->
+            <table role="presentation" width="100%" style="margin:0 0 32px;">
+              <tr>
+                <td style="border-left:3px solid #7c3aed;padding:12px 20px;background:#faf7ff;border-radius:0 8px 8px 0;">
+                  <p style="margin:0;font-size:14px;color:#5b21b6;line-height:1.65;font-style:italic;">"Às vezes, você tem que experimentar o amor errado para aprender a lutar pelo seu coração."</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA button -->
+            <table role="presentation" width="100%">
+              <tr>
+                <td align="center" style="padding:8px 0 0;">
+                  <a href="${bookUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:16px 40px;border-radius:999px;letter-spacing:0.02em;">Adquirir o Livro</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Divider strip -->
+        <tr>
+          <td style="background:#7c3aed;height:3px;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9f9f9;padding:24px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:12px;color:#888888;">Este email foi enviado pela <strong style="color:#555555;">Casa dos 20</strong>.</p>
+            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:#aaaaaa;">Se não quiseres receber estes emails, ignora esta mensagem.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
         try {
           await sendBrevoEmail({ to: plainEmail, toName: user.name, subject: customSubject, html });
