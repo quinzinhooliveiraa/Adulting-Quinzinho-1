@@ -3829,6 +3829,77 @@ REGRAS:
     }
   });
 
+  // Book cart recovery — users without book access that have push subscriptions
+  app.get("/api/admin/book-no-access-users", requireAdmin, async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
+      const now = new Date();
+      const result = [];
+      for (const user of allUsers) {
+        if (user.role === "admin") continue;
+        const hasBook = bookOwnerIds.has(user.id) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+        if (hasBook) continue;
+        const subs = await storage.getPushSubscriptions(user.id);
+        result.push({ id: user.id, name: user.name, email: user.email, hasPush: subs.length > 0 });
+      }
+      res.json({ total: result.length, users: result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/send-book-recovery-notifications", requireAdmin, async (req, res) => {
+    try {
+      const excludeUserIds: string[] = Array.isArray(req.body?.excludeUserIds) ? req.body.excludeUserIds : [];
+      const customTitle: string = req.body?.title || "O livro A Casa dos 20 espera por ti";
+      const customBody: string = req.body?.body || "Adquire o livro e leva a tua relação mais longe. Acede agora.";
+      const customUrl: string = req.body?.url || "/livro";
+
+      const webpushModule = await import("web-push");
+      const webpush = webpushModule.default || webpushModule;
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+        process.env.VAPID_PUBLIC_KEY || "",
+        process.env.VAPID_PRIVATE_KEY || ""
+      );
+
+      const allUsers = await storage.getAllUsers();
+      const bookOwnerIds = await storage.getAllBookPurchaseUserIds();
+      const now = new Date();
+
+      const payload = JSON.stringify({ title: customTitle, body: customBody, url: customUrl });
+
+      let sent = 0;
+      let skipped = 0;
+
+      for (const user of allUsers) {
+        if (user.role === "admin") continue;
+        const hasBook = bookOwnerIds.has(user.id) || (user.bookUntil ? new Date(user.bookUntil) > now : false);
+        if (hasBook) { skipped++; continue; }
+        if (excludeUserIds.includes(user.id)) { skipped++; continue; }
+        const subs = await storage.getPushSubscriptions(user.id);
+        if (subs.length === 0) { skipped++; continue; }
+        for (const sub of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload
+            );
+            sent++;
+          } catch (err: any) {
+            const status = err?.statusCode || err?.status;
+            if (status === 410 || status === 404) await storage.deletePushSubscription(sub.userId, sub.endpoint);
+          }
+        }
+      }
+
+      res.json({ ok: true, sent, skipped });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/admin/reconcile-trial-bonus", requireAdmin, async (_req, res) => {
     try {
       const { getUncachableStripeClient } = await import("./stripeClient");
