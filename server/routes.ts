@@ -2188,6 +2188,125 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Exportações CSV ────────────────────────────────────────────────────────
+
+  function csvRow(fields: (string | number | null | undefined)[]): string {
+    return fields.map(f => {
+      const v = f == null ? "" : String(f);
+      return `"${v.replace(/"/g, '""')}"`;
+    }).join(",");
+  }
+
+  app.get("/api/admin/export/users.csv", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const [allUsers, bookOwners] = await Promise.all([
+        storage.getAllUsers(),
+        storage.getAllBookPurchaseUserIds(),
+      ]);
+      const lines: string[] = [
+        csvRow(["id","nome","email","funcao","ativo","tem_premium","razao_premium","trial_termina","premium_ate","criado_em","ultimo_acesso","comprou_livro","pwa_instalado","bonus_cartao"]),
+      ];
+      for (const u of allUsers) {
+        const ps = getUserPremiumStatus(u);
+        lines.push(csvRow([
+          u.id, u.name, u.email, u.role,
+          u.isActive ? "sim" : "não",
+          ps.hasPremium ? "sim" : "não",
+          ps.reason,
+          u.trialEndsAt ? new Date(u.trialEndsAt).toISOString() : "",
+          u.premiumUntil ? new Date(u.premiumUntil).toISOString() : "",
+          u.createdAt ? new Date(u.createdAt).toISOString() : "",
+          u.lastActiveAt ? new Date(u.lastActiveAt).toISOString() : "",
+          bookOwners.has(u.id) ? "sim" : "não",
+          u.pwaInstalled ? "sim" : "não",
+          u.trialBonusClaimed ? "sim" : "não",
+        ]));
+      }
+      const bom = "\uFEFF";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="usuarios_${new Date().toISOString().slice(0,10)}.csv"`);
+      res.send(bom + lines.join("\r\n"));
+    } catch {
+      res.status(500).json({ error: "Erro ao exportar usuários" });
+    }
+  });
+
+  app.get("/api/admin/export/book-purchases.csv", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const purchases = await storage.getBookPurchases();
+      const lines: string[] = [
+        csvRow(["usuario_id","nome","email","valor_reais","data_compra"]),
+      ];
+      for (const p of purchases) {
+        lines.push(csvRow([
+          p.userId, p.name, p.email,
+          (p.amountCents / 100).toFixed(2),
+          new Date(p.createdAt).toISOString(),
+        ]));
+      }
+      const bom = "\uFEFF";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="compras_livro_${new Date().toISOString().slice(0,10)}.csv"`);
+      res.send(bom + lines.join("\r\n"));
+    } catch {
+      res.status(500).json({ error: "Erro ao exportar compras" });
+    }
+  });
+
+  app.get("/api/admin/export/feedback.csv", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const tickets = await storage.getAllFeedback();
+      const lines: string[] = [
+        csvRow(["id","usuario_id","nome","email","tipo","assunto","mensagem","status","nota_admin","criado_em"]),
+      ];
+      for (const t of tickets) {
+        lines.push(csvRow([
+          t.id, t.userId, t.userName ?? "", t.userEmail ?? "",
+          t.type ?? "", t.subject ?? "", t.message ?? "",
+          t.status ?? "",
+          t.adminNote ?? "",
+          new Date(t.createdAt).toISOString(),
+        ]));
+      }
+      const bom = "\uFEFF";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="feedback_${new Date().toISOString().slice(0,10)}.csv"`);
+      res.send(bom + lines.join("\r\n"));
+    } catch {
+      res.status(500).json({ error: "Erro ao exportar feedback" });
+    }
+  });
+
+  app.get("/api/admin/export/analytics.csv", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const days = Number(req.query.days) || 90;
+      const [dailyActive, eventCounts] = await Promise.all([
+        storage.getDailyActiveUsers(days, false),
+        storage.getEventCounts(days, false),
+      ]);
+      const lines: string[] = [];
+      lines.push("=== Usuários Ativos por Dia ===");
+      lines.push(csvRow(["data","usuarios_ativos"]));
+      for (const d of dailyActive) {
+        lines.push(csvRow([d.date, d.count]));
+      }
+      lines.push("");
+      lines.push("=== Eventos por Tipo ===");
+      lines.push(csvRow(["evento","total"]));
+      for (const e of eventCounts) {
+        lines.push(csvRow([e.event, e.count]));
+      }
+      const bom = "\uFEFF";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="analytics_${days}d_${new Date().toISOString().slice(0,10)}.csv"`);
+      res.send(bom + lines.join("\r\n"));
+    } catch {
+      res.status(500).json({ error: "Erro ao exportar analytics" });
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   app.get("/api/admin/notify-prefs", requireAdmin, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);

@@ -7,10 +7,22 @@ import {
   MessageSquare, CheckCircle2, AlertCircle, ChevronDown,
   Bell, BellOff, Plus, ToggleLeft, ToggleRight, RefreshCw, Ticket, Copy, TrendingUp,
   BookOpen, Lock, ChevronRight, ChevronUp, Pencil, CreditCard,
-  Bold, Italic, List
+  Bold, Italic, List, Download
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+
+async function downloadCsv(url: string, filename: string) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(href);
+}
 
 interface AdminUser {
   id: string;
@@ -1277,7 +1289,7 @@ export default function Admin() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowInvite(!showInvite)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
@@ -1285,6 +1297,14 @@ export default function Admin() {
             >
               <UserPlus size={16} />
               Convidar
+            </button>
+            <button
+              onClick={() => downloadCsv("/api/admin/export/users.csv", `usuarios_${new Date().toISOString().slice(0,10)}.csv`)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted text-foreground text-sm font-medium"
+              data-testid="btn-export-users"
+            >
+              <Download size={16} />
+              Exportar CSV
             </button>
           </div>
 
@@ -1343,11 +1363,21 @@ export default function Admin() {
 
       {activeTab === "feedback" && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageSquare size={16} className="text-foreground" />
-            <h2 className="text-sm font-medium text-foreground">
-              {allFeedback.length} chamado(s) — {openFeedbackCount} aberto(s)
-            </h2>
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={16} className="text-foreground" />
+              <h2 className="text-sm font-medium text-foreground">
+                {allFeedback.length} chamado(s) — {openFeedbackCount} aberto(s)
+              </h2>
+            </div>
+            <button
+              onClick={() => downloadCsv("/api/admin/export/feedback.csv", `feedback_${new Date().toISOString().slice(0,10)}.csv`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground text-xs font-medium"
+              data-testid="btn-export-feedback"
+            >
+              <Download size={13} />
+              Exportar CSV
+            </button>
           </div>
 
           {allFeedback.length === 0 ? (
@@ -1554,9 +1584,17 @@ export default function Admin() {
 
       {activeTab === "analytics" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h2 className="text-base font-semibold text-foreground">Uso do App</h2>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                onClick={() => downloadCsv(`/api/admin/export/analytics.csv?days=${analyticsDays}`, `analytics_${analyticsDays}d_${new Date().toISOString().slice(0,10)}.csv`)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted text-foreground text-xs font-medium mr-1"
+                data-testid="btn-export-analytics"
+              >
+                <Download size={12} />
+                CSV
+              </button>
               {([1, 7, 30, 90] as const).map(d => (
                 <button
                   key={d}
@@ -2144,7 +2182,17 @@ export default function Admin() {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Compradores</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">Compradores</h3>
+              <button
+                onClick={() => downloadCsv("/api/admin/export/book-purchases.csv", `compras_livro_${new Date().toISOString().slice(0,10)}.csv`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground text-xs font-medium"
+                data-testid="btn-export-book-purchases"
+              >
+                <Download size={13} />
+                Exportar CSV
+              </button>
+            </div>
             {bookPurchases.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-3">Ainda sem compras registadas.</p>
             ) : (
