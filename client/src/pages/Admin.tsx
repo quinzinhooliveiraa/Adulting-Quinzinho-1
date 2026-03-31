@@ -2574,6 +2574,66 @@ function RecoveryNotificationCard() {
   );
 }
 
+function ReconcileTrialBonusCard() {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<{ fixed: number; alreadyOk: number; users: { name: string; email: string; days: number }[] } | null>(null);
+
+  const handleReconcile = async () => {
+    setRunning(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/admin/reconcile-trial-bonus", { method: "POST", credentials: "include" });
+      const data = await res.json();
+      setResult(data);
+    } catch {
+      setResult(null);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <CreditCard size={16} className="text-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Corrigir Dias em Falta</h2>
+      </div>
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Procura no Stripe todos os utilizadores que adicionaram cartão mas não receberam os dias gratuitos. Corrige automaticamente.
+        </p>
+        {result && (
+          <div className="space-y-2">
+            {result.fixed === 0 ? (
+              <p className="text-[11px] text-muted-foreground">Nenhum utilizador em falta — todos estão correctos ({result.alreadyOk} já tinham o bónus).</p>
+            ) : (
+              <>
+                <p className="text-[11px] text-green-500 font-medium">{result.fixed} utilizador(es) corrigido(s):</p>
+                <div className="space-y-1">
+                  {result.users.map((u, i) => (
+                    <div key={i} className="flex items-center justify-between text-[11px] px-2 py-1 rounded-md bg-muted/50">
+                      <span className="text-foreground">{u.name}</span>
+                      <span className="text-green-500">+{u.days} dias</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        <button
+          onClick={handleReconcile}
+          disabled={running}
+          className="w-full py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+          data-testid="button-reconcile-trial"
+        >
+          {running ? "A verificar Stripe..." : "Verificar e Corrigir"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PushNotificationPanel() {
   const [pushTitle, setPushTitle] = useState("Casa dos 20");
   const [pushBody, setPushBody] = useState("");
@@ -2679,6 +2739,8 @@ function PushNotificationPanel() {
       <AutoNotificationsPanel />
 
       <RecoveryNotificationCard />
+
+      <ReconcileTrialBonusCard />
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">

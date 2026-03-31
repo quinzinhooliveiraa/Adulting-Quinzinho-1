@@ -3713,6 +3713,58 @@ REGRAS:
     }
   });
 
+  app.post("/api/admin/reconcile-trial-bonus", requireAdmin, async (_req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      let hasMore = true;
+      let startingAfter: string | undefined;
+      let fixed = 0;
+      let alreadyOk = 0;
+      let noUser = 0;
+      const fixed_users: { name: string; email: string; days: number }[] = [];
+
+      while (hasMore) {
+        const subs = await stripe.subscriptions.list({
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+
+        for (const sub of subs.data) {
+          const meta = sub.metadata as any;
+          if (meta?.purpose !== "trial_bonus") continue;
+          if (sub.status !== "active" && sub.status !== "trialing") continue;
+
+          const customerId = sub.customer as string;
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) { noUser++; continue; }
+
+          if (user.trialBonusClaimed) { alreadyOk++; continue; }
+
+          const periodEnd = new Date(sub.current_period_end * 1000);
+          await storage.updateUser(user.id, {
+            stripeSubscriptionId: sub.id,
+            isPremium: true,
+            premiumUntil: periodEnd,
+            trialBonusClaimed: true,
+            trialEndsAt: periodEnd,
+          });
+          const days = Math.round((periodEnd.getTime() - Date.now()) / 86400000);
+          fixed_users.push({ name: user.name, email: user.email, days });
+          fixed++;
+        }
+
+        hasMore = subs.has_more;
+        if (hasMore && subs.data.length > 0) startingAfter = subs.data[subs.data.length - 1].id;
+      }
+
+      res.json({ ok: true, fixed, alreadyOk, noUser, users: fixed_users });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/notifications/auto", requireAdmin, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
