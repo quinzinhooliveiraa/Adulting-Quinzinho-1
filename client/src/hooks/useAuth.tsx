@@ -17,6 +17,7 @@ interface AuthUser {
   journeyOnboardingDone: boolean;
   journeyOrder: string[];
   trialBonusClaimed: boolean;
+  isMasterAdmin?: boolean;
 }
 
 interface AuthContextType {

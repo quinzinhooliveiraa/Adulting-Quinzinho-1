@@ -6,6 +6,7 @@ import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
+import { encryptField, hashEmail } from "./encryption";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
@@ -286,6 +287,24 @@ const adminRateLimit = rateLimit({
   legacyHeaders: false,
   message: { message: "Muitas requisições ao painel admin. Aguarde alguns minutos." },
 });
+
+export async function repairAdminEmail(): Promise<void> {
+  try {
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const adminUsers = await db.select().from(users).where(eq(users.role, "admin"));
+    for (const admin of adminUsers) {
+      if (admin.email?.startsWith("enc:")) {
+        const newEmail = encryptField(ADMIN_EMAIL);
+        const newHash = hashEmail(ADMIN_EMAIL);
+        await db.update(users).set({ email: newEmail, emailHash: newHash }).where(eq(users.id, admin.id));
+        console.log(`[startup] Repaired encrypted email for admin ${admin.id}`);
+      }
+    }
+  } catch (err) {
+    console.error("[startup] repairAdminEmail failed:", err);
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -653,6 +672,7 @@ export async function registerRoutes(
       journeyOnboardingDone: user.journeyOnboardingDone,
       journeyOrder: user.journeyOrder,
       trialBonusClaimed: user.trialBonusClaimed,
+      isMasterAdmin: user.email === ADMIN_EMAIL,
     });
   });
 

@@ -47,6 +47,11 @@ interface AdminUser {
 
 const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
 
+function displayEmail(email: string): string {
+  if (!email || email.startsWith("enc:")) return "[email protegido]";
+  return email;
+}
+
 interface Stats {
   totalUsers: number;
   activeUsers: number;
@@ -103,7 +108,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Users; lab
   );
 }
 
-function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void; currentUserEmail: string; allUsers: AdminUser[] }) {
+function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: { user: AdminUser; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void; currentUserIsMaster: boolean; allUsers: AdminUser[] }) {
   const [expanded, setExpanded] = useState(false);
   const [stripeInfo, setStripeInfo] = useState<{ hasCard: boolean; brand?: string | null; last4?: string | null; expMonth?: number | null; expYear?: number | null } | null>(null);
   const [loadingStripe, setLoadingStripe] = useState(false);
@@ -127,8 +132,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const premiumEnd = user.premiumUntil ? new Date(user.premiumUntil) : null;
   const createdAt = new Date(user.createdAt);
-  const isMainAdmin = user.email === MASTER_EMAIL;
-  const iAmMaster = currentUserEmail === MASTER_EMAIL;
+  const isMainAdmin = user.isMasterAdmin === true;
 
   const getPlanLabel = () => {
     if (user.premiumReason === "paid" && user.stripeSubscriptionId) return "Assinatura Stripe";
@@ -168,7 +172,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
               <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-medium">Inativo</span>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{displayEmail(user.email)}</p>
         </div>
         <ChevronLeft size={14} className={`text-muted-foreground transition-transform shrink-0 ${expanded ? "-rotate-90" : "rotate-180"}`} />
       </button>
@@ -516,7 +520,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserEmail, allUsers }: { us
                   </button>
                 )}
 
-                {isMainAdmin && iAmMaster ? (
+                {isMainAdmin && currentUserIsMaster ? (
                   <>
                     <button
                       onClick={() => setShowTransferDialog(true)}
@@ -1393,7 +1397,7 @@ export default function Admin() {
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">{filteredUsers.length} usuário(s)</p>
             {filteredUsers.map((user) => (
-              <UserCard key={user.id} user={user} onUpdate={handleUpdate} onDelete={handleDelete} currentUserEmail={authUser?.email || ""} allUsers={allUsers} />
+              <UserCard key={user.id} user={user} onUpdate={handleUpdate} onDelete={handleDelete} currentUserIsMaster={authUser?.isMasterAdmin === true} allUsers={allUsers} />
             ))}
           </div>
         </>
@@ -1566,7 +1570,7 @@ export default function Admin() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{displayEmail(u.email)}</p>
                       </div>
                     </button>
                   ))}
@@ -1995,7 +1999,7 @@ export default function Admin() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{displayEmail(u.email)}</p>
                           </div>
                           <span className="text-xs font-bold text-primary shrink-0">{u.count}</span>
                         </div>
@@ -2399,7 +2403,7 @@ export default function Admin() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{p.email}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{displayEmail(p.email)}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs font-bold text-primary">R${(p.amountCents / 100).toFixed(2)}</p>
@@ -2539,7 +2543,7 @@ function RecoveryNotificationCard() {
                         )}
                       </div>
                       <span className={`flex-1 ${isExcluded ? "line-through text-muted-foreground" : "text-foreground"}`}>{u.name}</span>
-                      <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">{u.email}</span>
+                      <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">{displayEmail(u.email)}</span>
                       <span className={u.hasPush ? "text-green-500 text-[10px]" : "text-muted-foreground text-[10px]"}>
                         {u.hasPush ? "push ativo" : "sem push"}
                       </span>
