@@ -727,6 +727,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   const [animClass, setAnimClass]   = useState("");
   const [showToc, setShowToc]       = useState(openToc ?? false);
   const [showHLPanel, setShowHLPanel] = useState(false);
+  const [immersive, setImmersive]   = useState(false);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
   const [screenshotCount, setScreenshotCount] = useState(() => {
@@ -869,6 +870,13 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
     setChapterIdx(idx); setSubPage(0); setShowToc(false);
   }
 
+  function handleContentTap(e: React.MouseEvent) {
+    if ((e.target as HTMLElement).closest("button, a, [data-hl-toolbar], [data-hl-tooltip]")) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+    setImmersive(v => !v);
+  }
+
   function pageLabel() {
     if (!chapter) return "";
     if (chapter.pageType === "front-matter" || chapter.pageType === "epilogue") return chapter.title;
@@ -904,31 +912,35 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       )}
 
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bk-sep bk-bg shrink-0">
-        <button onClick={onClose} data-testid="btn-close-reader" className="p-2.5 active:opacity-50">
-          <X size={22} className="bk-muted" />
-        </button>
-        <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
-        <div className="flex items-center gap-0.5">
-          <button onClick={() => setShowHLPanel(true)} data-testid="btn-highlights-panel"
-            className="p-2.5 active:opacity-50 relative">
-            <Highlighter size={18} className="bk-muted" />
-            {allHighlights.length > 0 && (
-              <span className="absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-bold flex items-center justify-center px-0.5"
-                style={{ background: "var(--bk-accent)", color: "var(--bk-bg)" }}>
-                {allHighlights.length}
-              </span>
-            )}
+      <div className="shrink-0 overflow-hidden" style={{ maxHeight: immersive ? 0 : "6rem", transition: "max-height 0.3s ease" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b bk-sep bk-bg">
+          <button onClick={onClose} data-testid="btn-close-reader" className="p-2.5 active:opacity-50">
+            <X size={22} className="bk-muted" />
           </button>
-          <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-2.5 active:opacity-50">
-            <List size={20} className="bk-muted" />
-          </button>
+          <p className="text-[10px] uppercase tracking-[0.2em] bk-muted font-semibold">A Casa dos 20</p>
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setShowHLPanel(true)} data-testid="btn-highlights-panel"
+              className="p-2.5 active:opacity-50 relative">
+              <Highlighter size={18} className="bk-muted" />
+              {allHighlights.length > 0 && (
+                <span className="absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-bold flex items-center justify-center px-0.5"
+                  style={{ background: "var(--bk-accent)", color: "var(--bk-bg)" }}>
+                  {allHighlights.length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setShowToc(true)} data-testid="btn-toc" className="p-2.5 active:opacity-50">
+              <AlignLeft size={20} className="bk-muted" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-[2px] shrink-0" style={{ background: "var(--bk-sep)" }}>
-        <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: "var(--bk-accent)" }} />
+      <div className="shrink-0 overflow-hidden" style={{ maxHeight: immersive ? 0 : "4px", transition: "max-height 0.3s ease" }}>
+        <div className="h-[2px]" style={{ background: "var(--bk-sep)" }}>
+          <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: "var(--bk-accent)" }} />
+        </div>
       </div>
 
       {/* TOC overlay */}
@@ -1018,37 +1030,50 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       )}
 
       {/* Page content */}
-      {chapter ? (
-        <ChapterPage
-          chapter={chapter}
-          purchased={purchased}
-          onBuy={onBuy}
-          animClass={animClass}
-          subPage={subPage}
-          onActualSubPageCount={handleActualSubPageCount}
-          allChapters={chapters}
-          onGoToChapter={goToChapter}
-          highlights={allHighlights}
-          onSaveHighlight={(data) => saveHL.mutate(data)}
-          onDeleteHighlight={(id) => deleteHL.mutate(id)}
-        />
-      ) : null}
+      <div className="flex-1 min-h-0 flex flex-col relative" onClick={handleContentTap}>
+        {chapter ? (
+          <ChapterPage
+            chapter={chapter}
+            purchased={purchased}
+            onBuy={onBuy}
+            animClass={animClass}
+            subPage={subPage}
+            onActualSubPageCount={handleActualSubPageCount}
+            allChapters={chapters}
+            onGoToChapter={goToChapter}
+            highlights={allHighlights}
+            onSaveHighlight={(data) => saveHL.mutate(data)}
+            onDeleteHighlight={(id) => deleteHL.mutate(id)}
+          />
+        ) : null}
+        {/* Immersive hint */}
+        {immersive && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none select-none">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium bk-muted"
+              style={{ background: "var(--bk-sep)", opacity: 0.55 }}>
+              Toque para mostrar menu
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Bottom navigation */}
-      <div className="shrink-0 border-t bk-sep bk-bg px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate("prev")} disabled={!hasPrev}
-          data-testid="btn-prev-chapter"
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border bk-sep text-sm font-medium disabled:opacity-20 active:scale-[0.97] transition-all bk-muted"
-          style={{ minWidth: 96 }}>
-          <ChevronLeft size={16} /> Anterior
-        </button>
-        <p className="flex-1 text-center text-[10px] bk-muted font-mono">{pageLabel()}</p>
-        <button onClick={() => navigate("next")} disabled={!hasNext}
-          data-testid="btn-next-chapter"
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-20 active:scale-[0.97] transition-all text-white"
-          style={{ minWidth: 96, background: hasNext ? "var(--bk-accent)" : "var(--bk-muted)", opacity: hasNext ? 1 : 0.3 }}>
-          Próxima <ChevronRight size={16} />
-        </button>
+      <div className="shrink-0 overflow-hidden" style={{ maxHeight: immersive ? 0 : "6rem", transition: "max-height 0.3s ease" }}>
+        <div className="border-t bk-sep bk-bg px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate("prev")} disabled={!hasPrev}
+            data-testid="btn-prev-chapter"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border bk-sep text-sm font-medium disabled:opacity-20 active:scale-[0.97] transition-all bk-muted"
+            style={{ minWidth: 96 }}>
+            <ChevronLeft size={16} /> Anterior
+          </button>
+          <p className="flex-1 text-center text-[10px] bk-muted font-mono">{pageLabel()}</p>
+          <button onClick={() => navigate("next")} disabled={!hasNext}
+            data-testid="btn-next-chapter"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-20 active:scale-[0.97] transition-all text-white"
+            style={{ minWidth: 96, background: hasNext ? "var(--bk-accent)" : "var(--bk-muted)", opacity: hasNext ? 1 : 0.3 }}>
+            Próxima <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
