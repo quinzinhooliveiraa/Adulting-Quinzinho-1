@@ -917,8 +917,9 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   // ─── Save reading progress ─────────────────────────────────────
   // (Restore is handled by the parent via startIdx prop)
   useEffect(() => {
-    localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage }));
-  }, [chapterIdx, subPage]);
+    const chapterTitle = chapters[chapterIdx]?.title ?? "";
+    localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage, pct: progress, title: chapterTitle }));
+  }, [chapterIdx, subPage, progress]);
 
   // ─── Book search via API (debounced) ──────────────────────────
   useEffect(() => {
@@ -1476,6 +1477,14 @@ export default function Book() {
   const [readerOpenToc, setReaderOpenToc] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
+  function readSavedProgress() {
+    try {
+      const saved = localStorage.getItem("bk-progress");
+      return saved ? JSON.parse(saved) as { ch: number; sp: number; pct: number; title: string } : null;
+    } catch { return null; }
+  }
+  const [savedProgress, setSavedProgress] = useState(() => readSavedProgress());
+
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<Chapter[]>({
     queryKey: ["/api/book/chapters"],
     staleTime: 0,
@@ -1750,6 +1759,37 @@ export default function Book() {
         {/* ── TAB: LER LIVRO ── */}
         {activeTab === "ler" && (
           <div>
+            {/* Reading progress card */}
+            {savedProgress && typeof savedProgress.pct === "number" && savedProgress.pct > 0 && (
+              <div className="mb-6 bg-card border border-border rounded-2xl p-4 space-y-3" data-testid="card-reading-progress">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={15} style={{ color: "var(--bk-accent,#7c5c3a)" }} />
+                    <p className="text-sm font-semibold text-foreground">O teu progresso</p>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
+                    {savedProgress.pct}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${savedProgress.pct}%`, background: "var(--bk-accent,#7c5c3a)" }}
+                  />
+                </div>
+                {savedProgress.title && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    A ler: <span className="italic">{savedProgress.title}</span>
+                  </p>
+                )}
+                <button onClick={() => openReader()} data-testid="btn-continue-reading"
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                  style={{ background: "var(--bk-accent,#7c5c3a)" }}>
+                  <ChevronRight size={14} /> Continuar a Ler
+                </button>
+              </div>
+            )}
+
             {/* Buy banner */}
             {!purchased && (
               <div className="mb-6 bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
@@ -1841,8 +1881,8 @@ export default function Book() {
           startIdx={readerStartIdx}
           purchased={purchased}
           openToc={readerOpenToc}
-          onClose={() => { setReaderStartIdx(null); setReaderOpenToc(false); }}
-          onBuy={() => { setReaderStartIdx(null); setReaderOpenToc(false); setShowPurchaseModal(true); }}
+          onClose={() => { setReaderStartIdx(null); setReaderOpenToc(false); setSavedProgress(readSavedProgress()); }}
+          onBuy={() => { setReaderStartIdx(null); setReaderOpenToc(false); setSavedProgress(readSavedProgress()); setShowPurchaseModal(true); }}
         />
       )}
 
