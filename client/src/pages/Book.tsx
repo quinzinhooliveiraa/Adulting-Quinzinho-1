@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Bookmark, LockKeyhole, BookOpen, X, ChevronLeft, ChevronRight,
@@ -358,7 +358,7 @@ function ChapterPage({ chapter, purchased, onBuy, animClass, subPage, onActualSu
     else if (pdfPages.length > 0) onActualSubPageCount(pdfPages.length);
   }, [data?.content]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [subPage, chapter.id]);
 
