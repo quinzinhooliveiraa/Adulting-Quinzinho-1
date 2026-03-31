@@ -269,10 +269,12 @@ export async function registerRoutes(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
+        frameAncestors: ["'self'", "https://*.replit.dev", "https://*.replit.app", "https://replit.com"],
         upgradeInsecureRequests: [],
       },
     },
     crossOriginEmbedderPolicy: false,
+    xFrameOptions: false,
   }));
 
   if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
