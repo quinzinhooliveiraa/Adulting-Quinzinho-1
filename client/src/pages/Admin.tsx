@@ -395,6 +395,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                     >
                       <option value={7}>7 dias</option>
                       <option value={14}>14 dias</option>
+                      <option value={16}>16 dias</option>
                       <option value={30}>30 dias</option>
                       <option value={60}>60 dias</option>
                       <option value={90}>90 dias</option>
@@ -436,24 +437,22 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                         <XCircle size={12} /> Encerrar Trial
                       </button>
                     )}
-                    {!user.trialBonusClaimed && (
-                      <button
-                        disabled={grantingBonus}
-                        onClick={async () => {
-                          setGrantingBonus(true);
-                          try {
-                            await fetch(`/api/admin/users/${user.id}/grant-trial-bonus`, { method: "POST", credentials: "include" });
-                            queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-                          } finally {
-                            setGrantingBonus(false);
-                          }
-                        }}
-                        className="text-[11px] px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 hover:bg-green-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
-                        data-testid={`button-grant-bonus-${user.id}`}
-                      >
-                        <Star size={12} /> {grantingBonus ? "..." : "+16 dias bónus"}
-                      </button>
-                    )}
+                    <button
+                      disabled={grantingBonus}
+                      onClick={async () => {
+                        setGrantingBonus(true);
+                        try {
+                          await fetch(`/api/admin/users/${user.id}/grant-trial-bonus`, { method: "POST", credentials: "include" });
+                          queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                        } finally {
+                          setGrantingBonus(false);
+                        }
+                      }}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 hover:bg-green-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      data-testid={`button-grant-bonus-${user.id}`}
+                    >
+                      <Star size={12} /> {grantingBonus ? "..." : "+16 dias bónus"}
+                    </button>
                   </>
                 )}
 
