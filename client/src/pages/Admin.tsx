@@ -994,7 +994,7 @@ export default function Admin() {
 
   const { data: topUsersRaw } = useQuery<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>({
     queryKey: ["/api/admin/top-users", analyticsDays, excludeAdmins, appliedStart, appliedEnd],
-    queryFn: () => fetch(buildAnalyticsUrl("/api/admin/top-users"), { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(buildAnalyticsUrl("/api/admin/top-users") + "&limit=50", { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
   const topUsers = Array.isArray(topUsersRaw) ? topUsersRaw : [];
@@ -1019,6 +1019,18 @@ export default function Admin() {
     queryFn: () => fetch(`/api/admin/demographics?excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
     enabled: activeTab === "analytics",
   });
+
+  const { data: patterns } = useQuery<{
+    hourlyPattern: { hour: number; count: number }[];
+    weekdayPattern: { weekday: number; name: string; count: number }[];
+    ageGroupActivity: { range: string; eventCount: number; userCount: number }[];
+  }>({
+    queryKey: ["/api/admin/analytics/patterns", analyticsDays, excludeAdmins, appliedStart, appliedEnd],
+    queryFn: () => fetch(buildAnalyticsUrl("/api/admin/analytics/patterns"), { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "analytics",
+  });
+
+  const [showAllTopUsers, setShowAllTopUsers] = useState(false);
 
   const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
     queryKey: ["/api/admin/push-status"],
@@ -1779,6 +1791,103 @@ export default function Admin() {
             );
           })()}
 
+          {/* Hourly pattern — all periods */}
+          {patterns?.hourlyPattern && (() => {
+            const hp = patterns.hourlyPattern;
+            const maxHp = Math.max(...hp.map(h => h.count), 1);
+            const peakHp = hp.reduce((best, h) => h.count > best.count ? h : best, hp[0] ?? { hour: 0, count: 0 });
+            const fmt = (h: number) => `${String(h).padStart(2, "0")}h`;
+            const labelHours = [0, 3, 6, 9, 12, 15, 18, 21];
+            const totalEvents = hp.reduce((s, h) => s + h.count, 0);
+            return (
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Horário de uso — padrão do período</p>
+                    {peakHp.count > 0 && (
+                      <p className="text-[10px] text-primary font-medium mt-0.5">
+                        Pico às {fmt(peakHp.hour)} · {peakHp.count.toLocaleString()} eventos
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-foreground">{totalEvents.toLocaleString()}</p>
+                    <p className="text-[9px] text-muted-foreground">eventos totais</p>
+                  </div>
+                </div>
+                <div className="flex items-end gap-px h-20">
+                  {hp.map(h => {
+                    const pct = (h.count / maxHp) * 100;
+                    const isPeak = h.count > 0 && h.count === peakHp.count;
+                    return (
+                      <div key={h.hour} className="flex-1 flex flex-col items-center group relative" style={{ height: "100%", justifyContent: "flex-end" }}>
+                        {h.count > 0 && (
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-foreground text-background text-[8px] px-1 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                            {fmt(h.hour)}: {h.count}
+                          </div>
+                        )}
+                        <div
+                          className={`w-full rounded-t-[2px] ${isPeak ? "bg-primary" : h.count === 0 ? "bg-muted/30" : "bg-primary/50 hover:bg-primary/70"}`}
+                          style={{ height: `${h.count === 0 ? 2 : Math.max(pct, 5)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground mt-1.5 px-0">
+                  {hp.map(h => (
+                    <span key={h.hour} className={`flex-1 text-center ${labelHours.includes(h.hour) ? (h.hour === peakHp.hour && peakHp.count > 0 ? "text-primary font-bold" : "text-muted-foreground") : "opacity-0 select-none"}`} style={{ fontSize: "8px" }}>
+                      {labelHours.includes(h.hour) ? fmt(h.hour) : "."}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Weekday pattern */}
+          {patterns?.weekdayPattern && (() => {
+            const wp = patterns.weekdayPattern;
+            const maxWp = Math.max(...wp.map(d => d.count), 1);
+            const peakWp = wp.reduce((best, d) => d.count > best.count ? d : best, wp[0] ?? { weekday: 0, name: "", count: 0 });
+            return (
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-medium text-muted-foreground">Dias da semana mais ativos</p>
+                  {peakWp.count > 0 && (
+                    <p className="text-[10px] text-primary font-medium">{peakWp.name} é o mais ativo</p>
+                  )}
+                </div>
+                <div className="flex items-end gap-1.5 h-16">
+                  {wp.map(d => {
+                    const pct = (d.count / maxWp) * 100;
+                    const isPeak = d.count > 0 && d.count === peakWp.count;
+                    return (
+                      <div key={d.weekday} className="flex-1 flex flex-col items-center gap-1 group relative" style={{ height: "100%", justifyContent: "flex-end" }}>
+                        {d.count > 0 && (
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-foreground text-background text-[8px] px-1 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                            {d.count.toLocaleString()}
+                          </div>
+                        )}
+                        <div
+                          className={`w-full rounded-t-sm ${isPeak ? "bg-primary" : d.count === 0 ? "bg-muted/30" : "bg-primary/50 hover:bg-primary/70"}`}
+                          style={{ height: `${d.count === 0 ? 4 : Math.max(pct, 8)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1.5 mt-1.5">
+                  {wp.map(d => (
+                    <span key={d.weekday} className={`flex-1 text-center text-[9px] ${d.count === peakWp.count && d.count > 0 ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                      {d.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3">Funcionalidades mais usadas</p>
             {!analyticsData || analyticsData.eventCounts.length === 0 ? (
@@ -1826,30 +1935,53 @@ export default function Admin() {
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">Utilizadores mais ativos</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium text-muted-foreground">Usuários mais frequentes</p>
+              {topUsers.length > 10 && (
+                <button
+                  onClick={() => setShowAllTopUsers(v => !v)}
+                  className="text-[10px] text-primary font-medium"
+                  data-testid="btn-toggle-top-users"
+                >
+                  {showAllTopUsers ? "ver menos" : `ver todos (${topUsers.length})`}
+                </button>
+              )}
+            </div>
             {topUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Ainda sem dados suficientes</p>
-            ) : (
-              <div className="space-y-2">
-                {topUsers.map((u, i) => (
-                  <div key={u.userId} className="flex items-center gap-2.5" data-testid={`top-user-${i}`}>
-                    <span className="text-[11px] font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                    {u.avatarUrl ? (
-                      <img src={u.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
-                        {u.name.charAt(0).toUpperCase()}
+            ) : (() => {
+              const displayed = showAllTopUsers ? topUsers : topUsers.slice(0, 10);
+              const maxCount = topUsers[0]?.count || 1;
+              return (
+                <div className="space-y-2">
+                  {displayed.map((u, i) => {
+                    const barPct = (u.count / maxCount) * 100;
+                    return (
+                      <div key={u.userId} data-testid={`top-user-${i}`}>
+                        <div className="flex items-center gap-2.5 mb-0.5">
+                          <span className="text-[11px] font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                          {u.avatarUrl ? (
+                            <img src={u.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                          </div>
+                          <span className="text-xs font-bold text-primary shrink-0">{u.count}</span>
+                        </div>
+                        <div className="ml-11 h-1 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary/50 rounded-full" style={{ width: `${barPct}%` }} />
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
-                    </div>
-                    <span className="text-xs font-bold text-primary shrink-0">{u.count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="space-y-3">
@@ -1884,6 +2016,43 @@ export default function Admin() {
                 </div>
               )}
             </div>
+
+            {patterns?.ageGroupActivity && (() => {
+              const aga = patterns.ageGroupActivity.filter(a => a.eventCount > 0);
+              if (aga.length === 0) return null;
+              const maxEvents = Math.max(...aga.map(a => a.eventCount), 1);
+              const topAge = aga.reduce((best, a) => a.eventCount > best.eventCount ? a : best, aga[0]);
+              return (
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-medium text-muted-foreground">Atividade por faixa etária</p>
+                    {topAge && <p className="text-[10px] text-primary font-medium">{topAge.range} é a mais ativa</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    {patterns.ageGroupActivity.map(a => {
+                      const pct = maxEvents > 0 ? (a.eventCount / maxEvents) * 100 : 0;
+                      const isTop = a.range === topAge?.range;
+                      return (
+                        <div key={a.range} className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground w-10 shrink-0">{a.range}</span>
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${isTop ? "bg-primary" : "bg-primary/50"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="text-right w-16 shrink-0">
+                            <span className="text-[10px] font-semibold text-foreground">{a.eventCount.toLocaleString()}</span>
+                            <span className="text-[9px] text-muted-foreground ml-1">ev · {a.userCount}u</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">ev = eventos · u = usuários únicos no período</p>
+                </div>
+              );
+            })()}
 
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-xs font-medium text-muted-foreground mb-3">Principais interesses</p>

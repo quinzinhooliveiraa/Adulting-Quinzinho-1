@@ -132,6 +132,9 @@ export interface IStorage {
   getDailyActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ date: string; count: number }[]>;
   getTopActiveUsers(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string, limit?: number): Promise<{ userId: string; name: string; email: string; avatarUrl: string | null; count: number }[]>;
   getHourlyActiveUsers(date: string, excludeAdmins?: boolean): Promise<{ hour: number; count: number }[]>;
+  getHourlyPattern(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ hour: number; count: number }[]>;
+  getWeekdayPattern(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ weekday: number; name: string; count: number }[]>;
+  getAgeGroupActivity(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ range: string; eventCount: number; userCount: number }[]>;
 
   getBookChapters(): Promise<Omit<BookChapter, "content">[]>;
   getBookChapter(id: number): Promise<BookChapter | undefined>;
@@ -714,6 +717,80 @@ export class DatabaseStorage implements IStorage {
       (rows.rows as any[]).map(r => [Number(r.hour), Number(r.count)])
     );
     return Array.from({ length: 24 }, (_, h) => ({ hour: h, count: dataMap.get(h) ?? 0 }));
+  }
+
+  async getHourlyPattern(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ hour: number; count: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
+    const adminClause = excludeAdmins ? `AND ue.user_id IN (SELECT id FROM users WHERE role != 'admin')` : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT EXTRACT(HOUR FROM (ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::int AS hour,
+             COUNT(*) as count
+      FROM user_events ue
+      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until}
+        AND ue.user_id IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY EXTRACT(HOUR FROM (ue.created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')
+      ORDER BY hour ASC
+    `);
+    const dataMap = new Map<number, number>((rows.rows as any[]).map(r => [Number(r.hour), Number(r.count)]));
+    return Array.from({ length: 24 }, (_, h) => ({ hour: h, count: dataMap.get(h) ?? 0 }));
+  }
+
+  async getWeekdayPattern(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ weekday: number; name: string; count: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
+    const adminClause = excludeAdmins ? `AND user_id IN (SELECT id FROM users WHERE role != 'admin')` : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT EXTRACT(DOW FROM (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::int AS weekday,
+             COUNT(*) as count
+      FROM user_events
+      WHERE created_at >= ${since} AND created_at <= ${until}
+        AND user_id IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY EXTRACT(DOW FROM (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')
+      ORDER BY weekday ASC
+    `);
+    const names = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const dataMap = new Map<number, number>((rows.rows as any[]).map(r => [Number(r.weekday), Number(r.count)]));
+    return Array.from({ length: 7 }, (_, i) => ({ weekday: i, name: names[i], count: dataMap.get(i) ?? 0 }));
+  }
+
+  async getAgeGroupActivity(days: number = 30, excludeAdmins: boolean = false, startDate?: string, endDate?: string): Promise<{ range: string; eventCount: number; userCount: number }[]> {
+    const since = startDate ? new Date(startDate + "T00:00:00-03:00") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
+    const adminClause = excludeAdmins ? `AND u.role != 'admin'` : "";
+    const rows = await db.execute(drizzleSql`
+      SELECT u.birth_year, COUNT(ue.id) as event_count, COUNT(DISTINCT ue.user_id) as user_count
+      FROM user_events ue
+      JOIN users u ON ue.user_id = u.id
+      WHERE ue.created_at >= ${since} AND ue.created_at <= ${until}
+        AND u.birth_year IS NOT NULL
+      ${drizzleSql.raw(adminClause)}
+      GROUP BY u.birth_year
+    `);
+    const now = new Date().getFullYear();
+    const ranges = [
+      { range: "15–19", min: 15, max: 19 },
+      { range: "20–22", min: 20, max: 22 },
+      { range: "23–25", min: 23, max: 25 },
+      { range: "26–29", min: 26, max: 29 },
+      { range: "30–35", min: 30, max: 35 },
+      { range: "36+",   min: 36, max: 999 },
+    ];
+    const buckets = new Map<string, { eventCount: number; userCount: number }>(
+      ranges.map(r => [r.range, { eventCount: 0, userCount: 0 }])
+    );
+    for (const row of rows.rows as any[]) {
+      const age = now - Number(row.birth_year);
+      const bucket = ranges.find(r => age >= r.min && age <= r.max);
+      if (bucket) {
+        const b = buckets.get(bucket.range)!;
+        b.eventCount += Number(row.event_count);
+        b.userCount += Number(row.user_count);
+      }
+    }
+    return ranges.map(r => ({ range: r.range, ...buckets.get(r.range)! }));
   }
 
   async getBookChapters(): Promise<Omit<BookChapter, "content">[]> {

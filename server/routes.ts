@@ -2130,6 +2130,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/analytics/patterns", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const days = Number(req.query.days) || 30;
+      const excludeAdmins = req.query.excludeAdmins === "true";
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+      const [hourlyPattern, weekdayPattern, ageGroupActivity] = await Promise.all([
+        storage.getHourlyPattern(days, excludeAdmins, startDate, endDate),
+        storage.getWeekdayPattern(days, excludeAdmins, startDate, endDate),
+        storage.getAgeGroupActivity(days, excludeAdmins, startDate, endDate),
+      ]);
+      res.json({ hourlyPattern, weekdayPattern, ageGroupActivity });
+    } catch {
+      res.status(500).json({ error: "Erro ao buscar padrões" });
+    }
+  });
+
   app.get("/api/admin/top-users", requireAdmin, async (req: Request, res: Response) => {
     try {
       const days = Number(req.query.days) || 30;
