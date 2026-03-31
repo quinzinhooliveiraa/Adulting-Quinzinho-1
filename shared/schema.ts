@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   pwaInstalled: boolean("pwa_installed").notNull().default(false),
   birthYear: integer("birth_year"),
   interests: text("interests").array(),
+  bookUntil: timestamp("book_until"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

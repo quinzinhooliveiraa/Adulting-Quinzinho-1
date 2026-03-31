@@ -1722,7 +1722,9 @@ export async function registerRoutes(
         return res.json({ purchased: true, purchasedAt: null, pricesCents: BOOK_PRICE_CENTS });
       }
       const purchase = await storage.getUserBookPurchase(req.session.userId!);
-      res.json({ purchased: !!purchase, purchasedAt: purchase?.createdAt || null, pricesCents: BOOK_PRICE_CENTS });
+      const hasTimedAccess = user?.bookUntil ? new Date(user.bookUntil) > new Date() : false;
+      const purchased = !!purchase || hasTimedAccess;
+      res.json({ purchased, purchasedAt: purchase?.createdAt || null, pricesCents: BOOK_PRICE_CENTS, bookUntil: user?.bookUntil || null });
     } catch {
       res.status(500).json({ error: "Erro ao verificar compra" });
     }
@@ -1905,7 +1907,8 @@ export async function registerRoutes(
           lastActiveAt: u.lastActiveAt,
           pwaInstalled: u.pwaInstalled,
           trialBonusClaimed: u.trialBonusClaimed,
-          hasBook: bookOwners.has(u.id),
+          hasBook: bookOwners.has(u.id) || (u.bookUntil ? new Date(u.bookUntil) > new Date() : false),
+          bookUntil: u.bookUntil || null,
         };
       });
       res.json(usersWithStatus);
@@ -1933,12 +1936,24 @@ export async function registerRoutes(
   app.post("/api/admin/users/:id/grant-book", requireAdmin, async (req: Request, res: Response) => {
     try {
       const userId = req.params.id;
+      const days = req.body.days !== undefined ? Number(req.body.days) : 0;
+      if (days > 0) {
+        // Temporary access — set bookUntil, do not create a purchase record
+        const bookUntil = new Date(Date.now() + days * 86400000);
+        await storage.updateUser(userId, { bookUntil } as any);
+        console.log(`[book] Acesso temporário (${days}d) concedido pelo admin a: ${userId}`);
+        return res.json({ ok: true, temporary: true, bookUntil });
+      }
+      // Permanent access — create purchase record
       const existing = await storage.getUserBookPurchase(userId);
-      if (existing) return res.json({ ok: true, alreadyOwned: true });
-      const grantId = `admin_grant_${userId}_${Date.now()}`;
-      await storage.createBookPurchase(userId, grantId, 0);
-      console.log(`[book] Acesso concedido pelo admin a: ${userId}`);
-      res.json({ ok: true });
+      if (!existing) {
+        const grantId = `admin_grant_${userId}_${Date.now()}`;
+        await storage.createBookPurchase(userId, grantId, 0);
+      }
+      // Also clear any expiry that may have been set previously
+      await storage.updateUser(userId, { bookUntil: null } as any);
+      console.log(`[book] Acesso permanente concedido pelo admin a: ${userId}`);
+      res.json({ ok: true, temporary: false });
     } catch (err: any) {
       console.log("[book] grant-book error:", err?.message);
       res.status(500).json({ error: "Erro ao conceder acesso" });
@@ -1949,6 +1964,7 @@ export async function registerRoutes(
     try {
       const userId = req.params.id;
       await storage.revokeBookAccess(userId);
+      await storage.updateUser(userId, { bookUntil: null } as any);
       console.log(`[book] Acesso revogado pelo admin a: ${userId}`);
       res.json({ ok: true });
     } catch (err: any) {

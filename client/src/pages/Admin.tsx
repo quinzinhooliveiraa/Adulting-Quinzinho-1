@@ -43,6 +43,7 @@ interface AdminUser {
   pwaInstalled: boolean;
   trialBonusClaimed?: boolean;
   hasBook: boolean;
+  bookUntil?: string | null;
 }
 
 const MASTER_EMAIL = "quinzinhooliveiraa@gmail.com";
@@ -126,6 +127,8 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
   const [grantConfirmText, setGrantConfirmText] = useState("");
   const [grantingBonus, setGrantingBonus] = useState(false);
   const [grantingBook, setGrantingBook] = useState(false);
+  const [showGrantBook, setShowGrantBook] = useState(false);
+  const [grantBookDays, setGrantBookDays] = useState(7);
   const [adminConfirmAction, setAdminConfirmAction] = useState<"grant" | "revoke" | null>(null);
   const [adminConfirmText, setAdminConfirmText] = useState("");
   const [showFixEmail, setShowFixEmail] = useState(false);
@@ -272,7 +275,11 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
             <div className="min-w-0">
               <span className="text-muted-foreground">Livro:</span>
               <p className={`font-medium ${user.hasBook ? "text-emerald-500" : "text-muted-foreground"}`}>
-                {user.hasBook ? "Comprado" : "Não"}
+                {user.hasBook
+                  ? user.bookUntil && new Date(user.bookUntil) > new Date()
+                    ? `Temp. até ${new Date(user.bookUntil).toLocaleDateString("pt-PT")}`
+                    : "Comprado"
+                  : "Não"}
               </p>
             </div>
             <div className="min-w-0">
@@ -396,35 +403,77 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                 )}
 
                 {user.hasBook ? (
-                  <button
-                    disabled={grantingBook}
-                    onClick={async () => {
-                      setGrantingBook(true);
-                      try {
-                        await apiRequest("DELETE", `/api/admin/users/${user.id}/revoke-book`);
-                        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-                      } finally { setGrantingBook(false); }
-                    }}
-                    className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 disabled:opacity-50"
-                    data-testid={`button-revoke-book-${user.id}`}
-                  >
-                    <BookOpen size={12} /> Revogar Livro
-                  </button>
+                  <>
+                    <button
+                      disabled={grantingBook}
+                      onClick={async () => {
+                        setGrantingBook(true);
+                        try {
+                          await apiRequest("DELETE", `/api/admin/users/${user.id}/revoke-book`);
+                          queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                        } finally { setGrantingBook(false); }
+                      }}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 disabled:opacity-50"
+                      data-testid={`button-revoke-book-${user.id}`}
+                    >
+                      <BookOpen size={12} /> Revogar Livro
+                    </button>
+                    {user.bookUntil && new Date(user.bookUntil) > new Date() && (
+                      <span className="text-[10px] text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                        até {new Date(user.bookUntil).toLocaleDateString("pt-PT")}
+                      </span>
+                    )}
+                  </>
                 ) : (
-                  <button
-                    disabled={grantingBook}
-                    onClick={async () => {
-                      setGrantingBook(true);
-                      try {
-                        await apiRequest("POST", `/api/admin/users/${user.id}/grant-book`);
-                        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-                      } finally { setGrantingBook(false); }
-                    }}
-                    className="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
-                    data-testid={`button-grant-book-${user.id}`}
-                  >
-                    <BookOpen size={12} /> Liberar Livro
-                  </button>
+                  <>
+                    <button
+                      disabled={grantingBook}
+                      onClick={() => setShowGrantBook(!showGrantBook)}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      data-testid={`button-grant-book-${user.id}`}
+                    >
+                      <BookOpen size={12} /> Liberar Livro
+                    </button>
+                    {showGrantBook && (
+                      <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 space-y-2">
+                        <p className="text-[11px] text-muted-foreground">Por quanto tempo?</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {[7, 30, 90, 365].map(d => (
+                            <button
+                              key={d}
+                              onClick={() => setGrantBookDays(d)}
+                              className={`text-[10px] px-2 py-1 rounded-md border ${grantBookDays === d ? "bg-emerald-500 text-white border-emerald-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                              data-testid={`button-grant-book-days-${d}`}
+                            >
+                              {d}d
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setGrantBookDays(0)}
+                            className={`text-[10px] px-2 py-1 rounded-md border ${grantBookDays === 0 ? "bg-emerald-500 text-white border-emerald-500" : "border-border text-muted-foreground hover:bg-muted"}`}
+                            data-testid="button-grant-book-permanent"
+                          >
+                            Permanente
+                          </button>
+                        </div>
+                        <button
+                          disabled={grantingBook}
+                          onClick={async () => {
+                            setGrantingBook(true);
+                            try {
+                              await apiRequest("POST", `/api/admin/users/${user.id}/grant-book`, { days: grantBookDays });
+                              queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                              setShowGrantBook(false);
+                            } finally { setGrantingBook(false); }
+                          }}
+                          className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium disabled:opacity-40"
+                          data-testid={`button-confirm-grant-book-${user.id}`}
+                        >
+                          Liberar — {grantBookDays > 0 ? `${grantBookDays} dias` : "Permanente"}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {user.isActive ? (
