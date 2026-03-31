@@ -1313,7 +1313,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
 
       {/* ── Search panel ── */}
       {showSearch && (
-        <div className="fixed inset-0 z-[9990] flex flex-col" style={{ background: "var(--bk-bg)" }}>
+        <div className="fixed inset-0 z-[9990] flex flex-col pt-safe" style={{ background: "var(--bk-bg)" }}>
           {/* Search header */}
           <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "var(--bk-sep)" }}>
             <Search size={17} style={{ color: "var(--bk-muted)", flexShrink: 0 }} />
