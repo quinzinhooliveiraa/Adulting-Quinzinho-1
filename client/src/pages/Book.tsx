@@ -172,41 +172,67 @@ const BOOK_STYLES = `
   .bk-sep   { border-color: var(--bk-sep); }
   .bk-accent{ color: var(--bk-accent); }
   .bk-serif { font-family: 'Georgia', 'Times New Roman', serif; }
-  .pg-enter-right {
-    animation: pgEnterR 0.40s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-    transform-origin: left center;
-  }
-  .pg-enter-left {
-    animation: pgEnterL 0.40s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-    transform-origin: right center;
-  }
+  /* ── Page curl – outgoing clips away diagonally ── */
   .pg-exit-left {
-    animation: pgExitL 0.40s cubic-bezier(0.55, 0, 0.75, 0.05) both;
-    transform-origin: left center;
+    animation: pgCurlExL 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
   }
   .pg-exit-right {
-    animation: pgExitR 0.40s cubic-bezier(0.55, 0, 0.75, 0.05) both;
-    transform-origin: right center;
+    animation: pgCurlExR 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
   }
-  @keyframes pgEnterR {
-    0%   { opacity: 0;    transform: perspective(1400px) rotateY(42deg) translateX(12%) scaleX(0.86); }
-    45%  { opacity: 0.85; transform: perspective(1400px) rotateY(7deg)  translateX(2%)  scaleX(0.98); }
-    100% { opacity: 1;    transform: perspective(1400px) rotateY(0deg)  translateX(0)   scaleX(1); }
+  @keyframes pgCurlExL {
+    0%   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+    100% { clip-path: polygon(0 0, 3%  6%, 2% 94%, 0 100%); }
   }
-  @keyframes pgEnterL {
-    0%   { opacity: 0;    transform: perspective(1400px) rotateY(-42deg) translateX(-12%) scaleX(0.86); }
-    45%  { opacity: 0.85; transform: perspective(1400px) rotateY(-7deg)  translateX(-2%)  scaleX(0.98); }
-    100% { opacity: 1;    transform: perspective(1400px) rotateY(0deg)   translateX(0)    scaleX(1); }
+  @keyframes pgCurlExR {
+    0%   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+    100% { clip-path: polygon(98% 6%, 100% 0, 100% 100%, 97% 94%); }
   }
-  @keyframes pgExitL {
-    0%   { opacity: 1;  transform: perspective(1400px) rotateY(0deg)   translateX(0)    scaleX(1); }
-    45%  { opacity: 0.7; transform: perspective(1400px) rotateY(-9deg)  translateX(-6%)  scaleX(0.96); }
-    100% { opacity: 0;  transform: perspective(1400px) rotateY(-38deg) translateX(-70%) scaleX(0.82); }
+
+  /* ── Fold edge highlight (back-of-page bright strip) ── */
+  .pg-fold-hl-l {
+    animation: pgFoldHlL 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
   }
-  @keyframes pgExitR {
-    0%   { opacity: 1;  transform: perspective(1400px) rotateY(0deg)  translateX(0)   scaleX(1); }
-    45%  { opacity: 0.7; transform: perspective(1400px) rotateY(9deg)  translateX(6%)  scaleX(0.96); }
-    100% { opacity: 0;  transform: perspective(1400px) rotateY(38deg) translateX(70%) scaleX(0.82); }
+  .pg-fold-hl-r {
+    animation: pgFoldHlR 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
+  }
+  @keyframes pgFoldHlL {
+    0%   { background: linear-gradient(96deg, transparent 97%, rgba(255,255,255,0.0) 100%); }
+    35%  { background: linear-gradient(96deg, transparent 62%, rgba(255,255,255,0.92) 65%, rgba(210,210,210,0.75) 69%, transparent 76%); }
+    70%  { background: linear-gradient(96deg, transparent 22%, rgba(255,255,255,0.92) 25%, rgba(210,210,210,0.72) 29%, transparent 36%); }
+    100% { background: linear-gradient(96deg, transparent 1%,  rgba(255,255,255,0.92) 3%,  rgba(210,210,210,0.7)  6%,  transparent 10%); }
+  }
+  @keyframes pgFoldHlR {
+    0%   { background: linear-gradient(84deg, rgba(255,255,255,0.0) 0%, transparent 3%); }
+    35%  { background: linear-gradient(84deg, transparent 24%, rgba(210,210,210,0.75) 31%, rgba(255,255,255,0.92) 35%, transparent 38%); }
+    70%  { background: linear-gradient(84deg, transparent 64%, rgba(210,210,210,0.72) 71%, rgba(255,255,255,0.92) 75%, transparent 78%); }
+    100% { background: linear-gradient(84deg, transparent 90%, rgba(210,210,210,0.7)  94%, rgba(255,255,255,0.92) 97%, transparent 100%); }
+  }
+
+  /* ── Shadow cast on the page being revealed ── */
+  .pg-curl-shadow-l {
+    animation: pgCurlShadL 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
+  }
+  .pg-curl-shadow-r {
+    animation: pgCurlShadR 0.50s cubic-bezier(0.42, 0, 0.68, 1) both;
+  }
+  @keyframes pgCurlShadL {
+    0%   { background: linear-gradient(to left, rgba(0,0,0,0.28) 0%, transparent 18%); }
+    60%  { background: linear-gradient(to left, rgba(0,0,0,0.20) 38%, transparent 58%); }
+    100% { background: none; opacity: 0; }
+  }
+  @keyframes pgCurlShadR {
+    0%   { background: linear-gradient(to right, rgba(0,0,0,0.28) 0%, transparent 18%); }
+    60%  { background: linear-gradient(to right, rgba(0,0,0,0.20) 38%, transparent 58%); }
+    100% { background: none; opacity: 0; }
+  }
+
+  /* ── Incoming page – subtle brightness reveal ── */
+  .pg-enter-right, .pg-enter-left {
+    animation: pgReveal 0.50s ease both;
+  }
+  @keyframes pgReveal {
+    0%   { filter: brightness(0.82); }
+    100% { filter: brightness(1); }
   }
   .bk-hl-yellow  { background: rgba(255,236,90,0.55);  border-radius: 2px; cursor: pointer; }
   .bk-hl-green   { background: rgba(120,210,130,0.55); border-radius: 2px; cursor: pointer; }
@@ -842,7 +868,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   const [showToc, setShowToc]       = useState(openToc ?? false);
   const [showHLPanel, setShowHLPanel] = useState(false);
   const [immersive, setImmersive]   = useState(false);
-  const [outgoing, setOutgoing]     = useState<{ chIdx: number; sp: number; exitCls: string } | null>(null);
+  const [outgoing, setOutgoing]     = useState<{ chIdx: number; sp: number; exitCls: string; foldCls: string; shadowCls: string } | null>(null);
   const [subPageCounts, setSubPageCounts] = useState<number[]>(initCounts);
   const touchStartX = useRef<number | null>(null);
   const [screenshotCount, setScreenshotCount] = useState(() => {
@@ -958,8 +984,17 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
 
   const FLIP_MS = 420;
 
+  function makeOutgoing(cIdx: number, sp: number, dir: "left" | "right") {
+    return {
+      chIdx: cIdx, sp,
+      exitCls:   dir === "left" ? "pg-exit-left"       : "pg-exit-right",
+      foldCls:   dir === "left" ? "pg-fold-hl-l"       : "pg-fold-hl-r",
+      shadowCls: dir === "left" ? "pg-curl-shadow-l"   : "pg-curl-shadow-r",
+    };
+  }
+
   function navigate(dir: "prev" | "next") {
-    setOutgoing({ chIdx: chapterIdx, sp: subPage, exitCls: dir === "next" ? "pg-exit-left" : "pg-exit-right" });
+    setOutgoing(makeOutgoing(chapterIdx, subPage, dir === "next" ? "left" : "right"));
     setAnimClass(dir === "next" ? "pg-enter-right" : "pg-enter-left");
     setTimeout(() => { setAnimClass(""); setOutgoing(null); }, FLIP_MS);
     if (dir === "next") {
@@ -983,8 +1018,9 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   }
 
   function goToChapter(idx: number) {
-    setOutgoing({ chIdx: chapterIdx, sp: subPage, exitCls: idx > chapterIdx ? "pg-exit-left" : "pg-exit-right" });
-    setAnimClass(idx > chapterIdx ? "pg-enter-right" : "pg-enter-left");
+    const dir = idx >= chapterIdx ? "left" : "right";
+    setOutgoing(makeOutgoing(chapterIdx, subPage, dir));
+    setAnimClass(dir === "left" ? "pg-enter-right" : "pg-enter-left");
     setTimeout(() => { setAnimClass(""); setOutgoing(null); }, FLIP_MS);
     setChapterIdx(idx); setSubPage(0); setShowToc(false);
   }
@@ -1161,29 +1197,32 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
       {/* Page content */}
       <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden" onClick={handleContentTap}>
 
-        {/* Outgoing page — animates away while new page enters */}
+        {/* ── Page curl layers ── */}
         {outgoing && chapters[outgoing.chIdx] && (
-          <div className={`absolute inset-0 z-10 pointer-events-none ${outgoing.exitCls}`}>
-            <ChapterPage
-              chapter={chapters[outgoing.chIdx]}
-              purchased={purchased}
-              onBuy={() => {}}
-              animClass=""
-              subPage={outgoing.sp}
-              onActualSubPageCount={() => {}}
-              allChapters={chapters}
-              onGoToChapter={() => {}}
-              highlights={allHighlights}
-              onSaveHighlight={() => {}}
-              onDeleteHighlight={() => {}}
-            />
-            {/* Edge shadow simulating page depth */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-              background: outgoing.exitCls.includes("left")
-                ? "linear-gradient(to left, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 30%, transparent 65%)"
-                : "linear-gradient(to right, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 30%, transparent 65%)"
-            }} />
-          </div>
+          <>
+            {/* Layer 1 – shadow cast on the revealed (new) page */}
+            <div className={`absolute inset-0 z-10 pointer-events-none ${outgoing.shadowCls}`} />
+
+            {/* Layer 2 – outgoing page clipping away diagonally */}
+            <div className={`absolute inset-0 z-20 pointer-events-none ${outgoing.exitCls}`}>
+              <ChapterPage
+                chapter={chapters[outgoing.chIdx]}
+                purchased={purchased}
+                onBuy={() => {}}
+                animClass=""
+                subPage={outgoing.sp}
+                onActualSubPageCount={() => {}}
+                allChapters={chapters}
+                onGoToChapter={() => {}}
+                highlights={allHighlights}
+                onSaveHighlight={() => {}}
+                onDeleteHighlight={() => {}}
+              />
+            </div>
+
+            {/* Layer 3 – bright fold-edge highlight (NOT clipped) */}
+            <div className={`absolute inset-0 z-30 pointer-events-none ${outgoing.foldCls}`} />
+          </>
         )}
 
         {chapter ? (
