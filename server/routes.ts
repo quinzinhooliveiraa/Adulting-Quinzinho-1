@@ -552,6 +552,14 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
       }
 
+      // Re-encrypt email with current key if stored with old/missing key
+      const normalizedEmail = data.email.trim().toLowerCase();
+      if (user.email !== normalizedEmail) {
+        await storage.updateUser(user.id, { email: normalizedEmail });
+        user = { ...user, email: normalizedEmail };
+        console.log(`[login] re-encrypted email for user ${user.id}`);
+      }
+
       if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role !== "admin") {
         user = (await storage.updateUser(user.id, { role: "admin", isPremium: true })) || user;
       }
@@ -863,6 +871,13 @@ export async function registerRoutes(
         }
       }
 
+      // Re-encrypt email with current key if stored with old/missing key
+      if (user && user.email !== email) {
+        await storage.updateUser(user.id, { email });
+        user = { ...user, email };
+        console.log(`[google-auth] re-encrypted email for user ${user.id}`);
+      }
+
       let isNewUser = false;
       if (!user) {
         const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -977,6 +992,13 @@ export async function registerRoutes(
         }
       }
 
+      // Re-encrypt email with current key if stored with old/missing key
+      if (user && user.email !== email) {
+        await storage.updateUser(user.id, { email });
+        user = { ...user, email };
+        console.log(`[google-oauth] re-encrypted email for user ${user.id}`);
+      }
+
       let isNewUser = false;
       if (!user) {
         const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -1054,6 +1076,13 @@ export async function registerRoutes(
           await storage.updateUser(user.id, { appleId, emailVerified: true });
           user = (await storage.getUser(user.id))!;
         }
+      }
+
+      // Re-encrypt email with current key if stored with old/missing key
+      if (user && user.email !== email) {
+        await storage.updateUser(user.id, { email });
+        user = { ...user, email };
+        console.log(`[apple-auth] re-encrypted email for user ${user.id}`);
       }
 
       let isNewUser = false;

@@ -170,9 +170,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const hash = hashEmail(email);
-    const [user] = await db.select().from(users).where(eq(users.emailHash, hash));
-    return decryptUser(user);
+    const normalized = email.trim().toLowerCase();
+    const hash = hashEmail(normalized);
+
+    // Primary lookup: by current-key HMAC hash
+    let [user] = await db.select().from(users).where(eq(users.emailHash, hash));
+    if (user) return decryptUser(user);
+
+    // Fallback: users registered when ENC_KEY was null had emailHash = normalized email
+    [user] = await db.select().from(users).where(eq(users.emailHash, normalized));
+    if (user) return decryptUser(user);
+
+    return undefined;
   }
 
   async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
@@ -669,7 +678,7 @@ export class DatabaseStorage implements IStorage {
     const until = endDate ? new Date(endDate + "T23:59:59-03:00") : new Date();
     const adminClause = excludeAdmins ? `AND u.role != 'admin'` : "";
     const rows = await db.execute(drizzleSql`
-      SELECT u.id as user_id, u.name, u.email, u.avatar_url, SUM(activity_count) as count
+      SELECT u.id as user_id, u.name, u.email, u.profile_photo, SUM(activity_count) as count
       FROM (
         SELECT user_id, COUNT(*) as activity_count
         FROM journal_entries
@@ -689,7 +698,7 @@ export class DatabaseStorage implements IStorage {
       JOIN users u ON activity.user_id = u.id
       WHERE 1=1
       ${drizzleSql.raw(adminClause)}
-      GROUP BY u.id, u.name, u.email, u.avatar_url
+      GROUP BY u.id, u.name, u.email, u.profile_photo
       ORDER BY count DESC
       LIMIT ${drizzleSql.raw(String(limit))}
     `);
@@ -697,7 +706,7 @@ export class DatabaseStorage implements IStorage {
       userId: r.user_id,
       name: r.name || "Sem nome",
       email: decryptField(r.email || ""),
-      avatarUrl: r.avatar_url || null,
+      avatarUrl: r.profile_photo || null,
       count: Number(r.count),
     }));
   }
