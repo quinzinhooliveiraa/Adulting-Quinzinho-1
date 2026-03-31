@@ -2271,7 +2271,7 @@ export default function Admin() {
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conteúdo completo</label>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">{bookForm.content.length} car. · {processContentEditor(bookForm.content).length} parág.</span>
+                    <span className="text-[10px] text-muted-foreground">{bookForm.content.length} car. · {processContent(bookForm.content).length} parág.</span>
                     <div className="flex rounded-md overflow-hidden border border-border text-[10px] font-medium">
                       <button
                         type="button"
@@ -2348,10 +2348,10 @@ export default function Admin() {
                         )}
                       </div>
                     )}
-                    {processContentEditor(bookForm.content).length === 0 ? (
+                    {processContent(bookForm.content).length === 0 ? (
                       <p className="text-sm text-muted-foreground italic text-center py-8">Nenhum conteúdo para exibir.</p>
                     ) : (
-                      processContentEditor(bookForm.content).map((para, i, arr) => {
+                      processContent(bookForm.content).map((para, i, arr) => {
                         const mb = i < arr.length - 1 ? "0.85em" : 0;
                         if (para.trimStart().startsWith("- ")) {
                           const items = para.split("\n").map(l => l.trim()).filter(l => l.startsWith("- ")).map(l => l.slice(2));
