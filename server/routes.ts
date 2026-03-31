@@ -6,7 +6,7 @@ import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
-import { encryptField, hashEmail } from "./encryption";
+import { encryptField, decryptField, hashEmail, decryptWithKey } from "./encryption";
 import { promises as dns } from "dns";
 import { storage } from "./storage";
 import { pool, db } from "./db";
@@ -15,7 +15,7 @@ import { JOURNEY_TITLES } from "@shared/journeyTitles";
 import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
+import { sql, eq as drizzleEq } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripeClient";
 import { notifyAdminNewUser } from "./adminNotify";
 import { sendBrevoEmail } from "./brevoClient";
@@ -303,6 +303,39 @@ export async function repairAdminEmail(): Promise<void> {
     }
   } catch (err) {
     console.error("[startup] repairAdminEmail failed:", err);
+  }
+}
+
+const OLD_KEY = "e503ed1777430142ba0ba8571fc140652e7ef68c5734ff7f52432e7d7090521a";
+
+export async function repairAllEmailsWithOldKey(): Promise<void> {
+  try {
+    const { users } = await import("@shared/schema");
+    const allUsers = await db.select().from(users);
+    let fixed = 0;
+    let skipped = 0;
+
+    for (const user of allUsers) {
+      if (!user.email?.startsWith("enc:")) { skipped++; continue; }
+
+      // Already decryptable with current key → skip
+      const result = decryptField(user.email);
+      if (!result.startsWith("enc:")) { skipped++; continue; }
+
+      // Try the old key
+      const plain = decryptWithKey(user.email, OLD_KEY);
+      if (!plain) { skipped++; continue; }
+
+      // Re-encrypt with new key
+      const newEmail = encryptField(plain);
+      const newHash = hashEmail(plain);
+      await db.update(users).set({ email: newEmail, emailHash: newHash }).where(drizzleEq(users.id, user.id));
+      fixed++;
+    }
+
+    console.log(`[startup] Email repair complete: ${fixed} fixed, ${skipped} skipped`);
+  } catch (err) {
+    console.error("[startup] repairAllEmailsWithOldKey failed:", err);
   }
 }
 

@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes, seedAutoNotifications, processAutoNotifications, recoverMissedTrialBonuses, repairAdminEmail } from "./routes";
+import { registerRoutes, seedAutoNotifications, processAutoNotifications, recoverMissedTrialBonuses, repairAdminEmail, repairAllEmailsWithOldKey } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
@@ -151,6 +151,9 @@ app.use((req, res, next) => {
 
       repairAdminEmail()
         .catch((err) => log(`Admin email repair error: ${err}`));
+
+      repairAllEmailsWithOldKey()
+        .catch((err) => log(`Email bulk repair error: ${err}`));
 
       seedAutoNotifications()
         .then(() => log("Auto notifications seeded"))

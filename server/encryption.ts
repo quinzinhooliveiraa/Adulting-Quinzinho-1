@@ -41,3 +41,23 @@ export function hashEmail(email: string): string {
   if (!ENC_KEY) return normalized;
   return createHmac("sha256", ENC_KEY).update(normalized).digest("hex");
 }
+
+export function decryptWithKey(value: string, keyHex: string): string | null {
+  if (!value || !value.startsWith(ENC_PREFIX)) return null;
+  try {
+    const key = Buffer.from(keyHex, "hex");
+    if (key.length !== 32) return null;
+    const rest = value.slice(ENC_PREFIX.length);
+    const parts = rest.split(":");
+    if (parts.length !== 3) return null;
+    const iv = Buffer.from(parts[0], "base64");
+    const tag = Buffer.from(parts[1], "base64");
+    const encrypted = Buffer.from(parts[2], "base64");
+    const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
+    if (tag.length !== 16) return null;
+    decipher.setAuthTag(tag);
+    return decipher.update(encrypted).toString("utf8") + decipher.final("utf8");
+  } catch {
+    return null;
+  }
+}
