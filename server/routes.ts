@@ -3659,8 +3659,8 @@ REGRAS:
       let sent = 0;
       let skipped = 0;
       const payload = JSON.stringify({
-        title: "Os teus 30 dias grátis ainda estão à espera",
-        body: "Ficaste a um passo! Guarda o cartão e ganha 30 dias gratuitos.",
+        title: "O teu acesso gratuito está reservado",
+        body: "Só falta um passo para activares os teus 30 dias grátis. Não percas.",
         url: "/",
       });
 
