@@ -1033,6 +1033,8 @@ export default function Admin() {
   const [bookForm, setBookForm] = useState({ order: 1, title: "", tag: "", excerpt: "", content: "", isPreview: false });
   const [bookFormOpen, setBookFormOpen] = useState(false);
   const [bookPreview, setBookPreview] = useState(false);
+  const [bookSaveError, setBookSaveError] = useState<string | null>(null);
+  const [bookSaveOk, setBookSaveOk] = useState(false);
   const bookTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   function applyFormat(tag: "**" | "*") {
@@ -2235,7 +2237,7 @@ export default function Admin() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Capítulos do Livro</h2>
             <button
-              onClick={() => { setBookEditId(null); setBookForm({ order: (adminBookChapters.length || 0) + 1, title: "", tag: "", excerpt: "", content: "", isPreview: false }); setBookFormOpen(true); }}
+              onClick={() => { setBookEditId(null); setBookForm({ order: (adminBookChapters.length || 0) + 1, title: "", tag: "", excerpt: "", content: "", isPreview: false }); setBookSaveError(null); setBookSaveOk(false); setBookFormOpen(true); }}
               className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
               data-testid="btn-new-chapter"
             >
@@ -2395,16 +2397,35 @@ export default function Admin() {
                 </button>
                 <span className="text-xs text-muted-foreground">Pré-visualização gratuita</span>
               </div>
+              {bookSaveError && (
+                <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{bookSaveError}</p>
+              )}
+              {bookSaveOk && (
+                <p className="text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">Capítulo guardado com sucesso.</p>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
                     if (!bookForm.title.trim()) return;
-                    const url = bookEditId ? `/api/admin/book/chapters/${bookEditId}` : "/api/admin/book/chapters";
-                    const method = bookEditId ? "PATCH" : "POST";
-                    await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookForm) });
-                    setBookFormOpen(false);
-                    setBookEditId(null);
-                    refetchBookChapters();
+                    setBookSaveError(null);
+                    setBookSaveOk(false);
+                    try {
+                      const url = bookEditId ? `/api/admin/book/chapters/${bookEditId}` : "/api/admin/book/chapters";
+                      const method = bookEditId ? "PATCH" : "POST";
+                      const res = await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookForm) });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        setBookSaveError(err?.error || `Erro ${res.status} ao guardar capítulo`);
+                        return;
+                      }
+                      setBookSaveOk(true);
+                      setBookFormOpen(false);
+                      setBookEditId(null);
+                      refetchBookChapters();
+                      queryClient.invalidateQueries({ queryKey: ["/api/book/chapters"] });
+                    } catch (e: any) {
+                      setBookSaveError(e?.message || "Erro de rede ao guardar capítulo");
+                    }
                   }}
                   disabled={!bookForm.title.trim() || !bookForm.content.trim()}
                   className="flex-1 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50"
@@ -2412,7 +2433,7 @@ export default function Admin() {
                 >
                   {bookEditId ? "Guardar" : "Criar"}
                 </button>
-                <button onClick={() => { setBookFormOpen(false); setBookEditId(null); }} className="flex-1 py-2 bg-muted text-muted-foreground rounded-lg text-sm">Cancelar</button>
+                <button onClick={() => { setBookFormOpen(false); setBookEditId(null); setBookSaveError(null); setBookSaveOk(false); }} className="flex-1 py-2 bg-muted text-muted-foreground rounded-lg text-sm">Cancelar</button>
               </div>
             </div>
           )}
@@ -2444,7 +2465,7 @@ export default function Admin() {
                       </button>
                       <span className="text-[10px] text-muted-foreground">{ch.content.length}c</span>
                       <button
-                        onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: processContent(ch.content).join("\n\n"), isPreview: ch.isPreview }); setBookPreview(false); setBookFormOpen(true); setBookExpandedId(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        onClick={() => { setBookEditId(ch.id); setBookForm({ order: ch.order, title: ch.title, tag: ch.tag || "", excerpt: ch.excerpt || "", content: ch.content, isPreview: ch.isPreview }); setBookPreview(false); setBookFormOpen(true); setBookExpandedId(null); setBookSaveError(null); setBookSaveOk(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                         className="p-1.5 rounded-lg bg-primary/5 hover:bg-primary/15 transition-colors"
                         data-testid={`btn-edit-chapter-${ch.id}`}
                         title="Editar"
