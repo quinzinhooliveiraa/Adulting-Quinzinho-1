@@ -939,8 +939,11 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
   // (Restore is handled by the parent via startIdx prop)
   useEffect(() => {
     const chapterTitle = chapters[chapterIdx]?.title ?? "";
-    localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage, pct: progress, title: chapterTitle }));
-  }, [chapterIdx, subPage, progress]);
+    const total = subPageCounts.reduce((a: number, b: number) => a + b, 0);
+    const abs = subPageCounts.slice(0, chapterIdx).reduce((a: number, b: number) => a + b, 0) + subPage;
+    const pct = total > 1 ? Math.round((abs / (total - 1)) * 100) : 100;
+    localStorage.setItem("bk-progress", JSON.stringify({ ch: chapterIdx, sp: subPage, pct, title: chapterTitle }));
+  }, [chapterIdx, subPage, subPageCounts]);
 
   // ─── Book search via API (debounced) ──────────────────────────
   useEffect(() => {
