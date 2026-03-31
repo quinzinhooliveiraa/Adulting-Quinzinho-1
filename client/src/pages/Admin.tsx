@@ -2437,6 +2437,7 @@ const INTERVAL_OPTIONS = [
 function RecoveryNotificationCard() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
   const { data: abandoned, isLoading } = useQuery<{ total: number; users: { id: string; name: string; email: string; hasPush: boolean }[] }>({
     queryKey: ["/api/admin/abandoned-checkouts"],
@@ -2449,14 +2450,29 @@ function RecoveryNotificationCard() {
 
   const withPush = abandoned?.users.filter(u => u.hasPush) ?? [];
   const withoutPush = abandoned?.users.filter(u => !u.hasPush) ?? [];
+  const willReceive = withPush.filter(u => !excludedIds.has(u.id));
+
+  const toggleExclude = (id: string) => {
+    setExcludedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleSend = async () => {
     setSending(true);
     setResult(null);
     try {
-      const res = await fetch("/api/admin/send-recovery-notifications", { method: "POST", credentials: "include" });
+      const res = await fetch("/api/admin/send-recovery-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ excludeUserIds: Array.from(excludedIds) }),
+      });
       const data = await res.json();
-      setResult(`Enviado para ${data.sent} dispositivo(s). ${data.skipped > 0 ? `${data.skipped} sem push ativo.` : ""}`);
+      setResult(`Enviado para ${data.sent} dispositivo(s). ${data.skipped > 0 ? `${data.skipped} ignorado(s).` : ""}`);
     } catch {
       setResult("Erro ao enviar.");
     } finally {
@@ -2472,36 +2488,47 @@ function RecoveryNotificationCard() {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Utilizadores que iniciaram o registo do cartão mas não completaram — envia-lhes uma notificação push a lembrar.
+          Utilizadores que iniciaram o registo do cartão mas não completaram. Desmarca quem não deve receber a notificação.
         </p>
         {isLoading ? (
           <p className="text-[11px] text-muted-foreground">A verificar Stripe...</p>
         ) : (
           <div className="space-y-2">
-            <div className="flex items-center gap-4 text-[11px]">
-              <span className="text-foreground font-semibold">{abandoned?.total ?? 0}</span>
-              <span className="text-muted-foreground">com checkout abandonado</span>
-              {withPush.length > 0 && (
-                <>
-                  <span className="text-green-500 font-semibold">{withPush.length}</span>
-                  <span className="text-muted-foreground">com push ativo</span>
-                </>
-              )}
-            </div>
-            {abandoned && abandoned.users.length > 0 && (
+            {abandoned && abandoned.users.length > 0 ? (
               <div className="space-y-1">
-                {abandoned.users.map(u => (
-                  <div key={u.id} className="flex items-center justify-between text-[11px] px-2 py-1 rounded-md bg-muted/50">
-                    <span className="text-foreground">{u.name}</span>
-                    <span className={u.hasPush ? "text-green-500" : "text-muted-foreground"}>
-                      {u.hasPush ? "push ativo" : "sem push"}
-                    </span>
-                  </div>
-                ))}
+                {abandoned.users.map(u => {
+                  const isExcluded = excludedIds.has(u.id);
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => u.hasPush && toggleExclude(u.id)}
+                      data-testid={`recovery-user-${u.id}`}
+                      className={`flex items-center gap-2 text-[11px] px-2 py-1.5 rounded-md transition-colors ${u.hasPush ? "cursor-pointer hover-elevate" : "opacity-50 cursor-default"} bg-muted/50`}
+                    >
+                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${u.hasPush && !isExcluded ? "bg-primary border-primary" : "border-border bg-transparent"}`}>
+                        {u.hasPush && !isExcluded && (
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <path d="M1 4L3 6L7 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`flex-1 ${isExcluded ? "line-through text-muted-foreground" : "text-foreground"}`}>{u.name}</span>
+                      <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">{u.email}</span>
+                      <span className={u.hasPush ? "text-green-500 text-[10px]" : "text-muted-foreground text-[10px]"}>
+                        {u.hasPush ? "push ativo" : "sem push"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Nenhum checkout abandonado encontrado.</p>
             )}
             {withoutPush.length > 0 && (
               <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push — não receberão notificação.</p>
+            )}
+            {excludedIds.size > 0 && (
+              <p className="text-[10px] text-orange-500">{excludedIds.size} excluído(s) manualmente.</p>
             )}
           </div>
         )}
@@ -2510,11 +2537,11 @@ function RecoveryNotificationCard() {
         )}
         <button
           onClick={handleSend}
-          disabled={sending || isLoading || withPush.length === 0}
+          disabled={sending || isLoading || willReceive.length === 0}
           className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
           data-testid="button-send-recovery"
         >
-          {sending ? "Enviando..." : `Enviar Notificação${withPush.length > 0 ? ` (${withPush.length})` : ""}`}
+          {sending ? "Enviando..." : `Enviar Notificação${willReceive.length > 0 ? ` (${willReceive.length})` : ""}`}
         </button>
       </div>
     </div>

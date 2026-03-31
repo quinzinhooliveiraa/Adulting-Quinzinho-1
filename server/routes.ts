@@ -3624,8 +3624,9 @@ REGRAS:
     }
   });
 
-  app.post("/api/admin/send-recovery-notifications", requireAdmin, async (_req, res) => {
+  app.post("/api/admin/send-recovery-notifications", requireAdmin, async (req, res) => {
     try {
+      const excludeUserIds: string[] = Array.isArray(req.body?.excludeUserIds) ? req.body.excludeUserIds : [];
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
       const webpushModule = await import("web-push");
@@ -3664,6 +3665,7 @@ REGRAS:
       });
 
       for (const userId of abandonedUserIds) {
+        if (excludeUserIds.includes(userId)) { skipped++; continue; }
         const user = await storage.getUser(userId);
         if (!user || user.trialBonusClaimed) { skipped++; continue; }
         const subs = await storage.getPushSubscriptions(userId);
