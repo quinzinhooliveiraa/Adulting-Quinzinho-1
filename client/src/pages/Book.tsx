@@ -71,8 +71,8 @@ function processContent(raw: string): string[] {
   }
 
   if (!raw.includes("\n")) {
-    // Format 3: single long string (PDF extracted without newlines) — split by sentences
-    return splitByFrases(raw);
+    // Format 3: single long string with no explicit breaks — render as one flowing paragraph
+    return [raw.trim()];
   }
 
   // Format 2: only single \n — join PDF-wrapped lines into paragraphs

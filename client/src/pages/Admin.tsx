@@ -973,7 +973,7 @@ function processContent(raw: string): string[] {
       block.split("\n").map(l => l.trim()).filter(l => l.length > 0).join(" ")
     ).filter(p => p.trim().length > 0);
   }
-  if (!raw.includes("\n")) return splitByFrases(raw);
+  if (!raw.includes("\n")) return [raw.trim()];
   const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   const paragraphs: string[] = [];
   let current = "";
