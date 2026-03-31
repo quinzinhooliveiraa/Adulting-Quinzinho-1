@@ -12,7 +12,7 @@ const ENC_PREFIX = "enc:";
 export function encryptField(plaintext: string): string {
   if (!ENC_KEY || !plaintext) return plaintext;
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", ENC_KEY, iv);
+  const cipher = createCipheriv("aes-256-gcm", ENC_KEY, iv, { authTagLength: 16 });
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `${ENC_PREFIX}${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
@@ -27,7 +27,8 @@ export function decryptField(value: string): string {
     const iv = Buffer.from(parts[0], "base64");
     const tag = Buffer.from(parts[1], "base64");
     const encrypted = Buffer.from(parts[2], "base64");
-    const decipher = createDecipheriv("aes-256-gcm", ENC_KEY, iv);
+    const decipher = createDecipheriv("aes-256-gcm", ENC_KEY, iv, { authTagLength: 16 });
+    if (tag.length !== 16) throw new Error("invalid auth tag length");
     decipher.setAuthTag(tag);
     return decipher.update(encrypted).toString("utf8") + decipher.final("utf8");
   } catch {
