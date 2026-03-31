@@ -1,5 +1,6 @@
 import { eq, and, desc, ne, gte, count, sql as drizzleSql } from "drizzle-orm";
 import { db } from "./db";
+import { encryptField, decryptField, hashEmail } from "./encryption";
 import {
   users,
   journalEntries,
@@ -148,49 +149,66 @@ export interface IStorage {
   deleteBookHighlight(id: number, userId: string): Promise<boolean>;
 }
 
+function decryptUser<T extends User | undefined>(user: T): T {
+  if (!user) return user;
+  return { ...user, email: decryptField(user.email) } as T;
+}
+
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return decryptUser(user);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    return decryptUser(user);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    const hash = hashEmail(email);
+    const [user] = await db.select().from(users).where(eq(users.emailHash, hash));
+    return decryptUser(user);
   }
 
   async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
-    return user;
+    return decryptUser(user);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    const dbData: any = { ...insertUser };
+    if (dbData.email) {
+      dbData.emailHash = hashEmail(dbData.email);
+      dbData.email = encryptField(dbData.email);
+    }
+    const [user] = await db.insert(users).values(dbData).returning();
+    return decryptUser(user);
   }
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
-    return user;
+    return decryptUser(user);
   }
 
   async getUserByAppleId(appleId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.appleId, appleId));
-    return user;
+    return decryptUser(user);
   }
 
   async updateUser(id: string, data: Partial<Pick<User, "name" | "email" | "role" | "isPremium" | "isActive" | "premiumUntil" | "trialEndsAt" | "invitedBy" | "password" | "journeyOnboardingDone" | "journeyOrder" | "emailVerified" | "emailVerificationToken" | "passwordResetToken" | "passwordResetExpires" | "profilePhoto" | "googleId" | "appleId" | "stripeCustomerId" | "stripeSubscriptionId" | "lastActiveAt" | "pwaInstalled" | "birthYear" | "interests">>): Promise<User | undefined> {
-    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
-    return updated;
+    const dbData: any = { ...data };
+    if (dbData.email) {
+      dbData.emailHash = hashEmail(dbData.email);
+      dbData.email = encryptField(dbData.email);
+    }
+    const [updated] = await db.update(users).set(dbData).where(eq(users.id, id)).returning();
+    return decryptUser(updated);
   }
 
   async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).orderBy(desc(users.createdAt));
+    const rows = await db.select().from(users).orderBy(desc(users.createdAt));
+    return rows.map(decryptUser);
   }
 
   async getEntries(userId: string): Promise<JournalEntry[]> {
@@ -674,7 +692,7 @@ export class DatabaseStorage implements IStorage {
     return (rows.rows as any[]).map(r => ({
       userId: r.user_id,
       name: r.name || "Sem nome",
-      email: r.email || "",
+      email: decryptField(r.email || ""),
       avatarUrl: r.avatar_url || null,
       count: Number(r.count),
     }));
@@ -746,7 +764,7 @@ export class DatabaseStorage implements IStorage {
     return (rows.rows as any[]).map(r => ({
       userId: r.user_id,
       name: r.name || "",
-      email: r.email || "",
+      email: decryptField(r.email || ""),
       amountCents: Number(r.amount_cents),
       createdAt: new Date(r.created_at),
     }));

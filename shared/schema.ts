@@ -8,7 +8,8 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull(),
+  emailHash: text("email_hash").unique(),
   role: text("role").notNull().default("user"),
   isPremium: boolean("is_premium").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
@@ -61,6 +62,7 @@ export const moodCheckins = pgTable("mood_checkins", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  emailHash: true,
 });
 
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({

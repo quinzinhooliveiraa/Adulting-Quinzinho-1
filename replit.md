@@ -8,6 +8,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - **Backend**: Express.js + TypeScript, express-session with connect-pg-simple
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Session-based with scrypt password hashing (Node crypto), Google Sign-In, Apple Sign-In (native iOS via @capacitor-community/apple-sign-in)
+- **Encryption at rest**: Emails encrypted with AES-256-GCM (`server/encryption.ts`); lookup via HMAC-SHA256 `email_hash` column. Key stored as `ENCRYPTION_KEY` env var (64 hex chars).
 - **WebSocket**: ws library, lobby system at `/ws/lobby` (noServer mode, manual upgrade handling)
 
 ## Design System
@@ -17,7 +18,7 @@ A mobile-first web app to monetize the philosophical reflection book by Quinzinh
 - All UI text in Brazilian Portuguese
 
 ## Database Schema (`shared/schema.ts`)
-- `users`: id (UUID varchar), username, password, name, email (unique), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, passwordResetToken, passwordResetExpires, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
+- `users`: id (UUID varchar), username, password (scrypt hash), name, email (AES-256-GCM encrypted), emailHash (HMAC-SHA256, unique — used for lookups), role ("user"|"admin"), isPremium (bool), isActive (bool), trialEndsAt (timestamp), premiumUntil (timestamp), invitedBy (varchar), googleId, appleId, stripeCustomerId, stripeSubscriptionId, emailVerified, emailVerificationToken, passwordResetToken, passwordResetExpires, journeyOnboardingDone, journeyOrder (text[]), lastActiveAt (timestamp), pwaInstalled (bool), createdAt
 - `coupons`: id (serial), code (text unique), type ("premium_days"|"full_premium"), value (integer), maxUses (integer|null), usedCount (integer), expiresAt (timestamp|null), isActive (bool), note (text|null), createdAt
 - `coupon_uses`: id (serial), couponId (FK→coupons), userId (FK→users), usedAt (timestamp)
 - `journal_entries`: id (serial), userId (FK), text, tags (text[]), mood, date, createdAt, updatedAt
