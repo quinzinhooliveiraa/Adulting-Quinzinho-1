@@ -2532,6 +2532,8 @@ export default function Admin() {
           </div>
 
           <BookSettingsPanel />
+
+          <SubscriptionPricesPanel />
         </div>
       )}
     </div>
@@ -2633,6 +2635,153 @@ function BookSettingsPanel() {
           {saveMsg && (
             <p className={`text-xs rounded-lg p-2 ${saveMsg.ok ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
               {saveMsg.text}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SubPrice { id: string; amountCents: number | null; currency: string; productId: string | { id: string } }
+interface SubPricesData {
+  monthly: SubPrice[];
+  yearly: SubPrice[];
+  displayMonthlyBrl: number;
+  displayYearlyBrl: number;
+}
+
+function SubscriptionPricesPanel() {
+  const [inputMonthly, setInputMonthly] = useState("");
+  const [inputYearly, setInputYearly] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const { data, refetch, isLoading } = useQuery<SubPricesData>({
+    queryKey: ["/api/admin/subscription-prices"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/subscription-prices", { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  const fmtBrl = (cents: number | null) =>
+    cents != null ? `R$ ${(cents / 100).toFixed(2).replace(".", ",")}` : "—";
+
+  const handleSave = async () => {
+    const parseVal = (v: string) => {
+      const n = parseFloat(v.replace(",", ".").replace(/[^\d.]/g, ""));
+      return isNaN(n) ? null : n;
+    };
+    const monthly = inputMonthly.trim() ? parseVal(inputMonthly) : undefined;
+    const yearly = inputYearly.trim() ? parseVal(inputYearly) : undefined;
+    if (monthly === null || yearly === null) {
+      setMsg({ ok: false, text: "Valor inválido. Usa formato 9,90." });
+      return;
+    }
+    if (monthly === undefined && yearly === undefined) {
+      setMsg({ ok: false, text: "Preenche pelo menos um dos campos." });
+      return;
+    }
+    setSaving(true);
+    setMsg(null);
+    try {
+      const body: Record<string, number> = {};
+      if (monthly !== undefined) body.monthlyBrl = monthly;
+      if (yearly !== undefined) body.yearlyBrl = yearly;
+      const res = await fetch("/api/admin/subscription-prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setMsg({ ok: false, text: json.error || "Erro ao actualizar." });
+      } else {
+        const parts = [];
+        if (json.newPriceIds?.monthly) parts.push(`mensal criado (${json.newPriceIds.monthly})`);
+        if (json.newPriceIds?.yearly) parts.push(`anual criado (${json.newPriceIds.yearly})`);
+        setMsg({ ok: true, text: `Preços actualizados: ${parts.join(", ")}. Preços antigos arquivados no Stripe.` });
+        setInputMonthly("");
+        setInputYearly("");
+        refetch();
+      }
+    } catch {
+      setMsg({ ok: false, text: "Erro de rede." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Crown size={16} className="text-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Preços da Assinatura</h2>
+      </div>
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+
+        {/* Current prices */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-muted/40 rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Mensal (Stripe)</p>
+            {isLoading ? <p className="text-sm text-muted-foreground">...</p> : (
+              <>
+                <p className="text-xl font-bold text-foreground">{fmtBrl(data?.monthly[0]?.amountCents ?? null)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{data?.monthly[0]?.id ?? "sem preço activo"}</p>
+              </>
+            )}
+          </div>
+          <div className="bg-muted/40 rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Anual (Stripe)</p>
+            {isLoading ? <p className="text-sm text-muted-foreground">...</p> : (
+              <>
+                <p className="text-xl font-bold text-foreground">{fmtBrl(data?.yearly[0]?.amountCents ?? null)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{data?.yearly[0]?.id ?? "sem preço activo"}</p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Update prices */}
+        <div className="border-t border-border pt-3 space-y-3">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Ao guardar, um novo Stripe Price é criado e o anterior é arquivado automaticamente. Deixa o campo em branco para não alterar.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Novo mensal (R$)</label>
+              <input
+                value={inputMonthly}
+                onChange={e => setInputMonthly(e.target.value)}
+                placeholder={data ? (data.displayMonthlyBrl).toFixed(2).replace(".", ",") : "9,90"}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                data-testid="input-sub-monthly-price"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Novo anual (R$)</label>
+              <input
+                value={inputYearly}
+                onChange={e => setInputYearly(e.target.value)}
+                placeholder={data ? (data.displayYearlyBrl).toFixed(2).replace(".", ",") : "79,90"}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                data-testid="input-sub-yearly-price"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving || (!inputMonthly.trim() && !inputYearly.trim())}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+            data-testid="button-save-sub-prices"
+          >
+            {saving ? "A actualizar no Stripe..." : "Guardar e Actualizar Stripe"}
+          </button>
+          {msg && (
+            <p className={`text-xs rounded-lg p-2 leading-relaxed ${msg.ok ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
+              {msg.text}
             </p>
           )}
         </div>

@@ -425,13 +425,17 @@ export async function registerRoutes(
   const geoCache = new Map<string, { data: object; ts: number }>();
 
   app.get("/api/geo-pricing", async (req: Request, res: Response) => {
-    const BASE_MONTHLY = 9.9;
-    const BASE_YEARLY = 79.9;
+    const rawMonthly = await storage.getAppSetting("sub_monthly_brl");
+    const rawYearly = await storage.getAppSetting("sub_yearly_brl");
+    const BASE_MONTHLY = rawMonthly ? parseFloat(rawMonthly) : 9.9;
+    const BASE_YEARLY = rawYearly ? parseFloat(rawYearly) : 79.9;
+    const yearlyMonthlyBase = Math.round((BASE_YEARLY / 12) * 100) / 100;
+    const fmtBrl = (v: number) => `R$${v.toFixed(2).replace(".", ",")}`;
     const defaultResp = {
       currency: "BRL", symbol: "R$",
-      monthly: BASE_MONTHLY, yearly: BASE_YEARLY, yearlyMonthly: 6.66,
-      monthlyFormatted: "R$9,90", yearlyFormatted: "R$79,90",
-      yearlyMonthlyFormatted: "R$6,66", countryCode: "BR",
+      monthly: BASE_MONTHLY, yearly: BASE_YEARLY, yearlyMonthly: yearlyMonthlyBase,
+      monthlyFormatted: fmtBrl(BASE_MONTHLY), yearlyFormatted: fmtBrl(BASE_YEARLY),
+      yearlyMonthlyFormatted: fmtBrl(yearlyMonthlyBase), countryCode: "BR",
     };
     try {
       const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
@@ -3855,6 +3859,91 @@ REGRAS:
       }
       await storage.setAppSetting("book_price_cents", String(Math.round(bookPriceCents)));
       res.json({ ok: true, bookPriceCents: Math.round(bookPriceCents) });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Subscription prices — current active prices from Stripe
+  app.get("/api/admin/subscription-prices", requireAdmin, async (_req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const prices = await stripe.prices.list({ active: true, type: "recurring", limit: 50 });
+      const monthly = prices.data.filter(p => p.recurring?.interval === "month")
+        .sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+      const yearly = prices.data.filter(p => p.recurring?.interval === "year")
+        .sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+      const displayMonthly = await storage.getAppSetting("sub_monthly_brl");
+      const displayYearly = await storage.getAppSetting("sub_yearly_brl");
+      res.json({
+        monthly: monthly.map(p => ({ id: p.id, amountCents: p.unit_amount, currency: p.currency, productId: p.product })),
+        yearly: yearly.map(p => ({ id: p.id, amountCents: p.unit_amount, currency: p.currency, productId: p.product })),
+        displayMonthlyBrl: displayMonthly ? parseFloat(displayMonthly) : 9.9,
+        displayYearlyBrl: displayYearly ? parseFloat(displayYearly) : 79.9,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Subscription prices — create new Stripe price and archive old
+  app.post("/api/admin/subscription-prices", requireAdmin, async (req, res) => {
+    try {
+      const { monthlyBrl, yearlyBrl } = req.body;
+      if (monthlyBrl !== undefined && (typeof monthlyBrl !== "number" || monthlyBrl < 1)) {
+        return res.status(400).json({ error: "Preço mensal inválido (mín R$1,00)" });
+      }
+      if (yearlyBrl !== undefined && (typeof yearlyBrl !== "number" || yearlyBrl < 1)) {
+        return res.status(400).json({ error: "Preço anual inválido (mín R$1,00)" });
+      }
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const prices = await stripe.prices.list({ active: true, type: "recurring", limit: 50 });
+      const result: { monthly?: string; yearly?: string } = {};
+
+      if (monthlyBrl !== undefined) {
+        const newAmountCents = Math.round(monthlyBrl * 100);
+        const oldMonthly = prices.data.filter(p => p.recurring?.interval === "month");
+        // Find product ID from existing monthly price or any recurring price
+        const productId = oldMonthly[0]?.product || prices.data[0]?.product;
+        if (!productId) return res.status(400).json({ error: "Nenhum produto de assinatura encontrado no Stripe. Cria um produto primeiro." });
+        const newPrice = await stripe.prices.create({
+          product: productId as string,
+          unit_amount: newAmountCents,
+          currency: "brl",
+          recurring: { interval: "month" },
+        });
+        // Archive old monthly prices
+        for (const old of oldMonthly) {
+          await stripe.prices.update(old.id, { active: false });
+        }
+        await storage.setAppSetting("sub_monthly_brl", String(monthlyBrl));
+        result.monthly = newPrice.id;
+      }
+
+      if (yearlyBrl !== undefined) {
+        const newAmountCents = Math.round(yearlyBrl * 100);
+        const allPrices = await stripe.prices.list({ active: true, type: "recurring", limit: 50 });
+        const oldYearly = allPrices.data.filter(p => p.recurring?.interval === "year");
+        const productId = oldYearly[0]?.product || allPrices.data[0]?.product;
+        if (!productId) return res.status(400).json({ error: "Nenhum produto de assinatura encontrado no Stripe." });
+        const newPrice = await stripe.prices.create({
+          product: productId as string,
+          unit_amount: newAmountCents,
+          currency: "brl",
+          recurring: { interval: "year" },
+        });
+        for (const old of oldYearly) {
+          await stripe.prices.update(old.id, { active: false });
+        }
+        await storage.setAppSetting("sub_yearly_brl", String(yearlyBrl));
+        result.yearly = newPrice.id;
+      }
+
+      // Clear geo cache so display updates immediately
+      geoCache.clear();
+      res.json({ ok: true, newPriceIds: result });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
