@@ -270,6 +270,14 @@ export const bookPurchases = pgTable("book_purchases", {
 
 export type BookPurchase = typeof bookPurchases.$inferSelect;
 
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+
 export const bookHighlights = pgTable("book_highlights", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

@@ -43,11 +43,13 @@ import {
   bookChapters,
   bookPurchases,
   bookHighlights,
+  appSettings,
   type BookChapter,
   type InsertBookChapter,
   type BookPurchase,
   type BookHighlight,
   type InsertBookHighlight,
+  type AppSetting,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -151,6 +153,9 @@ export interface IStorage {
   getBookHighlights(userId: string): Promise<BookHighlight[]>;
   createBookHighlight(data: InsertBookHighlight): Promise<BookHighlight>;
   deleteBookHighlight(id: number, userId: string): Promise<boolean>;
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
+  getAllAppSettings(): Promise<Record<string, string>>;
 }
 
 function decryptUser<T extends User | undefined>(user: T): T {
@@ -921,6 +926,22 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(bookHighlights)
       .where(and(eq(bookHighlights.id, id), eq(bookHighlights.userId, userId)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+  }
+
+  async getAllAppSettings(): Promise<Record<string, string>> {
+    const rows = await db.select().from(appSettings);
+    return Object.fromEntries(rows.map(r => [r.key, r.value]));
   }
 }
 

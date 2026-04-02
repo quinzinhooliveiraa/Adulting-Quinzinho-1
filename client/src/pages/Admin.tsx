@@ -2530,8 +2530,113 @@ export default function Admin() {
               </div>
             )}
           </div>
+
+          <BookSettingsPanel />
         </div>
       )}
+    </div>
+  );
+}
+
+function BookSettingsPanel() {
+  const [inputPrice, setInputPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const { data, refetch } = useQuery<{ bookPriceCents: number }>({
+    queryKey: ["/api/admin/app-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/app-settings", { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  const currentPriceCents = data?.bookPriceCents ?? null;
+  const currentPriceLabel = currentPriceCents != null
+    ? `R$ ${(currentPriceCents / 100).toFixed(2).replace(".", ",")}`
+    : "—";
+
+  const handleSave = async () => {
+    const raw = inputPrice.replace(",", ".").replace(/[^\d.]/g, "");
+    const reais = parseFloat(raw);
+    if (isNaN(reais) || reais < 1) {
+      setSaveMsg({ ok: false, text: "Valor inválido. Mínimo R$ 1,00." });
+      return;
+    }
+    const cents = Math.round(reais * 100);
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch("/api/admin/app-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bookPriceCents: cents }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setSaveMsg({ ok: false, text: err.error || "Erro ao guardar." });
+      } else {
+        setSaveMsg({ ok: true, text: `Preço atualizado para R$ ${(cents / 100).toFixed(2).replace(".", ",")}. Próximas compras usarão este valor.` });
+        setInputPrice("");
+        refetch();
+      }
+    } catch {
+      setSaveMsg({ ok: false, text: "Erro de rede." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <CreditCard size={16} className="text-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Preço do Livro</h2>
+      </div>
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Preço actual</p>
+            <p className="text-2xl font-bold text-foreground mt-0.5">{currentPriceLabel}</p>
+          </div>
+          <div className="text-[10px] text-muted-foreground text-right leading-relaxed">
+            <p>Valor cobrado no Stripe</p>
+            <p>em cada nova compra</p>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-3 space-y-2">
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            Novo preço (R$)
+          </label>
+          <div className="flex gap-2">
+            <input
+              value={inputPrice}
+              onChange={e => setInputPrice(e.target.value)}
+              placeholder={currentPriceCents != null ? (currentPriceCents / 100).toFixed(2).replace(".", ",") : "19,90"}
+              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+              data-testid="input-book-price"
+            />
+            <button
+              onClick={handleSave}
+              disabled={saving || !inputPrice.trim()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+              data-testid="button-save-book-price"
+            >
+              {saving ? "A guardar..." : "Guardar"}
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Escreve o valor em reais, ex: <span className="font-mono">19,90</span>. O Stripe usará este valor nos próximos pagamentos automaticamente.
+          </p>
+          {saveMsg && (
+            <p className={`text-xs rounded-lg p-2 ${saveMsg.ok ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
+              {saveMsg.text}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

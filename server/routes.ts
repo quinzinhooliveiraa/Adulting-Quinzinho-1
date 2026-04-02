@@ -1668,7 +1668,11 @@ export async function registerRoutes(
     }
   });
 
-  const BOOK_PRICE_CENTS = 1990;
+  const DEFAULT_BOOK_PRICE_CENTS = 1990;
+  const getBookPriceCents = async (): Promise<number> => {
+    const val = await storage.getAppSetting("book_price_cents");
+    return val ? parseInt(val, 10) : DEFAULT_BOOK_PRICE_CENTS;
+  };
 
   app.get("/api/book/chapters", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1718,13 +1722,14 @@ export async function registerRoutes(
     try {
       const user = await storage.getUser(req.session.userId!);
       const isAdmin = user?.role === "admin";
+      const priceCents = await getBookPriceCents();
       if (isAdmin) {
-        return res.json({ purchased: true, purchasedAt: null, pricesCents: BOOK_PRICE_CENTS });
+        return res.json({ purchased: true, purchasedAt: null, pricesCents: priceCents });
       }
       const purchase = await storage.getUserBookPurchase(req.session.userId!);
       const hasTimedAccess = user?.bookUntil ? new Date(user.bookUntil) > new Date() : false;
       const purchased = !!purchase || hasTimedAccess;
-      res.json({ purchased, purchasedAt: purchase?.createdAt || null, pricesCents: BOOK_PRICE_CENTS, bookUntil: user?.bookUntil || null });
+      res.json({ purchased, purchasedAt: purchase?.createdAt || null, pricesCents: priceCents, bookUntil: user?.bookUntil || null });
     } catch {
       res.status(500).json({ error: "Erro ao verificar compra" });
     }
@@ -1743,8 +1748,9 @@ export async function registerRoutes(
         customerId = customer.id;
         await storage.updateUser(user.id, { stripeCustomerId: customerId });
       }
+      const currentPrice = await getBookPriceCents();
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: BOOK_PRICE_CENTS,
+        amount: currentPrice,
         currency: "brl",
         customer: customerId,
         metadata: { userId: user.id, product: "book_acasados20" },
@@ -3824,6 +3830,31 @@ REGRAS:
       }
 
       res.json({ ok: true, sent, skipped, total: abandonedUserIds.size });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // App Settings — read all
+  app.get("/api/admin/app-settings", requireAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getAllAppSettings();
+      const bookPriceCents = settings["book_price_cents"] ? parseInt(settings["book_price_cents"], 10) : DEFAULT_BOOK_PRICE_CENTS;
+      res.json({ bookPriceCents, settings });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // App Settings — update book price
+  app.patch("/api/admin/app-settings", requireAdmin, async (req, res) => {
+    try {
+      const { bookPriceCents } = req.body;
+      if (typeof bookPriceCents !== "number" || bookPriceCents < 100 || bookPriceCents > 100000) {
+        return res.status(400).json({ error: "Preço inválido (mín R$1,00, máx R$1.000,00)" });
+      }
+      await storage.setAppSetting("book_price_cents", String(Math.round(bookPriceCents)));
+      res.json({ ok: true, bookPriceCents: Math.round(bookPriceCents) });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
