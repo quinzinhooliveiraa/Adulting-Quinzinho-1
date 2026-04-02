@@ -16,7 +16,7 @@ import { DAILY_REFLECTIONS } from "@shared/dailyReflections";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { z } from "zod";
 import { sql, eq as drizzleEq } from "drizzle-orm";
-import { getUncachableStripeClient } from "./stripeClient";
+import { getUncachableStripeClient, getStableStripeClient } from "./stripeClient";
 import { notifyAdminNewUser } from "./adminNotify";
 import { sendBrevoEmail } from "./brevoClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -1233,7 +1233,7 @@ export async function registerRoutes(
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
-      const stripe = await getUncachableStripeClient();
+      const stripe = getStableStripeClient();
       const { priceId } = req.body;
       if (!priceId) return res.status(400).json({ message: "priceId obrigatório" });
 
@@ -1285,18 +1285,36 @@ export async function registerRoutes(
       let clientSecret: string | null = null;
 
       const latestInvoice = subscription.latest_invoice as any;
+      const invoiceType = typeof latestInvoice;
+      const piRaw = invoiceType === "object" ? latestInvoice?.payment_intent : undefined;
+      console.log("sub-intent debug:", {
+        subId: subscription.id,
+        subStatus: subscription.status,
+        invoiceType,
+        invoiceId: invoiceType === "object" ? latestInvoice?.id : latestInvoice,
+        invoiceStatus: invoiceType === "object" ? latestInvoice?.status : "n/a",
+        invoiceAmountDue: invoiceType === "object" ? latestInvoice?.amount_due : "n/a",
+        invoiceCollectionMethod: invoiceType === "object" ? latestInvoice?.collection_method : "n/a",
+        paymentIntentType: typeof piRaw,
+        paymentIntentId: typeof piRaw === "object" ? piRaw?.id : piRaw,
+        paymentIntentStatus: typeof piRaw === "object" ? piRaw?.status : "n/a",
+        subscriptionKeys: Object.keys(subscription),
+      });
+
       if (latestInvoice && typeof latestInvoice === "object") {
         const piFromSub = latestInvoice.payment_intent;
         if (piFromSub && typeof piFromSub === "object" && piFromSub.client_secret) {
           clientSecret = piFromSub.client_secret;
+          console.log("sub-intent: got secret from expanded invoice object");
         } else if (typeof piFromSub === "string" && piFromSub) {
           // payment_intent came back as an ID — retrieve it separately
           const pi = await stripe.paymentIntents.retrieve(piFromSub);
           clientSecret = pi.client_secret ?? null;
+          console.log("sub-intent: got secret from pi retrieve, status:", pi.status);
         }
       }
 
-      // Fallback: retrieve the invoice separately if still no client_secret
+      // Fallback 1: retrieve the invoice separately with expand
       if (!clientSecret) {
         const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
         if (invoiceId) {
@@ -1304,12 +1322,38 @@ export async function registerRoutes(
             expand: ["payment_intent"],
           }) as any;
           const pi = invoice.payment_intent;
+          console.log("sub-intent fallback invoice keys:", Object.keys(invoice).join(","));
+          console.log("sub-intent fallback invoice:", {
+            invoiceStatus: invoice.status,
+            amountDue: invoice.amount_due,
+            collectionMethod: invoice.collection_method,
+            piType: typeof pi,
+            piId: typeof pi === "object" ? pi?.id : pi,
+            paymentKeys: typeof invoice.payment === "object" ? Object.keys(invoice.payment || {}) : String(invoice.payment),
+          });
           if (pi && typeof pi === "object" && pi.client_secret) {
             clientSecret = pi.client_secret;
           } else if (typeof pi === "string" && pi) {
             const piObj = await stripe.paymentIntents.retrieve(pi);
             clientSecret = piObj.client_secret ?? null;
           }
+        }
+      }
+
+      // Fallback 2: list recent PaymentIntents for this customer and find the one for our invoice
+      if (!clientSecret) {
+        const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
+        const recentPIs = await stripe.paymentIntents.list({ customer: customerId, limit: 10 });
+        console.log("sub-intent fallback PI list:", recentPIs.data.map(p => ({
+          id: p.id, invoice: p.invoice, status: p.status, amount: p.amount
+        })));
+        const matchedPI = recentPIs.data.find((p: any) => {
+          const piInvoice = typeof p.invoice === "string" ? p.invoice : (p.invoice as any)?.id;
+          return piInvoice === invoiceId;
+        });
+        if (matchedPI?.client_secret) {
+          clientSecret = matchedPI.client_secret;
+          console.log("sub-intent: found secret via PI list, status:", matchedPI.status);
         }
       }
 
@@ -1337,7 +1381,7 @@ export async function registerRoutes(
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
-      const stripe = await getUncachableStripeClient();
+      const stripe = getStableStripeClient();
       const { subscriptionId } = req.body;
       if (!subscriptionId) return res.status(400).json({ message: "subscriptionId obrigatório" });
 

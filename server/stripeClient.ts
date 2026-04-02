@@ -13,6 +13,13 @@ export async function getUncachableStripeClient(): Promise<Stripe> {
   return new Stripe(apiKey, { apiVersion: "2025-04-30.basil" as any });
 }
 
+// Stable API version client — use for subscription/payment intent creation
+// where the basil beta changes break payment_intent expansion
+export function getStableStripeClient(): Stripe {
+  const apiKey = getStripeKey();
+  return new Stripe(apiKey, { apiVersion: "2024-06-20" as any });
+}
+
 export async function getStripeSync(): Promise<StripeSync> {
   const apiKey = getStripeKey();
   const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
