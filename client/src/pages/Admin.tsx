@@ -2813,6 +2813,7 @@ interface SubPlan {
   limits: PlanLimits;
   isActive: boolean;
   sortOrder: number;
+  validUntil: string | null;
 }
 
 const EMPTY_LIMITS: PlanLimits = { journalEntries: null, reflectionCards: null, journeys: null, bookAccess: false };
@@ -2820,6 +2821,7 @@ const EMPTY_FORM = {
   name: "", interval: "month", intervalCount: 1, amountCents: 0, amountBrl: "",
   currency: "BRL", stripePriceId: "", badge: "", features: [""] as string[],
   limits: { ...EMPTY_LIMITS } as PlanLimits, isActive: true, sortOrder: 0, createInStripe: false,
+  validUntil: "",
 };
 
 function PlanForm({ initial, onSave, onCancel, saving, error }: {
@@ -2961,6 +2963,26 @@ function PlanForm({ initial, onSave, onCancel, saving, error }: {
         </div>
       </div>
 
+      {/* Valid Until */}
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          Prazo de validade (opcional — cria countdown na página Premium)
+        </label>
+        <input
+          type="datetime-local"
+          value={form.validUntil}
+          onChange={e => setForm(f => ({ ...f, validUntil: e.target.value }))}
+          className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+          data-testid="input-plan-valid-until"
+        />
+        {form.validUntil && (
+          <button type="button" onClick={() => setForm(f => ({ ...f, validUntil: "" }))}
+            className="text-[10px] text-muted-foreground hover:text-foreground mt-1 underline">
+            Remover prazo
+          </button>
+        )}
+      </div>
+
       {/* Options */}
       <div className="flex items-center gap-4">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -3036,6 +3058,7 @@ function PlansPanel() {
       isActive: plan.isActive,
       sortOrder: plan.sortOrder,
       createInStripe: false,
+      validUntil: plan.validUntil ? plan.validUntil.substring(0, 16) : "",
     };
   };
 
@@ -3056,6 +3079,7 @@ function PlansPanel() {
         isActive: data.isActive,
         sortOrder: data.sortOrder,
         createInStripe: data.createInStripe,
+        validUntil: data.validUntil || undefined,
       };
       const url = editPlan ? `/api/admin/plans/${editPlan.id}` : "/api/admin/plans";
       const method = editPlan ? "PATCH" : "POST";
@@ -3162,6 +3186,14 @@ function PlansPanel() {
                     </p>
                     {plan.stripePriceId && (
                       <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{plan.stripePriceId}</p>
+                    )}
+                    {plan.validUntil && (
+                      <p className="text-[10px] mt-0.5">
+                        <span className={`font-medium ${new Date(plan.validUntil) < new Date() ? "text-red-500" : "text-amber-500"}`}>
+                          {new Date(plan.validUntil) < new Date() ? "Expirado" : "Válido até"}{" "}
+                          {new Date(plan.validUntil).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
