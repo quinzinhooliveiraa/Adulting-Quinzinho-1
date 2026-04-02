@@ -2,16 +2,65 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp, Infinity } from "lucide-react";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
 import SubscriptionCheckoutModal from "@/components/SubscriptionCheckoutModal";
-import { useGeoPrice } from "@/hooks/useGeoPrice";
+import type { SubscriptionPlan } from "@shared/schema";
+
+function formatPrice(amountCents: number, currency: string): string {
+  const amount = amountCents / 100;
+  if (currency.toUpperCase() === "BRL") {
+    return `R$${amount.toFixed(2).replace(".", ",")}`;
+  }
+  return `${currency.toUpperCase()} ${amount.toFixed(2)}`;
+}
+
+function getPlanStyle(plan: SubscriptionPlan) {
+  if (plan.interval === "year") {
+    return {
+      border: "border-amber-500",
+      bg: "bg-amber-500/5",
+      priceColor: "text-amber-600 dark:text-amber-400",
+    };
+  }
+  if (plan.interval === "lifetime") {
+    return {
+      border: "border-violet-500",
+      bg: "bg-violet-500/5",
+      priceColor: "text-violet-600 dark:text-violet-400",
+    };
+  }
+  return {
+    border: "border-primary",
+    bg: "bg-primary/5",
+    priceColor: "text-primary",
+  };
+}
+
+function getPlanIntervalLabel(plan: SubscriptionPlan): string {
+  if (plan.interval === "month") return plan.intervalCount > 1 ? `/${plan.intervalCount} meses` : "/mês";
+  if (plan.interval === "year") return plan.intervalCount > 1 ? `/${plan.intervalCount} anos` : "/ano";
+  if (plan.interval === "lifetime") return "pagamento único";
+  return "";
+}
+
+function getPlanSubtitle(plan: SubscriptionPlan): string {
+  if (plan.interval === "month") return "Cancele quando quiser";
+  if (plan.interval === "year") return "Melhor custo-benefício";
+  if (plan.interval === "lifetime") return "Acesso para sempre";
+  return "";
+}
+
+const DEFAULT_FEATURES = [
+  { icon: Sparkles, text: "Todas as cartas de reflexão desbloqueadas" },
+  { icon: Map, text: "Jornadas de 30 dias completas" },
+  { icon: PenLine, text: "Diário ilimitado com todas as funcionalidades" },
+];
 
 export default function Premium() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { price: geo } = useGeoPrice();
   const [showCardModal, setShowCardModal] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<{
     priceId: string;
@@ -24,6 +73,10 @@ export default function Premium() {
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const { data: plans = [], isLoading: plansLoading } = useQuery<SubscriptionPlan[]>({
+    queryKey: ["/api/subscription-plans"],
+  });
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -51,19 +104,16 @@ export default function Premium() {
     }
   };
 
-  const { data: products = [] } = useQuery<any[]>({
-    queryKey: ["/api/stripe/products"],
-    queryFn: async () => {
-      const res = await fetch("/api/stripe/products");
-      return res.json();
-    },
-  });
-
-  const monthlyPrice = products.find((p: any) => p.recurring?.interval === "month");
-  const yearlyPrice = products.find((p: any) => p.recurring?.interval === "year");
-
-  const handleCheckout = (priceId: string, label: string, priceFormatted: string, interval: "month" | "year") => {
-    setCheckoutPlan({ priceId, label, priceFormatted, interval });
+  const handleCheckout = (plan: SubscriptionPlan) => {
+    if (!plan.stripePriceId) return;
+    if (plan.interval !== "month" && plan.interval !== "year") return;
+    setCheckoutPlan({
+      priceId: plan.stripePriceId,
+      label: plan.name,
+      priceFormatted: formatPrice(plan.amountCents, plan.currency),
+      interval: plan.interval,
+      badge: plan.badge ?? undefined,
+    });
   };
 
   const handleCheckoutSuccess = () => {
@@ -71,20 +121,10 @@ export default function Premium() {
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
-  const handleSetupForBonus = () => {
-    setShowCardModal(true);
-  };
-
   const handleCardSuccess = () => {
     setShowCardModal(false);
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
-
-  const features = [
-    { icon: Sparkles, text: "Todas as cartas de reflexão desbloqueadas" },
-    { icon: Map, text: "Jornadas de 30 dias completas" },
-    { icon: PenLine, text: "Diário ilimitado com todas as funcionalidades" },
-  ];
 
   const trialDaysLeft = user?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -92,6 +132,8 @@ export default function Premium() {
 
   const canActivateTrial = !user?.hasPremium && !user?.trialBonusClaimed && user?.role !== "admin";
   const isOnTrial = user?.premiumReason === "trial" && trialDaysLeft > 0;
+
+  const activePlans = plans.filter(p => p.isActive && p.stripePriceId);
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="page-premium">
@@ -133,7 +175,7 @@ export default function Premium() {
         {isOnTrial && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center" data-testid="trial-active-banner">
             <p className="text-amber-700 dark:text-amber-400 font-semibold text-base">
-              ✨ {trialDaysLeft} {trialDaysLeft === 1 ? "dia restante" : "dias restantes"} de trial gratuito
+              {trialDaysLeft} {trialDaysLeft === 1 ? "dia restante" : "dias restantes"} de trial gratuito
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               Aproveita para explorar tudo — sem cartão, sem compromisso.
@@ -146,13 +188,13 @@ export default function Premium() {
 
         {user?.hasPremium && user?.premiumReason !== "trial" && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-center" data-testid="premium-active-banner">
-            <p className="text-green-600 dark:text-green-400 font-semibold">🌟 Já tens o Premium ativo!</p>
+            <p className="text-green-600 dark:text-green-400 font-semibold">Já tens o Premium ativo!</p>
             <p className="text-sm text-muted-foreground mt-1">Obrigado pelo apoio à Casa dos 20.</p>
           </div>
         )}
 
         <div className="space-y-3 mb-8">
-          {features.map((f, i) => (
+          {DEFAULT_FEATURES.map((f, i) => (
             <div key={i} className="flex items-center gap-3 p-3 bg-card rounded-lg border" data-testid={`feature-${i}`}>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <f.icon className="w-5 h-5 text-primary" />
@@ -166,8 +208,7 @@ export default function Premium() {
         <div className="space-y-4">
           {canActivateTrial && (
             <button
-              onClick={handleSetupForBonus}
-              disabled={!!loading}
+              onClick={() => setShowCardModal(true)}
               className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-500/5 hover:bg-green-500/10 transition-colors text-left"
               data-testid="button-activate-trial"
             >
@@ -182,53 +223,72 @@ export default function Premium() {
             </button>
           )}
 
-          {monthlyPrice && (
-            <button
-              onClick={() => handleCheckout(monthlyPrice.price_id, "Mensal", geo.monthlyFormatted, "month")}
-              className="w-full p-4 rounded-xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-colors text-left"
-              data-testid="button-checkout-monthly"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-lg">Mensal</p>
-                  <p className="text-muted-foreground text-sm">Cancele quando quiser</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">{geo.monthlyFormatted}</p>
-                  <p className="text-xs text-muted-foreground">/mês</p>
-                </div>
-              </div>
-            </button>
+          {plansLoading && (
+            <div className="space-y-3">
+              {[1, 2].map(i => (
+                <div key={i} className="w-full h-20 rounded-xl bg-muted animate-pulse" />
+              ))}
+            </div>
           )}
 
-          {yearlyPrice && (
-            <button
-              onClick={() => handleCheckout(yearlyPrice.price_id, "Anual", geo.yearlyFormatted, "year")}
-              className="w-full p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 hover:bg-amber-500/10 transition-colors text-left relative overflow-hidden"
-              data-testid="button-checkout-yearly"
-            >
-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                ECONOMIZE 33%
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-lg">Anual</p>
-                  <p className="text-muted-foreground text-sm">Melhor custo-benefício</p>
+          {activePlans.map(plan => {
+            const style = getPlanStyle(plan);
+            const intervalLabel = getPlanIntervalLabel(plan);
+            const subtitle = getPlanSubtitle(plan);
+            const priceFormatted = formatPrice(plan.amountCents, plan.currency);
+            const isLifetime = plan.interval === "lifetime";
+
+            return (
+              <button
+                key={plan.id}
+                onClick={() => handleCheckout(plan)}
+                disabled={isLifetime}
+                className={`w-full p-4 rounded-xl border-2 ${style.border} ${style.bg} hover:opacity-90 transition-opacity text-left relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed`}
+                data-testid={`button-checkout-${plan.interval}-${plan.id}`}
+              >
+                {plan.badge && (
+                  <div className={`absolute top-0 right-0 text-white text-xs font-bold px-3 py-1 rounded-bl-lg ${plan.interval === "year" ? "bg-amber-500" : plan.interval === "lifetime" ? "bg-violet-500" : "bg-primary"}`}>
+                    {plan.badge.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {isLifetime && <Infinity className="w-4 h-4 text-violet-500 flex-shrink-0" />}
+                      <p className="font-bold text-lg">{plan.name}</p>
+                    </div>
+                    <p className="text-muted-foreground text-sm">{subtitle}</p>
+                    {plan.features && plan.features.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {plan.features.map((feat, fi) => (
+                          <li key={fi} className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Check className="w-3 h-3 text-green-500 flex-shrink-0" />
+                            {feat}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-2xl font-bold ${style.priceColor}`}>{priceFormatted}</p>
+                    <p className="text-xs text-muted-foreground">{intervalLabel}</p>
+                    {plan.interval === "year" && (
+                      <p className="text-xs text-muted-foreground">
+                        (~{formatPrice(Math.round(plan.amountCents / 12), plan.currency)}/mês)
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{geo.yearlyFormatted}</p>
-                  <p className="text-xs text-muted-foreground">/ano (~{geo.yearlyMonthlyFormatted}/mês)</p>
-                </div>
-              </div>
-            </button>
+              </button>
+            );
+          })}
+
+          {!plansLoading && activePlans.length === 0 && (
+            <p className="text-center text-muted-foreground text-sm py-4">
+              Nenhum plano disponível no momento.
+            </p>
           )}
         </div>
-
-        {geo.currency !== "BRL" && (
-          <p className="text-[10px] text-muted-foreground text-center mt-3 px-2">
-            Valor aproximado. A cobrança é feita em BRL pelo Stripe.
-          </p>
-        )}
 
         <div className="mt-6 border border-border rounded-xl overflow-hidden" data-testid="section-coupon">
           <button
