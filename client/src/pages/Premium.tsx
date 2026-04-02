@@ -2,10 +2,22 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp, Infinity } from "lucide-react";
+import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp, Infinity, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
 import SubscriptionCheckoutModal from "@/components/SubscriptionCheckoutModal";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import type { SubscriptionPlan } from "@shared/schema";
 
 function formatPrice(amountCents: number, currency: string): string {
@@ -61,7 +73,10 @@ const DEFAULT_FEATURES = [
 export default function Premium() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [showCardModal, setShowCardModal] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<{
     priceId: string;
     label: string;
@@ -126,6 +141,28 @@ export default function Premium() {
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/stripe/cancel-subscription", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Assinatura cancelada", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } else {
+        toast({ title: "Erro", description: data.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro", description: "Não foi possível cancelar. Tenta novamente.", variant: "destructive" });
+    } finally {
+      setCancelling(false);
+      setShowCancelDialog(false);
+    }
+  };
+
   const trialDaysLeft = user?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
@@ -134,6 +171,8 @@ export default function Premium() {
   const isOnTrial = user?.premiumReason === "trial" && trialDaysLeft > 0;
 
   const activePlans = plans.filter(p => p.isActive && p.stripePriceId);
+
+  const hasActiveSubscription = !!(user?.stripeSubscriptionId && user?.hasPremium && user?.premiumReason !== "trial" && user?.premiumReason !== "admin");
 
   return (
     <div className="min-h-screen pb-24 animate-in fade-in duration-500" data-testid="page-premium">
@@ -150,6 +189,27 @@ export default function Premium() {
           onClose={() => setCheckoutPlan(null)}
         />
       )}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar assinatura?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vais continuar a ter acesso Premium até ao fim do período já pago. Após essa data, o acesso será removido automaticamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Manter assinatura</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelSubscription}
+              disabled={cancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="btn-confirm-cancel-subscription"
+            >
+              {cancelling ? "A cancelar..." : "Sim, cancelar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="p-4">
         <button
           onClick={() => setLocation("/")}
@@ -190,6 +250,23 @@ export default function Premium() {
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-center" data-testid="premium-active-banner">
             <p className="text-green-600 dark:text-green-400 font-semibold">Já tens o Premium ativo!</p>
             <p className="text-sm text-muted-foreground mt-1">Obrigado pelo apoio à Casa dos 20.</p>
+            {user?.premiumUntil && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Acesso até {new Date(user.premiumUntil).toLocaleDateString("pt-PT")}
+              </p>
+            )}
+            {hasActiveSubscription && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 text-muted-foreground text-xs gap-1"
+                onClick={() => setShowCancelDialog(true)}
+                data-testid="btn-cancel-subscription"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Cancelar assinatura
+              </Button>
+            )}
           </div>
         )}
 

@@ -1409,6 +1409,48 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/stripe/cancel-subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Utilizador não encontrado" });
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ message: "Não tens nenhuma assinatura ativa" });
+      }
+
+      const stripe = getStableStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+
+      if (subscription.customer !== user.stripeCustomerId) {
+        return res.status(403).json({ message: "Assinatura não pertence a este utilizador" });
+      }
+
+      if (subscription.status === "canceled") {
+        return res.status(400).json({ message: "A assinatura já está cancelada" });
+      }
+
+      const updated = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      const periodEnd = new Date(updated.current_period_end * 1000);
+
+      await storage.updateUser(user.id, {
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        isPremium: true,
+        premiumUntil: periodEnd,
+      });
+
+      res.json({
+        ok: true,
+        cancelAt: periodEnd.toISOString(),
+        message: `Assinatura cancelada. Tens acesso até ${periodEnd.toLocaleDateString("pt-PT")}.`,
+      });
+    } catch (error: any) {
+      console.error("cancel-subscription error:", error);
+      res.status(500).json({ message: "Erro ao cancelar assinatura. Tenta novamente." });
+    }
+  });
+
   app.post("/api/stripe/sync-subscription", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);
