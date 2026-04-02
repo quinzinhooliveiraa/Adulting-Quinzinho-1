@@ -265,11 +265,37 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
         </button>
 
         {loadError ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-red-500">{loadError}</p>
-            <button onClick={onClose} className="mt-4 text-xs text-muted-foreground underline">
-              Fechar
-            </button>
+          <div className="px-6 py-10 text-center flex flex-col items-center gap-3">
+            <p className="text-sm text-red-500 font-medium">{loadError}</p>
+            <p className="text-xs text-muted-foreground max-w-[260px]">
+              Verifica a tua ligação à internet. Se usas um bloqueador de anúncios, tenta desactivá-lo para este site.
+            </p>
+            <div className="flex gap-3 mt-1">
+              <button
+                onClick={() => {
+                  setLoadError("");
+                  // Re-trigger the effect by remounting — force by clearing clientSecret
+                  setClientSecret("");
+                  setStripePromise(null);
+                  const endpoint = isLifetime ? "/api/stripe/create-lifetime-intent" : "/api/stripe/create-subscription-intent";
+                  Promise.all([getStripePromise(), fetch(endpoint, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ priceId: plan.priceId }) }).then(r => r.json())])
+                    .then(([stripeInst, d]) => {
+                      if (!d.clientSecret) throw new Error(d.message || "Erro ao iniciar pagamento.");
+                      setStripePromise(Promise.resolve(stripeInst));
+                      setClientSecret(d.clientSecret);
+                      if (d.subscriptionId) setSubscriptionId(d.subscriptionId);
+                      if (d.paymentIntentId) setPaymentIntentId(d.paymentIntentId);
+                    })
+                    .catch(err => setLoadError(err.message || "Erro de ligação."));
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium"
+              >
+                Tentar novamente
+              </button>
+              <button onClick={onClose} className="px-4 py-2 text-sm text-muted-foreground border border-border rounded-xl">
+                Fechar
+              </button>
+            </div>
           </div>
         ) : !clientSecret || !stripePromise ? (
           <div className="px-6 py-10 text-center">
