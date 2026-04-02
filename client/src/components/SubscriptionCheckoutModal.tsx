@@ -247,12 +247,12 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       onClick={onClose}
     >
       <div
-        className="relative bg-card rounded-t-3xl border border-border w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500"
+        className="relative bg-card sm:rounded-3xl rounded-t-3xl border border-border w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
         style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
