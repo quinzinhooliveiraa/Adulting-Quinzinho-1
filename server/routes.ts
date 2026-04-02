@@ -351,9 +351,9 @@ export async function registerRoutes(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://js.stripe.com"],
-        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://accounts.google.com", "wss:", "ws:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://js.stripe.com", "https://js.stripe.com/v3/"],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network", "https://q.stripe.com", "wss:", "ws:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -1269,42 +1269,54 @@ export async function registerRoutes(
         }
       }
 
-      // Create the subscription
+      // Create the subscription — expand invoice + payment_intent at creation time
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card"],
+        },
+        expand: ["latest_invoice.payment_intent"],
       });
 
-      // Resolve the invoice ID from the subscription
-      const invoiceId =
-        typeof subscription.latest_invoice === "string"
-          ? subscription.latest_invoice
-          : (subscription.latest_invoice as any)?.id;
+      // Try to get client_secret from the expanded subscription first
+      let clientSecret: string | null = null;
 
-      if (!invoiceId) {
-        console.error("create-subscription-intent: no invoiceId", { subscriptionId: subscription.id });
-        await stripe.subscriptions.cancel(subscription.id);
-        return res.status(500).json({ message: "Não foi possível iniciar o pagamento" });
+      const latestInvoice = subscription.latest_invoice as any;
+      if (latestInvoice && typeof latestInvoice === "object") {
+        const piFromSub = latestInvoice.payment_intent;
+        if (piFromSub && typeof piFromSub === "object" && piFromSub.client_secret) {
+          clientSecret = piFromSub.client_secret;
+        } else if (typeof piFromSub === "string" && piFromSub) {
+          // payment_intent came back as an ID — retrieve it separately
+          const pi = await stripe.paymentIntents.retrieve(piFromSub);
+          clientSecret = pi.client_secret ?? null;
+        }
       }
 
-      // Retrieve the invoice separately so the expand is guaranteed to work
-      const invoice = await stripe.invoices.retrieve(invoiceId, {
-        expand: ["payment_intent"],
-      }) as any;
-
-      const paymentIntent = invoice.payment_intent as any;
-      const clientSecret: string | null = paymentIntent?.client_secret ?? null;
+      // Fallback: retrieve the invoice separately if still no client_secret
+      if (!clientSecret) {
+        const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
+        if (invoiceId) {
+          const invoice = await stripe.invoices.retrieve(invoiceId, {
+            expand: ["payment_intent"],
+          }) as any;
+          const pi = invoice.payment_intent;
+          if (pi && typeof pi === "object" && pi.client_secret) {
+            clientSecret = pi.client_secret;
+          } else if (typeof pi === "string" && pi) {
+            const piObj = await stripe.paymentIntents.retrieve(pi);
+            clientSecret = piObj.client_secret ?? null;
+          }
+        }
+      }
 
       if (!clientSecret) {
-        console.error("create-subscription-intent: no client_secret after separate retrieve", {
+        console.error("create-subscription-intent: no client_secret found", {
           subscriptionId: subscription.id,
-          invoiceId,
-          invoiceStatus: invoice.status,
-          invoiceAmountDue: invoice.amount_due,
-          paymentIntentId: typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id,
-          paymentIntentStatus: paymentIntent?.status,
+          latestInvoice: typeof latestInvoice === "object" ? latestInvoice?.id : latestInvoice,
         });
         await stripe.subscriptions.cancel(subscription.id);
         return res.status(500).json({ message: "Não foi possível iniciar o pagamento" });

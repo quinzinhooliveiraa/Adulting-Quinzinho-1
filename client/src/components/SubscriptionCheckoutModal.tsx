@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Crown, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
+import { getStripePromise } from "@/lib/stripeLoader";
 import {
   Elements,
   PaymentElement,
@@ -179,19 +179,12 @@ function PaymentForm({
 }
 
 export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: Props) {
-  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [stripePromise, setStripePromise] = useState<ReturnType<typeof getStripePromise> | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionId, setSubscriptionId] = useState("");
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const keyFetch = fetch("/api/stripe/config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.publishableKey) return loadStripe(d.publishableKey);
-        throw new Error("Stripe não configurado.");
-      });
-
     const intentFetch = fetch("/api/stripe/create-subscription-intent", {
       method: "POST",
       credentials: "include",
@@ -204,7 +197,7 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
         return d;
       });
 
-    Promise.all([keyFetch, intentFetch])
+    Promise.all([getStripePromise(), intentFetch])
       .then(([stripeInst, intentData]) => {
         setStripePromise(Promise.resolve(stripeInst));
         setClientSecret(intentData.clientSecret);
