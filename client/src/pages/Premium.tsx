@@ -131,6 +131,37 @@ export default function Premium() {
     queryKey: ["/api/subscription-plans"],
   });
 
+  // Handle return from 3DS redirect for lifetime purchases
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const piId = params.get("payment_intent");
+    const redirectStatus = params.get("redirect_status");
+    if (!piId || redirectStatus !== "succeeded") return;
+
+    // Clean the URL
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, "", cleanUrl);
+
+    fetch("/api/stripe/confirm-lifetime", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId: piId }),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          toast({ title: "Acesso vitalício activado!", description: "Bem-vindo(a) ao Premium para sempre." });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          toast({ title: "Erro ao activar", description: data.message || "Contacta o suporte.", variant: "destructive" });
+        }
+      })
+      .catch(() => {
+        toast({ title: "Erro de ligação", description: "Contacta o suporte se o problema persistir.", variant: "destructive" });
+      });
+  }, []);
+
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);

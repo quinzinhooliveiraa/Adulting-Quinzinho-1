@@ -171,6 +171,36 @@ export class WebhookHandlers {
         console.log(`[stripe] User ${user.email} payment failed`);
         break;
       }
+
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        // Only process lifetime payments (identified by metadata)
+        if (pi.metadata?.type !== "lifetime") return;
+
+        const customerId = pi.customer as string;
+        if (!customerId) return;
+
+        const user = await storage.getUserByStripeCustomerId(customerId);
+        if (!user) {
+          console.log(`[stripe] lifetime webhook: No user for customer ${customerId}`);
+          return;
+        }
+
+        // Idempotent — only upgrade if not already lifetime premium
+        if (user.isPremium && !user.premiumUntil) {
+          console.log(`[stripe] lifetime webhook: User ${user.email} already has lifetime premium`);
+          return;
+        }
+
+        await storage.updateUser(user.id, {
+          isPremium: true,
+          premiumUntil: null,
+          stripeSubscriptionId: null,
+        });
+        console.log(`[stripe] lifetime webhook: User ${user.email} granted lifetime premium via PI ${pi.id}`);
+        notifyAdminNewSubscription(user.name, user.email).catch(() => {});
+        break;
+      }
     }
   }
 }

@@ -4189,7 +4189,13 @@ REGRAS:
   app.patch("/api/admin/plans/:id", requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { createInStripe, ...data } = req.body;
+      const { createInStripe, validUntil: rawValidUntil, ...rest } = req.body;
+      const data: Record<string, any> = { ...rest };
+
+      // Convert validUntil string → Date (or null to clear it)
+      if (rawValidUntil !== undefined) {
+        data.validUntil = rawValidUntil ? new Date(rawValidUntil) : null;
+      }
 
       if (createInStripe && data.interval && data.interval !== "lifetime") {
         const { getUncachableStripeClient } = await import("./stripeClient");

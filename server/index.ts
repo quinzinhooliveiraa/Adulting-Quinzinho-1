@@ -130,6 +130,23 @@ app.use((req, res, next) => {
         await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
         log("Stripe webhook configured", "stripe");
 
+        // Ensure payment_intent.succeeded is in the webhook events (for lifetime purchases)
+        try {
+          const { getUncachableStripeClient } = await import("./stripeClient");
+          const stripe = await getUncachableStripeClient();
+          const webhookUrl = `${webhookBaseUrl}/api/stripe/webhook`;
+          const webhooks = await stripe.webhookEndpoints.list({ limit: 20 });
+          const ourWebhook = webhooks.data.find(w => w.url === webhookUrl);
+          if (ourWebhook && !ourWebhook.enabled_events.includes("payment_intent.succeeded")) {
+            await stripe.webhookEndpoints.update(ourWebhook.id, {
+              enabled_events: [...ourWebhook.enabled_events, "payment_intent.succeeded"] as any,
+            });
+            log("Added payment_intent.succeeded to webhook events", "stripe");
+          }
+        } catch (webhookErr: any) {
+          log(`Could not update webhook events (non-fatal): ${webhookErr.message}`, "stripe");
+        }
+
         stripeSync.syncBackfill()
           .then(() => log("Stripe data synced", "stripe"))
           .catch((err: any) => log(`Stripe sync error: ${err.message}`, "stripe"));
