@@ -1015,7 +1015,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showInvite, setShowInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics" | "livro">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "feedback" | "push" | "coupons" | "analytics" | "livro" | "planos">("users");
   const [bookEditId, setBookEditId] = useState<number | null>(null);
   const [bookForm, setBookForm] = useState({ order: 1, title: "", tag: "", excerpt: "", content: "", isPreview: false });
   const [bookFormOpen, setBookFormOpen] = useState(false);
@@ -1382,7 +1382,7 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="grid grid-cols-6 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {([
           { id: "users", icon: <Users size={14} />, label: "Usuários" },
           { id: "analytics", icon: <TrendingUp size={14} />, label: "Analytics" },
@@ -1390,6 +1390,7 @@ export default function Admin() {
           { id: "push", icon: <Send size={14} />, label: "Push" },
           { id: "coupons", icon: <Ticket size={14} />, label: "Cupões" },
           { id: "livro", icon: <BookOpen size={14} />, label: "Livro" },
+          { id: "planos", icon: <Crown size={14} />, label: "Planos" },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -2532,10 +2533,10 @@ export default function Admin() {
           </div>
 
           <BookSettingsPanel />
-
-          <SubscriptionPricesPanel />
         </div>
       )}
+
+      {activeTab === "planos" && <PlansPanel />}
     </div>
   );
 }
@@ -2786,6 +2787,438 @@ function SubscriptionPricesPanel() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── PlansPanel ────────────────────────────────────────────────────
+
+interface PlanLimits {
+  journalEntries: number | null;
+  reflectionCards: number | null;
+  journeys: number | null;
+  bookAccess: boolean;
+}
+
+interface SubPlan {
+  id: number;
+  name: string;
+  interval: string;
+  intervalCount: number;
+  amountCents: number;
+  currency: string;
+  stripePriceId: string | null;
+  badge: string | null;
+  features: string[];
+  limits: PlanLimits;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+const EMPTY_LIMITS: PlanLimits = { journalEntries: null, reflectionCards: null, journeys: null, bookAccess: false };
+const EMPTY_FORM = {
+  name: "", interval: "month", intervalCount: 1, amountCents: 0, amountBrl: "",
+  currency: "BRL", stripePriceId: "", badge: "", features: [""] as string[],
+  limits: { ...EMPTY_LIMITS } as PlanLimits, isActive: true, sortOrder: 0, createInStripe: false,
+};
+
+function PlanForm({ initial, onSave, onCancel, saving, error }: {
+  initial: typeof EMPTY_FORM;
+  onSave: (data: typeof EMPTY_FORM) => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string;
+}) {
+  const [form, setForm] = useState(initial);
+
+  const setLimit = (key: keyof PlanLimits, val: number | null | boolean) =>
+    setForm(f => ({ ...f, limits: { ...f.limits, [key]: val } }));
+
+  const setFeature = (i: number, v: string) =>
+    setForm(f => { const a = [...f.features]; a[i] = v; return { ...f, features: a }; });
+
+  const removeFeature = (i: number) =>
+    setForm(f => ({ ...f, features: f.features.filter((_, j) => j !== i) }));
+
+  const addFeature = () => setForm(f => ({ ...f, features: [...f.features, ""] }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cents = Math.round(parseFloat(form.amountBrl.replace(",", ".")) * 100);
+    onSave({ ...form, amountCents: isNaN(cents) ? 0 : cents });
+  };
+
+  const LimitField = ({ label, limitKey }: { label: string; limitKey: "journalEntries" | "reflectionCards" | "journeys" }) => {
+    const val = form.limits[limitKey];
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-foreground flex-1">{label}</span>
+        <button
+          type="button"
+          onClick={() => setLimit(limitKey, val === null ? 10 : null)}
+          className={`text-[10px] px-2 py-0.5 rounded-full border font-medium transition-colors ${val === null ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-muted text-muted-foreground border-border"}`}
+        >
+          {val === null ? "ilimitado" : "limitado"}
+        </button>
+        {val !== null && (
+          <input
+            type="number"
+            min={1}
+            value={val}
+            onChange={e => setLimit(limitKey, Number(e.target.value))}
+            className="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs text-center"
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Nome do plano</label>
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Mensal" required
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-plan-name" />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Badge (opcional)</label>
+          <input value={form.badge} onChange={e => setForm(f => ({ ...f, badge: e.target.value }))} placeholder="Mais popular"
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-plan-badge" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Intervalo</label>
+          <select value={form.interval} onChange={e => setForm(f => ({ ...f, interval: e.target.value }))}
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="select-plan-interval">
+            <option value="month">Mensal</option>
+            <option value="year">Anual</option>
+            <option value="lifetime">Vitalício</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Qtd intervalos</label>
+          <input type="number" min={1} value={form.intervalCount} onChange={e => setForm(f => ({ ...f, intervalCount: Number(e.target.value) }))}
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-plan-interval-count" />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Preço (R$)</label>
+          <input value={form.amountBrl} onChange={e => setForm(f => ({ ...f, amountBrl: e.target.value }))} placeholder="9,90" required
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-plan-price" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Stripe Price ID (opcional)</label>
+          <input value={form.stripePriceId} onChange={e => setForm(f => ({ ...f, stripePriceId: e.target.value }))} placeholder="price_xxx"
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono" data-testid="input-plan-stripe-price" />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Ordem</label>
+          <input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))}
+            className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm" data-testid="input-plan-order" />
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Features (exibidas na página Premium)</label>
+          <button type="button" onClick={addFeature}
+            className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5" data-testid="btn-add-feature">
+            <Plus size={10} /> Adicionar
+          </button>
+        </div>
+        {form.features.map((f, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input value={f} onChange={e => setFeature(i, e.target.value)} placeholder={`Feature ${i + 1}`}
+              className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-sm" data-testid={`input-feature-${i}`} />
+            <button type="button" onClick={() => removeFeature(i)}
+              className="p-1 text-muted-foreground hover:text-red-500 transition-colors" data-testid={`btn-remove-feature-${i}`}>
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Limits */}
+      <div className="space-y-2 bg-muted/30 rounded-xl p-3">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Limites do plano</p>
+        <LimitField label="Entradas de diário" limitKey="journalEntries" />
+        <LimitField label="Cartas de reflexão" limitKey="reflectionCards" />
+        <LimitField label="Jornadas" limitKey="journeys" />
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-xs text-foreground flex-1">Acesso ao livro incluído</span>
+          <button type="button"
+            onClick={() => setLimit("bookAccess", !form.limits.bookAccess)}
+            className={`relative w-9 h-5 rounded-full transition-colors ${form.limits.bookAccess ? "bg-green-500" : "bg-muted-foreground/30"}`}
+            data-testid="toggle-book-access">
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.limits.bookAccess ? "translate-x-4" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))}
+            className="w-4 h-4 rounded" data-testid="checkbox-plan-active" />
+          <span className="text-xs text-foreground">Plano activo</span>
+        </label>
+        {form.interval !== "lifetime" && !form.stripePriceId && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.createInStripe} onChange={e => setForm(f => ({ ...f, createInStripe: e.target.checked }))}
+              className="w-4 h-4 rounded" data-testid="checkbox-create-stripe" />
+            <span className="text-xs text-foreground">Criar no Stripe</span>
+          </label>
+        )}
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <div className="flex gap-2">
+        <button type="submit" disabled={saving}
+          className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
+          data-testid="btn-save-plan">
+          {saving ? "A guardar..." : "Guardar plano"}
+        </button>
+        <button type="button" onClick={onCancel}
+          className="px-4 py-2.5 bg-muted text-muted-foreground rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
+          data-testid="btn-cancel-plan">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PlansPanel() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editPlan, setEditPlan] = useState<SubPlan | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { data: plans = [], isLoading } = useQuery<SubPlan[]>({
+    queryKey: ["/api/admin/plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/plans", { credentials: "include" });
+      return res.json();
+    },
+    enabled: true,
+  });
+
+  const intervalLabel = (interval: string, count: number) => {
+    if (interval === "lifetime") return "Vitalício";
+    if (interval === "year") return count === 1 ? "Anual" : `${count} anos`;
+    return count === 1 ? "Mensal" : `${count} meses`;
+  };
+
+  const fmtBrl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+
+  const buildInitial = (plan?: SubPlan): typeof EMPTY_FORM => {
+    if (!plan) return { ...EMPTY_FORM, limits: { ...EMPTY_LIMITS } };
+    return {
+      name: plan.name,
+      interval: plan.interval,
+      intervalCount: plan.intervalCount,
+      amountCents: plan.amountCents,
+      amountBrl: (plan.amountCents / 100).toFixed(2).replace(".", ","),
+      currency: plan.currency,
+      stripePriceId: plan.stripePriceId ?? "",
+      badge: plan.badge ?? "",
+      features: plan.features.length ? [...plan.features] : [""],
+      limits: { ...EMPTY_LIMITS, ...(plan.limits as PlanLimits) },
+      isActive: plan.isActive,
+      sortOrder: plan.sortOrder,
+      createInStripe: false,
+    };
+  };
+
+  const handleSave = async (data: typeof EMPTY_FORM) => {
+    setSaving(true);
+    setError("");
+    try {
+      const body = {
+        name: data.name,
+        interval: data.interval,
+        intervalCount: data.intervalCount,
+        amountCents: data.amountCents,
+        currency: data.currency,
+        stripePriceId: data.stripePriceId || undefined,
+        badge: data.badge || undefined,
+        features: data.features.filter(Boolean),
+        limits: data.limits,
+        isActive: data.isActive,
+        sortOrder: data.sortOrder,
+        createInStripe: data.createInStripe,
+      };
+      const url = editPlan ? `/api/admin/plans/${editPlan.id}` : "/api/admin/plans";
+      const method = editPlan ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error || "Erro ao guardar."); setSaving(false); return; }
+      qc.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      qc.invalidateQueries({ queryKey: ["/api/subscription-plans"] });
+      setShowForm(false);
+      setEditPlan(null);
+    } catch { setError("Erro de rede."); }
+    finally { setSaving(false); }
+  };
+
+  const handleToggleActive = async (plan: SubPlan) => {
+    const res = await fetch(`/api/admin/plans/${plan.id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !plan.isActive }),
+    });
+    if (res.ok) {
+      qc.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      qc.invalidateQueries({ queryKey: ["/api/subscription-plans"] });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    const res = await fetch(`/api/admin/plans/${id}`, { method: "DELETE", credentials: "include" });
+    if (res.ok) {
+      qc.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      qc.invalidateQueries({ queryKey: ["/api/subscription-plans"] });
+    }
+    setDeletingId(null);
+  };
+
+  const openNew = () => { setEditPlan(null); setShowForm(true); setError(""); };
+  const openEdit = (plan: SubPlan) => { setEditPlan(plan); setShowForm(true); setError(""); };
+  const handleCancel = () => { setShowForm(false); setEditPlan(null); setError(""); };
+
+  return (
+    <div className="space-y-4 pb-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Planos de Assinatura</h2>
+          <p className="text-[11px] text-muted-foreground">Gere os planos disponíveis na página Premium</p>
+        </div>
+        {!showForm && (
+          <button onClick={openNew}
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
+            data-testid="btn-new-plan">
+            <Plus size={12} /> Novo Plano
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <PlanForm
+          initial={buildInitial(editPlan ?? undefined)}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          saving={saving}
+          error={error}
+        />
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground text-center py-6 animate-pulse">A carregar planos...</p>
+      ) : plans.length === 0 ? (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <Crown size={32} className="text-amber-500 mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground">Ainda não tens planos</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Cria o primeiro plano para exibir na página Premium</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {plans.map(plan => {
+            const lim = plan.limits as PlanLimits;
+            return (
+              <div key={plan.id}
+                className={`bg-card border rounded-xl p-4 space-y-3 transition-all ${plan.isActive ? "border-border" : "border-dashed border-border opacity-60"}`}
+                data-testid={`plan-card-${plan.id}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground">{plan.name}</span>
+                      {plan.badge && (
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20 uppercase tracking-wider">
+                          {plan.badge}
+                        </span>
+                      )}
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${plan.isActive ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                        {plan.isActive ? "activo" : "inactivo"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {intervalLabel(plan.interval, plan.intervalCount)} · {fmtBrl(plan.amountCents)}
+                    </p>
+                    {plan.stripePriceId && (
+                      <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{plan.stripePriceId}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => handleToggleActive(plan)}
+                      className="p-1.5 rounded-lg bg-muted/50 hover-elevate text-muted-foreground transition-colors"
+                      data-testid={`btn-toggle-plan-${plan.id}`}
+                      title={plan.isActive ? "Desactivar" : "Activar"}>
+                      {plan.isActive ? <ToggleRight size={14} className="text-green-500" /> : <ToggleLeft size={14} />}
+                    </button>
+                    <button onClick={() => openEdit(plan)}
+                      className="p-1.5 rounded-lg bg-muted/50 hover-elevate text-muted-foreground transition-colors"
+                      data-testid={`btn-edit-plan-${plan.id}`}>
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => handleDelete(plan.id)} disabled={deletingId === plan.id}
+                      className="p-1.5 rounded-lg bg-muted/50 hover-elevate text-red-400 transition-colors disabled:opacity-40"
+                      data-testid={`btn-delete-plan-${plan.id}`}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Features & Limits summary */}
+                {(plan.features.length > 0 || Object.keys(plan.limits).length > 0) && (
+                  <div className="border-t border-border pt-2 grid grid-cols-2 gap-2">
+                    {plan.features.length > 0 && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Features</p>
+                        <ul className="space-y-0.5">
+                          {plan.features.slice(0, 4).map((f, i) => (
+                            <li key={i} className="text-[10px] text-foreground flex items-start gap-1">
+                              <Check size={9} className="text-green-500 shrink-0 mt-0.5" />
+                              {f}
+                            </li>
+                          ))}
+                          {plan.features.length > 4 && (
+                            <li className="text-[10px] text-muted-foreground">+{plan.features.length - 4} mais</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Limites</p>
+                      <ul className="space-y-0.5">
+                        <li className="text-[10px] text-foreground">Diário: {lim?.journalEntries === null || lim?.journalEntries === undefined ? "∞" : lim.journalEntries}</li>
+                        <li className="text-[10px] text-foreground">Cartas: {lim?.reflectionCards === null || lim?.reflectionCards === undefined ? "∞" : lim.reflectionCards}</li>
+                        <li className="text-[10px] text-foreground">Jornadas: {lim?.journeys === null || lim?.journeys === undefined ? "∞" : lim.journeys}</li>
+                        <li className="text-[10px] text-foreground">Livro: {lim?.bookAccess ? "incluído" : "não incluído"}</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

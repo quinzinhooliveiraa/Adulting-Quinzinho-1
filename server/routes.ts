@@ -3949,6 +3949,109 @@ REGRAS:
     }
   });
 
+  // ── Subscription Plans CRUD ──────────────────────────────────────
+  // Public: active plans (used by Premium page)
+  app.get("/api/subscription-plans", async (_req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans(false);
+      res.json(plans);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: all plans including inactive
+  app.get("/api/admin/plans", requireAdmin, async (_req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans(true);
+      res.json(plans);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: create plan (optionally also create in Stripe)
+  app.post("/api/admin/plans", requireAdmin, async (req, res) => {
+    try {
+      const {
+        name, interval, intervalCount = 1, amountCents, currency = "BRL",
+        badge, features = [], limits = {}, isActive = true, sortOrder = 0,
+        createInStripe = false,
+      } = req.body;
+
+      if (!name || !interval || !amountCents) {
+        return res.status(400).json({ error: "name, interval e amountCents são obrigatórios" });
+      }
+
+      let stripePriceId: string | undefined;
+
+      if (createInStripe && interval !== "lifetime") {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        const allPrices = await stripe.prices.list({ active: true, type: "recurring", limit: 10 });
+        const productId = allPrices.data[0]?.product as string | undefined;
+        if (!productId) return res.status(400).json({ error: "Nenhum produto de assinatura no Stripe. Cria um produto primeiro." });
+        const newStripePrice = await stripe.prices.create({
+          product: productId,
+          unit_amount: amountCents,
+          currency: currency.toLowerCase(),
+          recurring: { interval: interval as "month" | "year", interval_count: intervalCount },
+        });
+        stripePriceId = newStripePrice.id;
+      }
+
+      const plan = await storage.createSubscriptionPlan({
+        name, interval, intervalCount, amountCents, currency, stripePriceId,
+        badge, features, limits, isActive, sortOrder,
+      });
+      res.json(plan);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: update plan
+  app.patch("/api/admin/plans/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { createInStripe, ...data } = req.body;
+
+      if (createInStripe && data.interval && data.interval !== "lifetime") {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        const allPrices = await stripe.prices.list({ active: true, type: "recurring", limit: 10 });
+        const productId = allPrices.data[0]?.product as string | undefined;
+        if (productId && data.amountCents) {
+          const newStripePrice = await stripe.prices.create({
+            product: productId,
+            unit_amount: data.amountCents,
+            currency: (data.currency || "BRL").toLowerCase(),
+            recurring: { interval: data.interval as "month" | "year", interval_count: data.intervalCount || 1 },
+          });
+          data.stripePriceId = newStripePrice.id;
+        }
+      }
+
+      const plan = await storage.updateSubscriptionPlan(id, data);
+      if (!plan) return res.status(404).json({ error: "Plano não encontrado" });
+      res.json(plan);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: delete plan
+  app.delete("/api/admin/plans/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const ok = await storage.deleteSubscriptionPlan(id);
+      if (!ok) return res.status(404).json({ error: "Plano não encontrado" });
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Book Stripe diagnostics — all book PaymentIntents with status breakdown
   app.get("/api/admin/book-stripe-intents", requireAdmin, async (_req, res) => {
     try {

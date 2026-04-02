@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -294,6 +294,34 @@ export const bookHighlights = pgTable("book_highlights", {
 export const insertBookHighlightSchema = createInsertSchema(bookHighlights).omit({ id: true, createdAt: true });
 export type InsertBookHighlight = z.infer<typeof insertBookHighlightSchema>;
 export type BookHighlight = typeof bookHighlights.$inferSelect;
+
+// ── Subscription Plans ────────────────────────────────────────────
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  interval: text("interval").notNull(), // "month" | "year" | "lifetime"
+  intervalCount: integer("interval_count").default(1).notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").default("BRL").notNull(),
+  stripePriceId: text("stripe_price_id"),
+  badge: text("badge"),
+  features: text("features").array().default(sql`'{}'::text[]`).notNull(),
+  limits: jsonb("limits").default({}).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ id: true, createdAt: true });
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+export interface PlanLimits {
+  journalEntries: number | null;
+  reflectionCards: number | null;
+  journeys: number | null;
+  bookAccess: boolean;
+}
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

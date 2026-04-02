@@ -44,12 +44,15 @@ import {
   bookPurchases,
   bookHighlights,
   appSettings,
+  subscriptionPlans,
   type BookChapter,
   type InsertBookChapter,
   type BookPurchase,
   type BookHighlight,
   type InsertBookHighlight,
   type AppSetting,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -156,6 +159,12 @@ export interface IStorage {
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
   getAllAppSettings(): Promise<Record<string, string>>;
+
+  getSubscriptionPlans(includeInactive?: boolean): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(data: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+  updateSubscriptionPlan(id: number, data: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined>;
+  deleteSubscriptionPlan(id: number): Promise<boolean>;
 }
 
 function decryptUser<T extends User | undefined>(user: T): T {
@@ -942,6 +951,32 @@ export class DatabaseStorage implements IStorage {
   async getAllAppSettings(): Promise<Record<string, string>> {
     const rows = await db.select().from(appSettings);
     return Object.fromEntries(rows.map(r => [r.key, r.value]));
+  }
+
+  async getSubscriptionPlans(includeInactive = false): Promise<SubscriptionPlan[]> {
+    const rows = await db.select().from(subscriptionPlans)
+      .orderBy(subscriptionPlans.sortOrder, subscriptionPlans.createdAt);
+    return includeInactive ? rows : rows.filter(r => r.isActive);
+  }
+
+  async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {
+    const [row] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return row;
+  }
+
+  async createSubscriptionPlan(data: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [row] = await db.insert(subscriptionPlans).values(data).returning();
+    return row;
+  }
+
+  async updateSubscriptionPlan(id: number, data: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
+    const [row] = await db.update(subscriptionPlans).set(data).where(eq(subscriptionPlans.id, id)).returning();
+    return row;
+  }
+
+  async deleteSubscriptionPlan(id: number): Promise<boolean> {
+    const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
