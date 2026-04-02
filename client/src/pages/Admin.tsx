@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
@@ -2966,7 +2967,7 @@ function PlanForm({ initial, onSave, onCancel, saving, error }: {
       {/* Valid Until */}
       <div>
         <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Prazo de validade (opcional — cria countdown na página Premium)
+          Tempo de oferta (opcional — aparece countdown na página Premium)
         </label>
         <input
           type="datetime-local"
@@ -3021,6 +3022,7 @@ function PlansPanel() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState<SubPlan | null>(null);
+  const [newSortOrder, setNewSortOrder] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -3122,7 +3124,13 @@ function PlansPanel() {
     setDeletingId(null);
   };
 
-  const openNew = () => { setEditPlan(null); setShowForm(true); setError(""); };
+  const openNew = () => {
+    const maxOrder = plans.length > 0 ? Math.max(...plans.map(p => p.sortOrder)) : 0;
+    setNewSortOrder(maxOrder + 1);
+    setEditPlan(null);
+    setShowForm(true);
+    setError("");
+  };
   const openEdit = (plan: SubPlan) => { setEditPlan(plan); setShowForm(true); setError(""); };
   const handleCancel = () => { setShowForm(false); setEditPlan(null); setError(""); };
 
@@ -3133,24 +3141,31 @@ function PlansPanel() {
           <h2 className="text-base font-semibold text-foreground">Planos de Assinatura</h2>
           <p className="text-[11px] text-muted-foreground">Gere os planos disponíveis na página Premium</p>
         </div>
-        {!showForm && (
-          <button onClick={openNew}
-            className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
-            data-testid="btn-new-plan">
-            <Plus size={12} /> Novo Plano
-          </button>
-        )}
+        <button onClick={openNew}
+          className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1 font-medium"
+          data-testid="btn-new-plan">
+          <Plus size={12} /> Novo Plano
+        </button>
       </div>
 
-      {showForm && (
-        <PlanForm
-          initial={buildInitial(editPlan ?? undefined)}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          saving={saving}
-          error={error}
-        />
-      )}
+      <Sheet open={showForm} onOpenChange={open => { if (!open) handleCancel(); }}>
+        <SheetContent side="bottom" className="h-[92dvh] overflow-y-auto rounded-t-2xl px-4 pb-10">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-base">
+              {editPlan ? `Editar: ${editPlan.name}` : "Novo Plano"}
+            </SheetTitle>
+          </SheetHeader>
+          {showForm && (
+            <PlanForm
+              initial={editPlan ? buildInitial(editPlan) : { ...buildInitial(undefined), sortOrder: newSortOrder }}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              saving={saving}
+              error={error}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground text-center py-6 animate-pulse">A carregar planos...</p>
