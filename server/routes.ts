@@ -1409,6 +1409,82 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/stripe/create-lifetime-intent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Utilizador não encontrado" });
+      if (user.hasPremium && user.premiumReason !== "trial") {
+        return res.status(400).json({ message: "Já tens o Premium ativo" });
+      }
+
+      const { priceId } = req.body;
+      if (!priceId) return res.status(400).json({ message: "priceId obrigatório" });
+
+      const stripe = getStableStripeClient();
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+          metadata: { userId: user.id },
+        });
+        customerId = customer.id;
+        await storage.updateUser(user.id, { stripeCustomerId: customerId });
+      }
+
+      const price = await stripe.prices.retrieve(priceId);
+      if (!price || price.type !== "one_time") {
+        return res.status(400).json({ message: "Preço inválido para pagamento vitalício" });
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: price.unit_amount!,
+        currency: price.currency,
+        customer: customerId,
+        metadata: { userId: user.id, type: "lifetime" },
+        automatic_payment_methods: { enabled: true },
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+    } catch (error: any) {
+      console.error("create-lifetime-intent error:", error?.message ?? error);
+      res.status(500).json({ message: "Não foi possível iniciar o pagamento. Tenta novamente." });
+    }
+  });
+
+  app.post("/api/stripe/confirm-lifetime", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Utilizador não encontrado" });
+
+      const { paymentIntentId } = req.body;
+      if (!paymentIntentId) return res.status(400).json({ message: "paymentIntentId obrigatório" });
+
+      const stripe = getStableStripeClient();
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (pi.customer !== user.stripeCustomerId) {
+        return res.status(403).json({ message: "Pagamento não pertence a este utilizador" });
+      }
+
+      if (pi.status !== "succeeded") {
+        return res.status(400).json({ message: "Pagamento ainda não confirmado" });
+      }
+
+      await storage.updateUser(user.id, {
+        isPremium: true,
+        premiumUntil: null,
+        stripeSubscriptionId: undefined,
+      });
+
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("confirm-lifetime error:", error);
+      res.status(500).json({ message: "Erro ao confirmar pagamento" });
+    }
+  });
+
   app.post("/api/stripe/cancel-subscription", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -4098,9 +4174,10 @@ REGRAS:
         stripePriceId = newStripePrice.id;
       }
 
+      const validUntil = req.body.validUntil ? new Date(req.body.validUntil) : undefined;
       const plan = await storage.createSubscriptionPlan({
         name, interval, intervalCount, amountCents, currency, stripePriceId,
-        badge, features, limits, isActive, sortOrder,
+        badge, features, limits, isActive, sortOrder, validUntil,
       });
       res.json(plan);
     } catch (err: any) {

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp, Infinity, XCircle } from "lucide-react";
+import { ArrowLeft, Crown, Check, Sparkles, PenLine, Map, Gift, Ticket, ChevronDown, ChevronUp, Infinity, XCircle, Timer } from "lucide-react";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
 import SubscriptionCheckoutModal from "@/components/SubscriptionCheckoutModal";
@@ -19,6 +19,44 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { SubscriptionPlan } from "@shared/schema";
+
+function useCountdown(validUntil: string | Date | null | undefined) {
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; mins: number; secs: number } | null>(null);
+
+  useEffect(() => {
+    if (!validUntil) return;
+    const target = new Date(validUntil).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setTimeLeft(null); return; }
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        mins: Math.floor((diff % 3600000) / 60000),
+        secs: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [validUntil]);
+
+  return timeLeft;
+}
+
+function PlanCountdown({ validUntil }: { validUntil: string | Date | null | undefined }) {
+  const t = useCountdown(validUntil);
+  if (!t) return null;
+  return (
+    <div className="flex items-center gap-1 mt-1.5">
+      <Timer className="w-3 h-3 text-red-500 flex-shrink-0" />
+      <span className="text-xs font-mono text-red-500 font-medium">
+        {t.days > 0 ? `${t.days}d ` : ""}{String(t.hours).padStart(2,"0")}:{String(t.mins).padStart(2,"0")}:{String(t.secs).padStart(2,"0")}
+      </span>
+      <span className="text-xs text-muted-foreground">restantes</span>
+    </div>
+  );
+}
 
 function formatPrice(amountCents: number, currency: string): string {
   const amount = amountCents / 100;
@@ -81,7 +119,7 @@ export default function Premium() {
     priceId: string;
     label: string;
     priceFormatted: string;
-    interval: "month" | "year";
+    interval: "month" | "year" | "lifetime";
     badge?: string;
   } | null>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -121,12 +159,12 @@ export default function Premium() {
 
   const handleCheckout = (plan: SubscriptionPlan) => {
     if (!plan.stripePriceId) return;
-    if (plan.interval !== "month" && plan.interval !== "year") return;
+    if (plan.interval !== "month" && plan.interval !== "year" && plan.interval !== "lifetime") return;
     setCheckoutPlan({
       priceId: plan.stripePriceId,
       label: plan.name,
       priceFormatted: formatPrice(plan.amountCents, plan.currency),
-      interval: plan.interval,
+      interval: plan.interval as "month" | "year" | "lifetime",
       badge: plan.badge ?? undefined,
     });
   };
@@ -319,8 +357,7 @@ export default function Premium() {
               <button
                 key={plan.id}
                 onClick={() => handleCheckout(plan)}
-                disabled={isLifetime}
-                className={`w-full p-4 rounded-xl border-2 ${style.border} ${style.bg} hover:opacity-90 transition-opacity text-left relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed`}
+                className={`w-full p-4 rounded-xl border-2 ${style.border} ${style.bg} hover:opacity-90 transition-opacity text-left relative overflow-hidden`}
                 data-testid={`button-checkout-${plan.interval}-${plan.id}`}
               >
                 {plan.badge && (
@@ -335,6 +372,7 @@ export default function Premium() {
                       <p className="font-bold text-lg">{plan.name}</p>
                     </div>
                     <p className="text-muted-foreground text-sm">{subtitle}</p>
+                    {plan.validUntil && <PlanCountdown validUntil={plan.validUntil} />}
                     {plan.features && plan.features.length > 0 && (
                       <ul className="mt-1 space-y-0.5">
                         {plan.features.map((feat, fi) => (

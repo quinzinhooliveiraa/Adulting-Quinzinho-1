@@ -956,7 +956,9 @@ export class DatabaseStorage implements IStorage {
   async getSubscriptionPlans(includeInactive = false): Promise<SubscriptionPlan[]> {
     const rows = await db.select().from(subscriptionPlans)
       .orderBy(subscriptionPlans.sortOrder, subscriptionPlans.createdAt);
-    return includeInactive ? rows : rows.filter(r => r.isActive);
+    if (includeInactive) return rows;
+    const now = new Date();
+    return rows.filter(r => r.isActive && (!r.validUntil || new Date(r.validUntil) > now));
   }
 
   async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {

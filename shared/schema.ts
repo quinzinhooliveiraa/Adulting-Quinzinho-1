@@ -309,6 +309,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   limits: jsonb("limits").default({}).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
+  validUntil: timestamp("valid_until"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

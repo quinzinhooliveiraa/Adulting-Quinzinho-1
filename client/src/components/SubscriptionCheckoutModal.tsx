@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Crown, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
+import { X, Crown, Lock, CheckCircle2, ShieldCheck, Infinity } from "lucide-react";
 import { getStripePromise } from "@/lib/stripeLoader";
 import {
   Elements,
@@ -13,7 +13,7 @@ interface Plan {
   priceId: string;
   label: string;
   priceFormatted: string;
-  interval: "month" | "year";
+  interval: "month" | "year" | "lifetime";
   badge?: string;
 }
 
@@ -26,9 +26,10 @@ interface Props {
 function PaymentForm({
   plan,
   subscriptionId,
+  paymentIntentId,
   onSuccess,
   onClose,
-}: Props & { subscriptionId: string }) {
+}: Props & { subscriptionId: string; paymentIntentId: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const queryClient = useQueryClient();
@@ -36,6 +37,8 @@ function PaymentForm({
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const isLifetime = plan.interval === "lifetime";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,15 +60,22 @@ function PaymentForm({
       }
 
       if (paymentIntent?.status === "succeeded" || paymentIntent?.status === "processing") {
-        const confirmRes = await fetch("/api/stripe/confirm-subscription", {
+        const confirmEndpoint = isLifetime
+          ? "/api/stripe/confirm-lifetime"
+          : "/api/stripe/confirm-subscription";
+        const confirmBody = isLifetime
+          ? { paymentIntentId }
+          : { subscriptionId };
+
+        const confirmRes = await fetch(confirmEndpoint, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscriptionId }),
+          body: JSON.stringify(confirmBody),
         });
         const confirmData = await confirmRes.json();
         if (!confirmRes.ok) {
-          setError(confirmData.message || "Erro ao activar subscrição. Contacta o suporte.");
+          setError(confirmData.message || "Erro ao activar o acesso. Contacta o suporte.");
           setLoading(false);
           return;
         }
@@ -88,9 +98,13 @@ function PaymentForm({
         <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
           <CheckCircle2 size={32} className="text-green-500" />
         </div>
-        <h2 className="text-xl font-bold font-serif text-foreground">Premium activado!</h2>
+        <h2 className="text-xl font-bold font-serif text-foreground">
+          {isLifetime ? "Acesso Vitalício activado!" : "Premium activado!"}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Bem-vindo ao Casa dos 20 Premium. Todo o conteúdo está agora desbloqueado.
+          {isLifetime
+            ? "Tens agora acesso permanente a todo o conteúdo da Casa dos 20."
+            : "Bem-vindo ao Casa dos 20 Premium. Todo o conteúdo está agora desbloqueado."}
         </p>
       </div>
     );
@@ -101,29 +115,36 @@ function PaymentForm({
       <div className="px-6 pt-7 pb-4">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-            <Crown size={20} className="text-amber-500" />
+            {isLifetime ? <Infinity size={20} className="text-violet-500" /> : <Crown size={20} className="text-amber-500" />}
           </div>
           <div>
             <h2 className="text-lg font-bold font-serif text-foreground leading-tight">
               Casa dos 20 Premium
             </h2>
             <p className="text-xs text-muted-foreground">
-              Plano {plan.label} · renovação automática
+              {isLifetime ? `Plano ${plan.label} · pagamento único` : `Plano ${plan.label} · renovação automática`}
             </p>
           </div>
         </div>
 
         <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3 mb-5 flex items-center justify-between">
           <div>
-            <span className="text-sm text-foreground font-medium block">
-              {plan.label}
-            </span>
+            <span className="text-sm text-foreground font-medium block">{plan.label}</span>
             <span className="text-[11px] text-muted-foreground">
-              {plan.interval === "month" ? "cobrado mensalmente" : "cobrado anualmente"}
+              {isLifetime
+                ? "acesso permanente — paga uma vez, usa sempre"
+                : plan.interval === "month"
+                  ? "cobrado mensalmente"
+                  : "cobrado anualmente"}
             </span>
           </div>
           <span className="text-base font-bold text-amber-600 dark:text-amber-400">
-            {plan.priceFormatted}<span className="text-xs font-normal text-muted-foreground">/{plan.interval === "month" ? "mês" : "ano"}</span>
+            {plan.priceFormatted}
+            {!isLifetime && (
+              <span className="text-xs font-normal text-muted-foreground">
+                /{plan.interval === "month" ? "mês" : "ano"}
+              </span>
+            )}
           </span>
         </div>
 
@@ -149,7 +170,9 @@ function PaymentForm({
           <div className="flex items-start gap-2">
             <ShieldCheck size={14} className="text-green-600 shrink-0 mt-0.5" />
             <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
-              Cancela quando quiseres · sem compromisso · conteúdo ilimitado durante a subscrição
+              {isLifetime
+                ? "Pagamento único · acesso vitalício · sem renovações · sem surpresas"
+                : "Cancela quando quiseres · sem compromisso · conteúdo ilimitado durante a subscrição"}
             </p>
           </div>
         </div>
@@ -163,7 +186,11 @@ function PaymentForm({
           data-testid="btn-confirm-subscription-purchase"
           className="w-full py-3.5 rounded-2xl bg-amber-500 text-white font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50"
         >
-          {loading ? "A processar..." : `Subscrever por ${plan.priceFormatted}/${plan.interval === "month" ? "mês" : "ano"}`}
+          {loading
+            ? "A processar..."
+            : isLifetime
+              ? `Pagar ${plan.priceFormatted} — acesso vitalício`
+              : `Subscrever por ${plan.priceFormatted}/${plan.interval === "month" ? "mês" : "ano"}`}
         </button>
         <button
           type="button"
@@ -182,10 +209,17 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof getStripePromise> | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionId, setSubscriptionId] = useState("");
+  const [paymentIntentId, setPaymentIntentId] = useState("");
   const [loadError, setLoadError] = useState("");
 
+  const isLifetime = plan.interval === "lifetime";
+
   useEffect(() => {
-    const intentFetch = fetch("/api/stripe/create-subscription-intent", {
+    const endpoint = isLifetime
+      ? "/api/stripe/create-lifetime-intent"
+      : "/api/stripe/create-subscription-intent";
+
+    const intentFetch = fetch(endpoint, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -193,7 +227,7 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
     })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.clientSecret) throw new Error(d.message || "Erro ao criar subscrição.");
+        if (!d.clientSecret) throw new Error(d.message || "Erro ao iniciar pagamento.");
         return d;
       });
 
@@ -201,10 +235,11 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
       .then(([stripeInst, intentData]) => {
         setStripePromise(Promise.resolve(stripeInst));
         setClientSecret(intentData.clientSecret);
-        setSubscriptionId(intentData.subscriptionId);
+        if (intentData.subscriptionId) setSubscriptionId(intentData.subscriptionId);
+        if (intentData.paymentIntentId) setPaymentIntentId(intentData.paymentIntentId);
       })
       .catch((err) => setLoadError(err.message || "Erro de ligação."));
-  }, [plan.priceId]);
+  }, [plan.priceId, isLifetime]);
 
   const isDark =
     typeof document !== "undefined" &&
@@ -232,10 +267,7 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
         {loadError ? (
           <div className="px-6 py-10 text-center">
             <p className="text-sm text-red-500">{loadError}</p>
-            <button
-              onClick={onClose}
-              className="mt-4 text-xs text-muted-foreground underline"
-            >
+            <button onClick={onClose} className="mt-4 text-xs text-muted-foreground underline">
               Fechar
             </button>
           </div>
@@ -260,6 +292,7 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
             <PaymentForm
               plan={plan}
               subscriptionId={subscriptionId}
+              paymentIntentId={paymentIntentId}
               onSuccess={onSuccess}
               onClose={onClose}
             />
