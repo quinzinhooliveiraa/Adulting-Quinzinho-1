@@ -547,6 +547,8 @@ export default function Home() {
         />
       )}
 
+      <ReferralCard />
+
       <section className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-serif text-muted-foreground uppercase tracking-wider">Check-in de Humor</h2>
@@ -1227,7 +1229,6 @@ export default function Home() {
         />
       )}
 
-      <ReferralCard />
     </div>
   );
 }
