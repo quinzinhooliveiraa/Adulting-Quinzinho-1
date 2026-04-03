@@ -526,6 +526,14 @@ export async function registerRoutes(
 
       const isAdminEmail = data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       const verificationToken = randomBytes(32).toString("hex");
+
+      // Resolve referral code to referrer ID
+      let referrerId: string | null = null;
+      if (data.inviteCode) {
+        const referrer = await storage.getUserByReferralCode(data.inviteCode);
+        if (referrer) referrerId = referrer.id;
+      }
+
       const user = await storage.createUser({
         username: data.email,
         password: hashPassword(data.password),
@@ -536,10 +544,15 @@ export async function registerRoutes(
         isActive: true,
         trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         premiumUntil: null,
-        invitedBy: data.inviteCode || null,
+        invitedBy: referrerId || data.inviteCode || null,
         emailVerified: isAdminEmail,
         emailVerificationToken: isAdminEmail ? null : verificationToken,
       });
+
+      // Create referral record if applicable
+      if (referrerId) {
+        await storage.createReferral(referrerId, user.id).catch(() => {});
+      }
 
       if (!isAdminEmail) {
         sendVerificationEmail(data.email, verificationToken, data.name);
@@ -2395,6 +2408,21 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar chamado" });
+    }
+  });
+
+  // --- REFERRAL SYSTEM ---
+  app.get("/api/referral/me", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const code = await storage.getOrCreateReferralCode(userId);
+      const stats = await storage.getReferralStats(userId);
+      const appUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN || "localhost"}`;
+      const link = `${appUrl}?ref=${code}`;
+      return res.json({ code, link, ...stats });
+    } catch (err) {
+      console.error("[referral] GET /api/referral/me error:", err);
+      return res.status(500).json({ message: "Erro interno" });
     }
   });
 

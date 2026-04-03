@@ -35,6 +35,16 @@ export const users = pgTable("users", {
   birthYear: integer("birth_year"),
   interests: text("interests").array(),
   bookUntil: timestamp("book_until"),
+  referralCode: text("referral_code").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id),
+  referredId: varchar("referred_id").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"),
+  rewardedAt: timestamp("rewarded_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

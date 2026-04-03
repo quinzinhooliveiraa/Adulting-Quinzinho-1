@@ -3,6 +3,7 @@ import { db } from "./db";
 import { encryptField, decryptField, hashEmail } from "./encryption";
 import {
   users,
+  referrals,
   journalEntries,
   moodCheckins,
   feedbackTickets,
@@ -165,6 +166,12 @@ export interface IStorage {
   createSubscriptionPlan(data: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
   updateSubscriptionPlan(id: number, data: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined>;
   deleteSubscriptionPlan(id: number): Promise<boolean>;
+
+  getOrCreateReferralCode(userId: string): Promise<string>;
+  getUserByReferralCode(code: string): Promise<User | undefined>;
+  createReferral(referrerId: string, referredId: string): Promise<void>;
+  getReferralStats(userId: string): Promise<{ invited: number; converted: number }>;
+  rewardReferrer(referredId: string): Promise<string | null>;
 }
 
 function decryptUser<T extends User | undefined>(user: T): T {
@@ -979,6 +986,55 @@ export class DatabaseStorage implements IStorage {
   async deleteSubscriptionPlan(id: number): Promise<boolean> {
     const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getOrCreateReferralCode(userId: string): Promise<string> {
+    const [user] = await db.select({ referralCode: users.referralCode }).from(users).where(eq(users.id, userId));
+    if (user?.referralCode) return user.referralCode;
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
+    return code;
+  }
+
+  async getUserByReferralCode(code: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.referralCode, code));
+    return decryptUser(user);
+  }
+
+  async createReferral(referrerId: string, referredId: string): Promise<void> {
+    const existing = await db.select().from(referrals)
+      .where(and(eq(referrals.referrerId, referrerId), eq(referrals.referredId, referredId)));
+    if (existing.length > 0) return;
+    await db.insert(referrals).values({ referrerId, referredId, status: "pending" });
+  }
+
+  async getReferralStats(userId: string): Promise<{ invited: number; converted: number }> {
+    const [invited] = await db.select({ count: count() }).from(referrals).where(eq(referrals.referrerId, userId));
+    const [converted] = await db.select({ count: count() }).from(referrals)
+      .where(and(eq(referrals.referrerId, userId), eq(referrals.status, "rewarded")));
+    return { invited: invited?.count ?? 0, converted: converted?.count ?? 0 };
+  }
+
+  async rewardReferrer(referredId: string): Promise<string | null> {
+    // Find the pending referral for this referred user
+    const [referral] = await db.select().from(referrals)
+      .where(and(eq(referrals.referredId, referredId), eq(referrals.status, "pending")));
+    if (!referral) return null;
+
+    // Grant 30 days premium to the referrer
+    const [referrer] = await db.select().from(users).where(eq(users.id, referral.referrerId));
+    if (!referrer) return null;
+
+    const now = new Date();
+    const base = referrer.premiumUntil && new Date(referrer.premiumUntil) > now
+      ? new Date(referrer.premiumUntil)
+      : now;
+    const newPremiumUntil = new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    await db.update(users).set({ isPremium: true, premiumUntil: newPremiumUntil }).where(eq(users.id, referral.referrerId));
+    await db.update(referrals).set({ status: "rewarded", rewardedAt: now }).where(eq(referrals.id, referral.id));
+
+    return referral.referrerId;
   }
 }
 

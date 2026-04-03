@@ -37,6 +37,7 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
   const [error, setError] = useState(initialError || "");
   const [success, setSuccess] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [emailValidation, setEmailValidation] = useState<{ status: "idle" | "checking" | "valid" | "invalid"; message?: string; suggestion?: string }>({ status: "idle" });
@@ -47,6 +48,19 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
   const isNative = Capacitor.isNativePlatform();
   const isIOS = Capacitor.getPlatform() === "ios";
   const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    // Capture referral code from URL ?ref= and persist in localStorage
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      localStorage.setItem("casa-dos-20-ref-code", ref);
+      setReferralCode(ref);
+    } else {
+      const stored = localStorage.getItem("casa-dos-20-ref-code");
+      if (stored) setReferralCode(stored);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/google-client-id")
@@ -148,7 +162,8 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
       if (mode === "login") {
         await login(email, password);
       } else if (mode === "register") {
-        await register(name, email, password);
+        await register(name, email, password, referralCode || undefined);
+        localStorage.removeItem("casa-dos-20-ref-code");
         localStorage.setItem("casa-dos-20-user-name", name);
         onRegisterSuccess();
       }

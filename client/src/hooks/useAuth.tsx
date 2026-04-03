@@ -61,8 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async ({ name, email, password }: { name: string; email: string; password: string }) => {
-      const res = await apiRequest("POST", "/api/auth/register", { name, email, password });
+    mutationFn: async ({ name, email, password, inviteCode }: { name: string; email: string; password: string; inviteCode?: string }) => {
+      const res = await apiRequest("POST", "/api/auth/register", { name, email, password, inviteCode });
       return res.json() as Promise<AuthUser>;
     },
     onSuccess: (data) => {
@@ -110,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return loginMutation.mutateAsync({ email, password });
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    return registerMutation.mutateAsync({ name, email, password });
+  const register = async (name: string, email: string, password: string, inviteCode?: string) => {
+    return registerMutation.mutateAsync({ name, email, password, inviteCode });
   };
 
   const loginWithGoogle = async (credential: string) => {

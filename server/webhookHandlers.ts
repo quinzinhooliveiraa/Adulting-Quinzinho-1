@@ -85,6 +85,11 @@ export class WebhookHandlers {
         } else {
           notifyAdminNewSubscription(user.name, user.email).catch(() => {});
         }
+        // Reward referrer with 30 days premium (first subscription only)
+        const rewardedReferrerId = await storage.rewardReferrer(user.id);
+        if (rewardedReferrerId) {
+          console.log(`[referral] Referrer ${rewardedReferrerId} rewarded for referring ${user.email}`);
+        }
         break;
       }
 
@@ -199,6 +204,11 @@ export class WebhookHandlers {
         });
         console.log(`[stripe] lifetime webhook: User ${user.email} granted lifetime premium via PI ${pi.id}`);
         notifyAdminNewSubscription(user.name, user.email).catch(() => {});
+        // Reward referrer with 30 days premium
+        const lifetimeReferrerId = await storage.rewardReferrer(user.id);
+        if (lifetimeReferrerId) {
+          console.log(`[referral] Referrer ${lifetimeReferrerId} rewarded for referring ${user.email} (lifetime)`);
+        }
         break;
       }
     }

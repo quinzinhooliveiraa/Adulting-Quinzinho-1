@@ -20,6 +20,7 @@ import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
+import ReferralCard from "@/components/ReferralCard";
 
 function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
   trialEndsAt: string | null;
@@ -1225,6 +1226,8 @@ export default function Home() {
           }}
         />
       )}
+
+      <ReferralCard />
     </div>
   );
 }
