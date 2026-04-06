@@ -542,7 +542,7 @@ export async function registerRoutes(
         role: isAdminEmail ? "admin" : "user",
         isPremium: isAdminEmail,
         isActive: true,
-        trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        trialEndsAt: null,
         premiumUntil: null,
         invitedBy: referrerId || data.inviteCode || null,
         emailVerified: isAdminEmail,
@@ -759,6 +759,59 @@ export async function registerRoutes(
     }
   });
 
+  // --- TRIAL ACTIVATION (user-triggered, no credit card) ---
+  app.post("/api/trial/activate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Não autenticado" });
+
+      // Already has premium or active trial
+      const premiumStatus = getUserPremiumStatus(user);
+      if (premiumStatus.hasPremium) {
+        return res.json({
+          message: "Já tens acesso premium.",
+          trialEndsAt: user.trialEndsAt,
+          hasPremium: true,
+          premiumReason: premiumStatus.reason,
+        });
+      }
+
+      // Don't allow activating a new trial if already used one
+      if (user.trialEndsAt) {
+        return res.status(400).json({ message: "Já utilizaste o trial gratuito." });
+      }
+
+      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      const updated = await storage.updateUser(user.id, { trialEndsAt: trialEnd });
+      if (!updated) return res.status(500).json({ message: "Erro ao ativar trial" });
+
+      await storage.trackEvent(user.id, "trial_started").catch(() => {});
+
+      const newStatus = getUserPremiumStatus(updated);
+      return res.json({
+        message: "14 dias grátis ativados!",
+        trialEndsAt: updated.trialEndsAt,
+        hasPremium: newStatus.hasPremium,
+        premiumReason: newStatus.reason,
+      });
+    } catch (err) {
+      console.error("[trial/activate]", err);
+      res.status(500).json({ message: "Erro interno" });
+    }
+  });
+
+  app.post("/api/trial/paywall-event", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { event } = req.body;
+      const allowed = ["paywall_viewed", "paywall_clicked", "trial_ended", "conversion_to_paid"];
+      if (!allowed.includes(event)) return res.status(400).json({ message: "Evento inválido" });
+      await storage.trackEvent(req.session.userId!, event).catch(() => {});
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ message: "Erro interno" });
+    }
+  });
+
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     req.session.destroy(() => {
       res.json({ message: "Logout realizado" });
@@ -940,7 +993,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: null,
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -1060,7 +1113,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: null,
           premiumUntil: null,
           invitedBy: null,
           googleId,
@@ -1147,7 +1200,7 @@ export async function registerRoutes(
           role: isAdminEmail ? "admin" : "user",
           isPremium: isAdminEmail,
           isActive: true,
-          trialEndsAt: isAdminEmail ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialEndsAt: null,
           premiumUntil: null,
           invitedBy: null,
           appleId,

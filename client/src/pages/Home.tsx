@@ -16,7 +16,7 @@ import { useCreateCheckin, useLatestCheckin, useCheckins } from "@/hooks/useChec
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { JOURNEYS } from "./Journey";
-import { Flame, Target, ArrowUpRight, Lock } from "lucide-react";
+import { Flame, Target, ArrowUpRight, Lock, Gift, Clock, Crown as CrownIcon } from "lucide-react";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { useLocation } from "wouter";
 import CardSetupModal from "@/components/CardSetupModal";
@@ -29,18 +29,22 @@ function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
   onClaim: () => void;
 }) {
   if (!trialEndsAt) return null;
-  const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-  if (daysLeft <= 0) return null;
+  const msLeft = new Date(trialEndsAt).getTime() - Date.now();
+  const hoursLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60)));
+  const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+  if (hoursLeft <= 0) return null;
+
+  const within24h = hoursLeft <= 24;
   const urgent = daysLeft <= 2;
 
   if (!trialBonusClaimed) {
     return (
       <button
         onClick={onClaim}
-        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-amber-500/10 border border-amber-400/30 hover:bg-amber-500/20 transition-all"
+        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-amber-500/10 border border-amber-400/30 hover-elevate"
         data-testid="trial-banner-home"
       >
-        <span className="text-xl">🎁</span>
+        <Gift className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
             Ganha +16 dias e fica com 30 dias grátis!
@@ -54,17 +58,41 @@ function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
     );
   }
 
+  if (within24h) {
+    return (
+      <button
+        onClick={onUpgrade}
+        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-destructive/10 border border-destructive/30 hover-elevate"
+        data-testid="trial-banner-home-urgent"
+      >
+        <Clock className="h-5 w-5 text-destructive shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-destructive">
+            {hoursLeft <= 1 ? "Menos de 1 hora de trial!" : `${hoursLeft}h restantes no trial`}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            Assina agora para não perderes o acesso.
+          </p>
+        </div>
+        <span className="text-xs font-medium text-destructive shrink-0 whitespace-nowrap">Assinar →</span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onUpgrade}
-      className={`w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 transition-all ${
+      className={`w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 hover-elevate ${
         urgent
-          ? "bg-red-500/10 border border-red-400/30 hover:bg-red-500/20"
-          : "bg-amber-500/10 border border-amber-400/30 hover:bg-amber-500/20"
+          ? "bg-red-500/10 border border-red-400/30"
+          : "bg-amber-500/10 border border-amber-400/30"
       }`}
       data-testid="trial-banner-home"
     >
-      <span className="text-xl">{urgent ? "⏰" : "✨"}</span>
+      {urgent
+        ? <Clock className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />
+        : <CrownIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+      }
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold ${urgent ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
           {daysLeft === 1 ? "Último dia de trial!" : `${daysLeft} dias de trial restantes`}

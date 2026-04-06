@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useGeoPrice } from "@/hooks/useGeoPrice";
 import { useQuery } from "@tanstack/react-query";
+import { useTrialActivation } from "@/hooks/useTrialActivation";
+import TrialActivationModal from "@/components/TrialActivationModal";
 
 function useStripeCheckout() {
   const { data: products = [] } = useQuery<any[]>({
@@ -1611,6 +1613,16 @@ function CardGame({
 
   const isShuffling = shuffleMode;
 
+  // Trial activation — integrated directly so it works in early-return paths too
+  const {
+    showModal: showTrialModal,
+    trackAction: trackTrialAction,
+    triggerPaywall,
+    dismiss: dismissTrial,
+    activate: activateTrial,
+    isActivating: isTrialActivating,
+  } = useTrialActivation();
+
   const getNextCard = useCallback(() => {
     if (!isShuffling) return null;
     const unseen = questions.map((_, i) => i).filter(i => !seenIndices.includes(i));
@@ -1667,6 +1679,7 @@ function CardGame({
     markSeen(currentIndex);
     const played = cardsPlayed + 1;
     setCardsPlayed(played);
+    if (isFreeLimit) trackTrialAction();
 
     if (isFreeLimit && played >= questions.length) {
       setShowCompleted(true);
@@ -1709,7 +1722,42 @@ function CardGame({
     ? Math.min(seenIndices.length + 1, totalForProgress)
     : currentIndex + 1;
 
+  // Trigger trial paywall once when the free limit screen appears
+  const freeLimitTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (showCompleted && isFreeLimit && !freeLimitTriggeredRef.current) {
+      freeLimitTriggeredRef.current = true;
+      triggerPaywall();
+    }
+  }, [showCompleted, isFreeLimit, triggerPaywall]);
+
   if (showCompleted && isFreeLimit) {
+    // If trial not used yet, show lighter screen + trial modal overlay
+    // (hook's shouldSkip means user already premium or already used trial)
+    if (showTrialModal) {
+      return (
+        <>
+          <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+            <Lock className="h-10 w-10 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-serif text-foreground mb-2">Exploraste as cartas grátis</h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Desbloqueia todas as perguntas com 14 dias grátis.
+            </p>
+            <button onClick={onBack} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+              Voltar
+            </button>
+          </div>
+          <TrialActivationModal
+            open={showTrialModal}
+            onActivate={activateTrial}
+            onDismiss={dismissTrial}
+            isActivating={isTrialActivating}
+            context="limit"
+          />
+        </>
+      );
+    }
+    // Trial already used or user is premium — show full paywall with subscription plans
     return <CardGamePaywall
       title={title}
       questionsCount={questions.length}
@@ -2032,6 +2080,15 @@ function CardGame({
           onSaved={() => setShowAnswer(false)}
         />
       )}
+
+      {/* Mid-session soft trial prompt (fires after THRESHOLD actions) */}
+      <TrialActivationModal
+        open={showTrialModal}
+        onActivate={activateTrial}
+        onDismiss={dismissTrial}
+        isActivating={isTrialActivating}
+        context="depth"
+      />
     </div>
   );
 }

@@ -1,0 +1,89 @@
+Objective:
+Refactor the premium access flow of the app WITHOUT changing any existing free plan limits or core functionality.
+
+Current problem:
+Users receive a 14-day premium trial automatically upon signup, which removes urgency and reduces conversion.
+
+Goal:
+Introduce a controlled activation flow where users experience value first, hit a natural limit, and THEN are prompted to activate the trial.
+
+Requirements:
+
+1. Remove automatic trial activation on signup
+- New users should start in FREE mode
+- Do NOT grant premium access immediately
+
+2. Introduce usage-based trigger for trial
+- After the user performs 2–3 meaningful actions (e.g. answering questions, writing reflections, or interacting with content), trigger a paywall modal
+
+Trigger examples:
+- After answering 3 questions
+- After attempting to access a locked question
+- After trying to continue deeper interaction
+
+3. Paywall modal behavior
+Display a modal with:
+
+Title:
+"Você está começando a se aprofundar"
+
+Description:
+"Para continuar explorando perguntas mais profundas e evoluir na sua jornada, desbloqueie 14 dias grátis"
+
+CTA:
+"Ativar 14 dias grátis"
+
+Important:
+- NO credit card required
+- Trial only starts after user clicks this CTA
+
+4. Maintain current free plan limitations
+- Do NOT change:
+  - diary limits
+  - question limits
+  - journey access rules
+
+5. Add contextual soft prompts (non-blocking)
+At key moments, show subtle prompts:
+
+Examples:
+- After a strong question:
+  "Essa foi só uma das perguntas. Existem outras que podem te fazer pensar diferente."
+
+- After multiple interactions:
+  "Você já começou algo importante aqui."
+
+These should NOT block usage, only guide toward perceived value
+
+6. End-of-trial conversion trigger
+When trial is about to end (24h before), show:
+
+Title:
+"Seu acesso premium está acabando"
+
+Description:
+"Você já refletiu X vezes e avançou na sua jornada. Continue sua evolução."
+
+CTA:
+"Continuar com acesso completo"
+
+7. Track events (important)
+Add tracking for:
+- trial_started
+- paywall_viewed
+- paywall_clicked
+- trial_ended
+- conversion_to_paid
+
+Constraints:
+- Do NOT break existing flows
+- Do NOT remove features
+- Only modify access logic and UI prompts
+
+Outcome:
+Users should:
+1. Experience value first
+2. Hit a natural limit
+3. Choose to activate trial
+4. Feel progress
+5. Be prompted to convert
