@@ -2,15 +2,19 @@ import { useState, useEffect } from "react";
 import { useGeoPrice } from "@/hooks/useGeoPrice";
 import {
   ArrowRight, ArrowLeft, Bell, Check,
-  Map, BookOpen, PenLine, MessageCircle, Smile,
-  BellRing, Crown, Loader2, CheckCircle2, Clock,
-  ShieldCheck, Sparkles, FileText, Brain,
-  Smartphone, Plus, Share
+  Map, BookOpen, PenLine, MessageCircle,
+  BellRing, Loader2, CheckCircle2, Clock,
+  ShieldCheck, Sparkles, Brain,
+  Smartphone, Plus, Share, User,
+  Frown, Meh, Smile, Laugh, Star,
+  Wifi, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import bookCover from "@/assets/images/book-cover-oficial.png";
 import { subscribeToPush, isPushSupported } from "@/utils/pushNotifications";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 
 function PwaSkipButton({ onClick }: { onClick: () => void }) {
   const [visible, setVisible] = useState(false);
@@ -33,22 +37,24 @@ function PwaSkipButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-type StepId = "welcome" | "profile" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "premium";
+type StepId = "welcome" | "profile" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "trial";
 
-const STEP_ORDER: StepId[] = ["welcome", "profile", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "premium"];
+const STEP_ORDER: StepId[] = ["welcome", "profile", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "trial"];
 
 const INTERESTS = [
-  { id: "autoconhecimento", label: "Autoconhecimento", emoji: "🧠" },
-  { id: "saude-mental", label: "Saúde Mental", emoji: "💙" },
-  { id: "relacoes", label: "Relações", emoji: "❤️" },
-  { id: "carreira", label: "Carreira", emoji: "💼" },
-  { id: "proposito", label: "Propósito", emoji: "✨" },
-  { id: "criatividade", label: "Criatividade", emoji: "🎨" },
-  { id: "familia", label: "Família", emoji: "👨‍👩‍👦" },
-  { id: "amizades", label: "Amizades", emoji: "🤝" },
-  { id: "financas", label: "Finanças", emoji: "💰" },
-  { id: "espiritualidade", label: "Espiritualidade", emoji: "🌟" },
+  { id: "autoconhecimento", label: "Autoconhecimento" },
+  { id: "saude-mental", label: "Saúde Mental" },
+  { id: "relacoes", label: "Relações" },
+  { id: "carreira", label: "Carreira" },
+  { id: "proposito", label: "Propósito" },
+  { id: "criatividade", label: "Criatividade" },
+  { id: "familia", label: "Família" },
+  { id: "amizades", label: "Amizades" },
+  { id: "financas", label: "Finanças" },
+  { id: "espiritualidade", label: "Espiritualidade" },
 ];
+
+const MOOD_ICONS = [Frown, Meh, Smile, Laugh, Star];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const { price: geo } = useGeoPrice();
@@ -61,7 +67,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [pwaAutoTriggered, setPwaAutoTriggered] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [slideDirection, setSlideDirection] = useState<"enter-right" | "enter-left" | "exit-left" | "exit-right" | "idle">("idle");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
@@ -96,19 +102,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const currentStep = STEP_ORDER[stepIndex];
 
   useEffect(() => {
-    if (currentStep === "premium") {
-      setPremiumCountdown(5);
-      const interval = setInterval(() => {
-        setPremiumCountdown(prev => {
-          if (prev <= 1) { clearInterval(interval); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [currentStep]);
-
-  useEffect(() => {
     if (currentStep === "pwa" && canInstall && !pwaInstalled && !pwaAutoTriggered) {
       setPwaAutoTriggered(true);
       const timer = setTimeout(() => {
@@ -128,8 +121,28 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
   };
 
-  const [checkoutError, setCheckoutError] = useState("");
-  const [premiumCountdown, setPremiumCountdown] = useState(5);
+  const handleActivateTrial = async () => {
+    setTrialLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/trial/activate");
+      if (res.ok) {
+        const data = await res.json();
+        queryClient.setQueryData(["/api/auth/me"], (old: any) => ({
+          ...old,
+          hasPremium: data.hasPremium,
+          premiumReason: data.premiumReason,
+          trialEndsAt: data.trialEndsAt,
+        }));
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      }
+    } catch {
+      // ignore — complete onboarding anyway
+    } finally {
+      setTrialLoading(false);
+      onComplete();
+    }
+  };
+
   const [profileAge, setProfileAge] = useState<number | null>(null);
   const [profileInterests, setProfileInterests] = useState<string[]>([]);
 
@@ -151,28 +164,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         credentials: "include",
         body: JSON.stringify(body),
       });
-    } catch {
-    }
-  };
-
-  const handleAddCardForBonus = async () => {
-    setCheckoutLoading(true);
-    setCheckoutError("");
-    try {
-      const res = await fetch("/api/stripe/setup-for-bonus", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setCheckoutError(data.message || "Erro ao iniciar. Tente novamente.");
-      }
-    } catch {
-      setCheckoutError("Erro de conexão. Tente novamente.");
-    }
-    setCheckoutLoading(false);
+    } catch {}
   };
 
   const slideClass =
@@ -241,20 +233,20 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="w-full bg-primary/5 border border-primary/15 rounded-xl p-3 stagger-3">
                 <div className="flex items-center justify-center gap-1.5 mb-2">
                   <ShieldCheck size={14} className="text-primary" />
-                  <span className="text-xs font-semibold text-primary">Seus dados estão protegidos</span>
+                  <span className="text-xs font-semibold text-primary">Os teus dados estão protegidos</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex flex-col items-center gap-1">
                     <ShieldCheck size={16} className="text-primary/70" />
-                    <span className="text-[10px] text-muted-foreground leading-tight">E-mail criptografado</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight text-center">E-mail criptografado</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
                     <ShieldCheck size={16} className="text-primary/70" />
-                    <span className="text-[10px] text-muted-foreground leading-tight">Senha protegida</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight text-center">Senha protegida</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
                     <ShieldCheck size={16} className="text-primary/70" />
-                    <span className="text-[10px] text-muted-foreground leading-tight">Cartão via Stripe</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight text-center">Cartão via Stripe</span>
                   </div>
                 </div>
               </div>
@@ -265,7 +257,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             <div className="flex flex-col space-y-6 w-full">
               <div className="text-center space-y-2">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                  <span className="text-3xl">👤</span>
+                  <User size={28} className="text-primary" />
                 </div>
                 <h2 className="text-2xl font-serif text-foreground">Conta-nos sobre ti</h2>
                 <p className="text-sm text-muted-foreground">Ajuda-nos a personalizar a tua experiência</p>
@@ -317,7 +309,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                     >
-                      <span>{interest.emoji}</span>
                       {interest.label}
                     </button>
                   ))}
@@ -344,12 +335,12 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
                 <div className="space-y-1.5">
                   <h2 className="text-2xl font-serif text-foreground">
-                    {pwaInstalled ? "App Instalado!" : "Instale o App"}
+                    {pwaInstalled ? "App Instalado!" : "Instala o App"}
                   </h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {pwaInstalled
-                      ? "Tudo pronto! O app já está na sua tela inicial."
-                      : "Este passo é essencial para receber lembretes diários e ter a melhor experiência."
+                      ? "Tudo pronto! O app já está na tua ecrã inicial."
+                      : "Instala para receber lembretes diários e ter a melhor experiência."
                     }
                   </p>
                 </div>
@@ -400,7 +391,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                             {!isSafari && (
                               <div className="mt-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                                 <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium text-center">
-                                  No iPhone, use o Safari para instalar o app
+                                  No iPhone, usa o Safari para instalar o app
                                 </p>
                               </div>
                             )}
@@ -430,13 +421,13 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 justify-center pt-1">
-                      <div className="flex -space-x-1">
-                        {["📱", "🔔", "⚡"].map((e, i) => (
-                          <span key={i} className="text-sm">{e}</span>
-                        ))}
+                    <div className="flex items-center gap-3 justify-center pt-1">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Smartphone size={13} />
+                        <Zap size={13} />
+                        <Wifi size={13} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Notificações + Acesso rápido + Modo offline</p>
+                      <p className="text-[10px] text-muted-foreground">Notificações · Acesso rápido · Modo offline</p>
                     </div>
                   </>
                 )}
@@ -451,15 +442,15 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto animate-float">
                   <Smile size={28} className="text-amber-500" />
                 </div>
-                <p className="text-xs text-muted-foreground">Como você está hoje?</p>
+                <p className="text-xs text-muted-foreground">Como estás hoje?</p>
                 <div className="flex justify-center gap-3">
-                  {["😔", "😐", "🙂", "😊", "🤩"].map((emoji, i) => (
+                  {MOOD_ICONS.map((Icon, i) => (
                     <div
                       key={i}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-700 ${i === 3 ? "bg-primary/10 scale-110 ring-2 ring-primary/30" : "bg-muted/50 hover:scale-110"}`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-700 ${i === 3 ? "bg-primary/10 scale-110 ring-2 ring-primary/30" : "bg-muted/50 hover:scale-110"}`}
                       style={{ animation: `staggerFade 0.5s ease-out ${0.2 + i * 0.1}s both` }}
                     >
-                      {emoji}
+                      <Icon size={20} className={i === 3 ? "text-primary" : "text-muted-foreground"} />
                     </div>
                   ))}
                 </div>
@@ -470,7 +461,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Check-in Diário</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Todo dia, registre como você está se sentindo. Com o tempo, você vai perceber padrões e se conhecer melhor.
+                  Todos os dias, regista como te estás a sentir. Com o tempo, perceberes padrões e conhecer-te melhor.
                 </p>
               </div>
             </div>
@@ -500,7 +491,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Diário Pessoal</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Escreva seus pensamentos livremente. Adicione fotos, desenhos e banners. Seu espaço privado de reflexão.
+                  Escreve os teus pensamentos livremente. Adiciona fotos, desenhos e banners. O teu espaço privado de reflexão.
                 </p>
               </div>
             </div>
@@ -513,7 +504,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-3">
                     <MessageCircle size={20} className="text-purple-500" />
                   </div>
-                  <p className="text-sm font-medium text-foreground text-left">"O que você faria diferente se ninguém estivesse observando?"</p>
+                  <p className="text-sm font-medium text-foreground text-left">"O que farias diferente se ninguém estivesse a observar?"</p>
                 </div>
                 <div className="bg-card rounded-2xl border border-border p-4 shadow-md transform rotate-1 opacity-70 scale-95 stagger-3">
                   <p className="text-xs text-muted-foreground text-left">"Qual é o medo que mais te impede de agir?"</p>
@@ -522,7 +513,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Cartas de Reflexão</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Centenas de perguntas profundas para explorar sozinho ou em conversa com amigos. Deslize para descobrir novas cartas.
+                  Centenas de perguntas profundas para explorar sozinho ou em conversa com amigos. Desliza para descobrir novas cartas.
                 </p>
               </div>
             </div>
@@ -555,7 +546,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-foreground">Relatório com IA</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">Ao completar, receba uma análise personalizada</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Ao completar, recebe uma análise personalizada</p>
                     </div>
                   </div>
                 </div>
@@ -563,7 +554,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Jornadas de 30 Dias</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Trilhe caminhos temáticos com exercícios diários. Ao completar uma jornada, receba um relatório personalizado feito por IA com seus pontos fortes e dicas práticas.
+                  Percorre caminhos temáticos com exercícios diários. Ao completar uma jornada, recebe um relatório personalizado feito por IA.
                 </p>
               </div>
             </div>
@@ -590,7 +581,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">O Livro</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Leia trechos exclusivos de "A Casa dos 20" e aprofunde suas reflexões com os temas do livro.
+                  Lê trechos exclusivos de "A Casa dos 20" e aprofunda as tuas reflexões com os temas do livro.
                 </p>
               </div>
             </div>
@@ -641,10 +632,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
                   {notifStatus === "granted"
-                    ? "Você receberá lembretes gentis para seus momentos de reflexão."
+                    ? "Vais receber lembretes gentis para os teus momentos de reflexão."
                     : notifStatus === "denied"
-                    ? "Você pode ativar as notificações depois nas configurações do app."
-                    : "Ative as notificações para receber convites diários à reflexão. Prometemos ser o momento mais calmo do seu dia."
+                    ? "Podes ativar as notificações mais tarde nas definições do app."
+                    : "Ativa as notificações para receber convites diários à reflexão."
                   }
                 </p>
               </div>
@@ -674,9 +665,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       const res = await fetch("/api/push/test", { method: "POST", credentials: "include" });
                       const data = await res.json();
                       if (data.sent > 0) {
-                        alert("Notificação enviada! Verifique seu dispositivo.");
+                        alert("Notificação enviada! Verifica o teu dispositivo.");
                       } else {
-                        alert("Nenhuma assinatura encontrada. Tente ativar novamente.");
+                        alert("Nenhuma assinatura encontrada. Tenta ativar novamente.");
                       }
                     } catch {
                       alert("Erro ao enviar notificação de teste.");
@@ -692,84 +683,74 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {currentStep === "premium" && (
-            <div className="flex flex-col items-center text-center space-y-5">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 animate-float stagger-1">
-                <Crown size={32} className="text-white" />
+          {currentStep === "trial" && (
+            <div className="flex flex-col items-center text-center space-y-5 w-full">
+              <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center animate-float stagger-1">
+                <Sparkles size={32} className="text-primary" />
               </div>
 
               <div className="space-y-2 stagger-2">
-                <h2 className="text-2xl font-serif text-foreground">Plano Premium</h2>
+                <h2 className="text-2xl font-serif text-foreground">Explora tudo por 14 dias</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Desbloqueie toda a experiência da Casa dos 20
+                  Ativa o teu trial gratuito agora e desbloqueia toda a experiência da Casa dos 20 — sem cartão de crédito.
                 </p>
               </div>
 
               <div className="w-full max-w-[320px] space-y-3 stagger-3">
-                <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                  <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Gratuito (sempre)</p>
+                {/* Free forever */}
+                <div className="bg-card rounded-2xl border border-border p-4 space-y-2.5">
+                  <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider text-left">Gratuito (sempre)</p>
                   <div className="space-y-2">
                     {[
                       "Check-in diário de humor",
                       "5 cartas por tema de reflexão",
                       "Diário básico com texto",
-                      "Trechos selecionados do livro"
+                      "Trechos selecionados do livro",
                     ].map((item, i) => (
-                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.3 + i * 0.08}s both` }}>
-                        <Check size={14} className="text-green-500 shrink-0" />
+                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.3 + i * 0.07}s both` }}>
+                        <Check size={13} className="text-green-500 shrink-0" />
                         <span className="text-xs text-foreground">{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/20 p-4 space-y-3 animate-pulse-glow">
+                {/* Trial unlocks */}
+                <div className="bg-primary/5 rounded-2xl border border-primary/20 p-4 space-y-2.5 animate-pulse-glow">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
-                      <Crown size={10} /> Premium
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles size={10} /> Desbloqueado no trial
                     </p>
-                    <p className="text-xs font-bold text-foreground">{geo.monthlyFormatted}<span className="text-muted-foreground font-normal">/mês</span></p>
-                    {geo.currency !== "BRL" && <p className="text-[9px] text-muted-foreground leading-tight">aprox. · cobrado em BRL</p>}
+                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">14 dias grátis</span>
                   </div>
                   <div className="space-y-2">
                     {[
-                      "Tudo do plano gratuito",
                       "Todas as cartas de reflexão ilimitadas",
                       "Jornadas completas de 30 dias",
-                      "1º relatório de jornada com IA grátis",
+                      "1.º relatório de jornada com IA grátis",
                       "Diário com fotos, desenhos e banners",
-                      "Notificações personalizadas"
+                      "Notificações personalizadas",
                     ].map((item, i) => (
-                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.4 + i * 0.08}s both` }}>
-                        <Check size={14} className="text-amber-500 shrink-0" />
+                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.4 + i * 0.07}s both` }}>
+                        <Check size={13} className="text-primary shrink-0" />
                         <span className="text-xs text-foreground">{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-amber-500/5 rounded-xl border border-amber-500/20 p-3 space-y-2 stagger-4">
-                  <div className="flex items-center gap-2 justify-center">
-                    <Sparkles size={14} className="text-amber-500" />
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">🎁 14 dias grátis incluídos — podes ganhar 30!</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-left">
-                      <Sparkles size={11} className="text-amber-500 shrink-0" />
-                      <p className="text-[10px] text-muted-foreground">Ativa agora e fica com <span className="font-semibold text-foreground">30 dias grátis no total</span>, sem pagar nada</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-left">
-                      <ShieldCheck size={11} className="text-green-500 shrink-0" />
-                      <p className="text-[10px] text-muted-foreground">Sem custos durante o período grátis. Cancelas quando quiseres.</p>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 justify-center">
+                  <ShieldCheck size={13} className="text-muted-foreground" />
+                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito · Cancelas quando quiseres</p>
                 </div>
               </div>
             </div>
           )}
+
         </div>
       </div>
 
+      {/* Bottom controls */}
       <div className="shrink-0 w-full flex justify-center pt-4 px-6 bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}>
         <div className="w-full max-w-sm space-y-4">
           <div className="flex justify-center gap-1.5">
@@ -783,33 +764,29 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             ))}
           </div>
 
-          {currentStep === "premium" ? (
+          {currentStep === "trial" ? (
             <div className="space-y-3">
-              {checkoutError && (
-                <p className="text-xs text-red-500 text-center" data-testid="text-checkout-error">{checkoutError}</p>
-              )}
               <Button
-                onClick={handleAddCardForBonus}
-                disabled={checkoutLoading}
-                className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-base font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                data-testid="button-onboarding-premium"
+                onClick={handleActivateTrial}
+                disabled={trialLoading}
+                className="w-full h-14 rounded-full text-base font-semibold"
+                data-testid="button-onboarding-activate-trial"
               >
-                {checkoutLoading ? (
+                {trialLoading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <>
-                    <span className="text-lg mr-1">🎁</span>
-                    Ganhar 30 dias grátis
+                    <Sparkles size={18} className="mr-2" />
+                    Ativar 14 dias grátis
                   </>
                 )}
               </Button>
               <button
                 onClick={onComplete}
-                disabled={premiumCountdown > 0}
-                className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                data-testid="button-onboarding-skip-premium"
+                className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2"
+                data-testid="button-onboarding-skip-trial"
               >
-                {premiumCountdown > 0 ? `Aguarda ${premiumCountdown}s...` : "Ficar com os 14 dias por agora"}
+                Explorar primeiro
               </button>
               <button
                 onClick={back}
@@ -827,7 +804,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               ) : (
                 <Button
                   onClick={next}
-                  className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-medium shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                  className="w-full h-14 rounded-full text-base font-medium"
                   data-testid="button-onboarding-next"
                 >
                   {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
