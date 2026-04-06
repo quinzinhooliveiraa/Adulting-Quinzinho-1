@@ -1469,11 +1469,12 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
 ───────────────────────────────────────────────────────────────── */
 export default function Book() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"sobre" | "ler">("ler");
+  const [activeTab, setActiveTab] = useState<"sobre" | "ler">("sobre");
   const [readerStartIdx, setReaderStartIdx] = useState<number | null>(null);
   const [readerKey, setReaderKey] = useState(0);
   const [readerOpenToc, setReaderOpenToc] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const autoOpenedRef = useRef(false);
 
   function readSavedProgress() {
     try {
@@ -1509,6 +1510,27 @@ export default function Book() {
   // Sort chapters: front-matter first (by order), then chapters
   const sortedChapters = [...chapters].sort((a, b) => a.order - b.order);
   const freeChapters = sortedChapters.filter(c => c.isPreview && c.pageType === "chapter");
+
+  // Auto-open reader for purchased users; keep "sobre" for everyone else
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (!purchaseStatus) return; // still loading
+    if (!purchased) return;      // not purchased → stay on "sobre"
+    autoOpenedRef.current = true;
+    // Restore saved progress
+    try {
+      const saved = localStorage.getItem("bk-progress");
+      const { ch } = saved ? JSON.parse(saved) : { ch: 0 };
+      const startIdx = typeof ch === "number" ? ch : 0;
+      setReaderKey(k => k + 1);
+      setReaderOpenToc(false);
+      setReaderStartIdx(startIdx);
+    } catch {
+      setReaderKey(k => k + 1);
+      setReaderOpenToc(false);
+      setReaderStartIdx(0);
+    }
+  }, [purchaseStatus, purchased]);
 
   function openChapter(idx: number) {
     const ch = sortedChapters[idx];
