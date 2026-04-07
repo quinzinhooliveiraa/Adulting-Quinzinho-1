@@ -1158,6 +1158,12 @@ export default function Admin() {
     enabled: activeTab === "analytics",
   });
 
+  const { data: sessionTimeData } = useQuery<{ period: string; days: number; avgSeconds: number; totalSessions: number; uniqueUsers: number }[]>({
+    queryKey: ["/api/admin/analytics/session-time", excludeAdmins],
+    queryFn: () => fetch(`/api/admin/analytics/session-time?excludeAdmins=${excludeAdmins}`, { credentials: "include" }).then(r => r.json()),
+    enabled: activeTab === "analytics",
+  });
+
   const [showAllTopUsers, setShowAllTopUsers] = useState(false);
 
   const { data: pushStatus, refetch: refetchPushStatus } = useQuery<{ subscriptionCount: number; hasSubscription: boolean }>({
@@ -1805,6 +1811,42 @@ export default function Admin() {
               <span className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${excludeAdmins ? "translate-x-4" : "translate-x-0"}`} />
             </span>
           </button>
+
+          {/* Session time card */}
+          {sessionTimeData && sessionTimeData.length > 0 && (() => {
+            const fmt = (secs: number) => {
+              if (!secs) return "—";
+              const m = Math.floor(secs / 60);
+              const s = secs % 60;
+              if (m === 0) return `${s}s`;
+              if (s === 0) return `${m}m`;
+              return `${m}m ${s}s`;
+            };
+            const periods = sessionTimeData.filter(p => p.days <= 90);
+            const allTime = sessionTimeData.find(p => p.days === 3650);
+            return (
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3" data-testid="card-session-time">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Tempo médio por sessão</p>
+                  {allTime && allTime.avgSeconds > 0 && (
+                    <span className="text-[10px] text-muted-foreground">{allTime.totalSessions.toLocaleString("pt-BR")} sessões no total</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {periods.map(p => (
+                    <div key={p.period} className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-xl py-2.5 px-1" data-testid={`stat-session-${p.days}d`}>
+                      <span className="text-sm font-bold text-foreground">{fmt(p.avgSeconds)}</span>
+                      <span className="text-[10px] text-muted-foreground">{p.period}</span>
+                      {p.uniqueUsers > 0 && (
+                        <span className="text-[9px] text-muted-foreground/70">{p.uniqueUsers} usuário{p.uniqueUsers !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-muted-foreground/60 text-center">Sessão = sequência de eventos com intervalo menor que 30 min</p>
+              </div>
+            );
+          })()}
 
           {/* Hourly chart — only when "Hoje" is selected */}
           {!isCustomRange && analyticsDays === 1 && (() => {

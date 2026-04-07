@@ -141,6 +141,7 @@ export interface IStorage {
   getHourlyPattern(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ hour: number; count: number }[]>;
   getWeekdayPattern(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ weekday: number; name: string; count: number }[]>;
   getAgeGroupActivity(days?: number, excludeAdmins?: boolean, startDate?: string, endDate?: string): Promise<{ range: string; eventCount: number; userCount: number }[]>;
+  getAvgSessionTime(excludeAdmins?: boolean): Promise<{ period: string; days: number; avgSeconds: number; totalSessions: number; uniqueUsers: number }[]>;
 
   getBookChapters(): Promise<Omit<BookChapter, "content">[]>;
   searchBookChapters(query: string, hasPurchased: boolean): Promise<{ chapterId: number; order: number; title: string; pageType: string; isPreview: boolean; before: string; match: string; after: string }[]>;
@@ -822,6 +823,68 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return ranges.map(r => ({ range: r.range, ...buckets.get(r.range)! }));
+  }
+
+  async getAvgSessionTime(excludeAdmins: boolean = false): Promise<{ period: string; days: number; avgSeconds: number; totalSessions: number; uniqueUsers: number }[]> {
+    const periods = [
+      { label: "Hoje", days: 1 },
+      { label: "7 dias", days: 7 },
+      { label: "30 dias", days: 30 },
+      { label: "90 dias", days: 90 },
+      { label: "Tudo", days: 3650 },
+    ];
+    const adminClause = excludeAdmins ? `AND user_id NOT IN (SELECT id FROM users WHERE role = 'admin')` : "";
+    const results = await Promise.all(periods.map(async ({ label, days }) => {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const rows = await db.execute(drizzleSql`
+        WITH ordered_events AS (
+          SELECT user_id, created_at,
+            LAG(created_at) OVER (PARTITION BY user_id ORDER BY created_at) AS prev_at
+          FROM user_events
+          WHERE created_at >= ${since} AND user_id IS NOT NULL
+          ${drizzleSql.raw(adminClause)}
+        ),
+        session_marks AS (
+          SELECT user_id, created_at,
+            CASE
+              WHEN prev_at IS NULL OR EXTRACT(EPOCH FROM (created_at - prev_at)) > 1800
+              THEN 1 ELSE 0
+            END AS is_new_session
+          FROM ordered_events
+        ),
+        sessions AS (
+          SELECT user_id, created_at,
+            SUM(is_new_session) OVER (
+              PARTITION BY user_id ORDER BY created_at
+              ROWS UNBOUNDED PRECEDING
+            ) AS session_num
+          FROM session_marks
+        ),
+        session_durations AS (
+          SELECT user_id, session_num,
+            GREATEST(
+              EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))),
+              60
+            ) AS duration_secs
+          FROM sessions
+          GROUP BY user_id, session_num
+        )
+        SELECT
+          ROUND(AVG(duration_secs))::int AS avg_seconds,
+          COUNT(*)::int AS total_sessions,
+          COUNT(DISTINCT user_id)::int AS unique_users
+        FROM session_durations
+      `);
+      const r = (rows.rows as any[])[0];
+      return {
+        period: label,
+        days,
+        avgSeconds: r ? Number(r.avg_seconds) || 0 : 0,
+        totalSessions: r ? Number(r.total_sessions) || 0 : 0,
+        uniqueUsers: r ? Number(r.unique_users) || 0 : 0,
+      };
+    }));
+    return results;
   }
 
   async getBookChapters(): Promise<Omit<BookChapter, "content">[]> {

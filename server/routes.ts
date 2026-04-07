@@ -2677,6 +2677,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/analytics/session-time", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const excludeAdmins = req.query.excludeAdmins === "true";
+      const data = await storage.getAvgSessionTime(excludeAdmins);
+      res.json(data);
+    } catch (err: any) {
+      console.log("[analytics/session-time] error:", err?.message);
+      res.status(500).json({ error: "Erro ao calcular tempo de sessão" });
+    }
+  });
+
   app.get("/api/admin/top-users", requireAdmin, async (req: Request, res: Response) => {
     try {
       const days = Number(req.query.days) || 30;
