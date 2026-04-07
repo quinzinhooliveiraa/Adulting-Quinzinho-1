@@ -426,7 +426,7 @@ export default function Home() {
     if (!monthlyInsights) {
       return {
         totalEntries: 0,
-        dominantTheme: "—",
+        dominantTheme: "",
         insight: "Comece a escrever reflexões e fazer check-ins para ver seus insights mensais aqui.",
         activeDays: 0,
         totalDays: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
@@ -438,12 +438,12 @@ export default function Home() {
         month: "",
       };
     }
-    const topTag = monthlyInsights.topTags?.[0]?.tag || "—";
+    const topTag = monthlyInsights.topTags?.[0]?.tag || "";
     const totalEntries = monthlyInsights.entriesThisMonth || 0;
     const activeDays = monthlyInsights.activeDays || 0;
     const totalDays = monthlyInsights.totalDays || 30;
     const mood = monthlyInsights.dominantMood;
-    const moodLabel = mood ? (moodLabels[mood] || mood) : "—";
+    const moodLabel = mood ? (moodLabels[mood] || mood) : "";
     const words = monthlyInsights.totalWords || 0;
 
     let insight = "";
@@ -454,7 +454,7 @@ export default function Home() {
       if (totalEntries > 0) parts.push(`Você escreveu ${totalEntries} reflexão(ões) com ${words} palavras`);
       if (monthlyInsights.checkinsThisMonth > 0) parts.push(`fez ${monthlyInsights.checkinsThisMonth} check-in(s)`);
       if (activeDays > 0) parts.push(`esteve ativo em ${activeDays} de ${totalDays} dias`);
-      if (topTag !== "—") parts.push(`O tema "${topTag}" apareceu mais vezes`);
+      if (topTag) parts.push(`O tema "${topTag}" apareceu mais vezes`);
       if (mood) parts.push(`Seu humor predominante foi "${moodLabel}"`);
       insight = parts.join(". ") + ".";
     }

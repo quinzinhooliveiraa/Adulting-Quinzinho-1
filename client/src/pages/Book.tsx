@@ -259,7 +259,7 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
               <button key={ch.id} onClick={() => onSelect(idx)}
                 className="w-full flex items-baseline justify-between py-2.5 border-b bk-sep group active:opacity-60">
                 <span className="bk-serif text-sm italic bk-ink group-hover:bk-accent">{ch.title}</span>
-                <span className="text-[10px] font-mono bk-muted ml-2">—</span>
+                <span className="text-[10px] font-mono bk-muted ml-2">·</span>
               </button>
             );
           })}
@@ -302,7 +302,7 @@ function TocPage({ chapters, purchased, onSelect, onBuy }: {
               <button key={ch.id} onClick={() => onSelect(idx)}
                 className="w-full flex items-baseline justify-between py-2.5 border-b bk-sep group active:opacity-60">
                 <span className="bk-serif text-sm italic bk-ink group-hover:bk-accent">{ch.title}</span>
-                <span className="text-[10px] font-mono bk-muted ml-2">—</span>
+                <span className="text-[10px] font-mono bk-muted ml-2">·</span>
               </button>
             );
           })}
