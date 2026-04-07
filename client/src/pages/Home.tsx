@@ -16,17 +16,14 @@ import { useCreateCheckin, useLatestCheckin, useCheckins } from "@/hooks/useChec
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { JOURNEYS } from "./Journey";
-import { Flame, Target, ArrowUpRight, Lock, Gift, Clock, Crown as CrownIcon } from "lucide-react";
+import { Flame, Target, ArrowUpRight, Lock, Clock, Crown as CrownIcon } from "lucide-react";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { useLocation } from "wouter";
-import CardSetupModal from "@/components/CardSetupModal";
 import ReferralCard from "@/components/ReferralCard";
 
-function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
+function TrialBanner({ trialEndsAt, onUpgrade }: {
   trialEndsAt: string | null;
-  trialBonusClaimed: boolean;
   onUpgrade: () => void;
-  onClaim: () => void;
 }) {
   if (!trialEndsAt) return null;
   const msLeft = new Date(trialEndsAt).getTime() - Date.now();
@@ -36,27 +33,6 @@ function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
 
   const within24h = hoursLeft <= 24;
   const urgent = daysLeft <= 2;
-
-  if (!trialBonusClaimed) {
-    return (
-      <button
-        onClick={onClaim}
-        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-amber-500/10 border border-amber-400/30 hover-elevate"
-        data-testid="trial-banner-home"
-      >
-        <Gift className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Ganha +16 dias e fica com 30 dias grátis!
-          </p>
-          <p className="text-xs text-muted-foreground truncate">
-            Ativa agora, sem pagar nada.
-          </p>
-        </div>
-        <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">Ganhar →</span>
-      </button>
-    );
-  }
 
   if (within24h) {
     return (
@@ -163,7 +139,6 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [recommendedContent, setRecommendedContent] = useState<RecommendedContent | null>(null);
   const [showReflectionEditor, setShowReflectionEditor] = useState(false);
-  const [showCardModal, setShowCardModal] = useState(false);
   const reminderPreviewRef = useRef<HTMLCanvasElement>(null);
   const reflectionPreviewRef = useRef<HTMLCanvasElement>(null);
   
@@ -543,15 +518,6 @@ export default function Home() {
 
   return (
     <div className="px-6 md:px-10 pt-12 pb-8 flex flex-col space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative overflow-x-hidden">
-      {showCardModal && (
-        <CardSetupModal
-          onSuccess={() => {
-            setShowCardModal(false);
-            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-          }}
-          onClose={() => setShowCardModal(false)}
-        />
-      )}
       <header className="space-y-2">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -569,9 +535,7 @@ export default function Home() {
       {user?.premiumReason === "trial" && user?.trialEndsAt && (
         <TrialBanner
           trialEndsAt={user.trialEndsAt}
-          trialBonusClaimed={user.trialBonusClaimed}
           onUpgrade={() => navigate("/premium")}
-          onClaim={() => setShowCardModal(true)}
         />
       )}
 

@@ -12,7 +12,6 @@ import Auth from "@/pages/Auth";
 import Onboarding from "@/components/Onboarding";
 import { refreshPushSubscription } from "@/utils/pushNotifications";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
-import WelcomeTrialModal from "@/components/WelcomeTrialModal";
 
 import Home from "@/pages/Home";
 import Journal from "@/pages/Journal";
@@ -33,8 +32,7 @@ function AuthGate() {
   const needsOnboarding = user && localStorage.getItem("casa-dos-20-needs-onboarding") === "true";
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [bonusBanner, setBonusBanner] = useState<"success" | "cancel" | "checkout-success" | null>(null);
+  const [checkoutBanner, setCheckoutBanner] = useState(false);
   const [pwaReturnBanner, setPwaReturnBanner] = useState(false);
 
   useEffect(() => {
@@ -42,11 +40,10 @@ function AuthGate() {
     const googleNewUser = params.get("google_new_user");
     const googleLogin = params.get("google_login");
     const err = params.get("google_error");
-    const bonus = params.get("bonus");
     const checkout = params.get("checkout");
     const fromPwa = params.get("pwa") === "1";
 
-    if (googleNewUser || googleLogin || err !== null || bonus || checkout || fromPwa) {
+    if (googleNewUser || googleLogin || err !== null || checkout || fromPwa) {
       window.history.replaceState({}, "", window.location.pathname);
       if (googleNewUser) {
         localStorage.setItem("casa-dos-20-needs-onboarding", "true");
@@ -61,24 +58,8 @@ function AuthGate() {
         };
         setGoogleError(messages[err] || "Erro ao fazer login com Google.");
       }
-      if (bonus === "success") {
-        setBonusBanner("success");
-        fetch("/api/stripe/sync-subscription", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }).finally(() => {
-          setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-          }, 500);
-        });
-        setTimeout(() => setBonusBanner(null), 8000);
-      } else if (bonus === "cancel") {
-        setBonusBanner("cancel");
-        setTimeout(() => setBonusBanner(null), 5000);
-      }
       if (checkout === "success") {
-        setBonusBanner("checkout-success");
+        setCheckoutBanner(true);
         fetch("/api/stripe/sync-subscription", {
           method: "POST",
           credentials: "include",
@@ -88,7 +69,7 @@ function AuthGate() {
             queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
           }, 500);
         });
-        setTimeout(() => setBonusBanner(null), 8000);
+        setTimeout(() => setCheckoutBanner(false), 8000);
       }
       if (fromPwa && !googleNewUser) {
         setPwaReturnBanner(true);
@@ -119,16 +100,6 @@ function AuthGate() {
       refreshPushSubscription();
     }
   }, [user]);
-
-  useEffect(() => {
-    if (user && user.trialEndsAt && user.role !== "admin") {
-      const seenKey = `casa-welcome-seen-${user.id}`;
-      if (!localStorage.getItem(seenKey)) {
-        const timer = setTimeout(() => setShowWelcomeModal(true), 800);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user?.id, user?.trialEndsAt]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -191,28 +162,12 @@ function AuthGate() {
         <Route component={NotFound} />
       </Switch>
       <PwaInstallPrompt />
-      {bonusBanner && (
-        <div className={`fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
-          bonusBanner === "success" || bonusBanner === "checkout-success"
-            ? "bg-green-500/10 border-green-400/30"
-            : "bg-muted border-border"
-        }`} data-testid="bonus-result-banner">
-          <span className="text-xl">{bonusBanner === "success" || bonusBanner === "checkout-success" ? "🎉" : "😕"}</span>
+      {checkoutBanner && (
+        <div className="fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 shadow-xl border bg-green-500/10 border-green-400/30 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300" data-testid="checkout-success-banner">
+          <span className="text-xl">🎉</span>
           <div>
-            <p className={`text-sm font-semibold ${bonusBanner === "success" || bonusBanner === "checkout-success" ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
-              {bonusBanner === "checkout-success"
-                ? "Assinatura ativada com sucesso!"
-                : bonusBanner === "success"
-                  ? "+16 dias a ser ativados!"
-                  : "Adição de cartão cancelada"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {bonusBanner === "checkout-success"
-                ? "Bem-vindo ao Premium da Casa dos 20."
-                : bonusBanner === "success"
-                  ? "Seu trial de 30 dias será ativado em instantes."
-                  : "Você pode tentar novamente quando quiser."}
-            </p>
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400">Assinatura ativada com sucesso!</p>
+            <p className="text-xs text-muted-foreground">Bem-vindo ao Premium da Casa dos 20.</p>
           </div>
         </div>
       )}
@@ -224,14 +179,6 @@ function AuthGate() {
             <p className="text-xs text-muted-foreground">Volte ao app na tela inicial do iPhone.</p>
           </div>
         </div>
-      )}
-      {showWelcomeModal && user && (
-        <WelcomeTrialModal
-          userId={user.id}
-          trialEndsAt={user.trialEndsAt}
-          trialBonusClaimed={user.trialBonusClaimed}
-          onClose={() => setShowWelcomeModal(false)}
-        />
       )}
     </MobileLayout>
   );
