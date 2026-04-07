@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import SubscriptionCheckoutModal from "@/components/SubscriptionCheckoutModal";
+import ReferralCard from "@/components/ReferralCard";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -541,6 +542,10 @@ export default function Premium() {
               )}
             </div>
           )}
+        </div>
+
+        <div className="mt-6">
+          <ReferralCard />
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4" data-testid="text-disclaimer">
