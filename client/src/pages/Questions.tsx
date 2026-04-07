@@ -1579,6 +1579,14 @@ function AnswerSheet({
   );
 }
 
+const MICRO_REWARDS = [
+  "resposta honesta.",
+  "isso não é superficial.",
+  "você foi mais fundo do que a maioria iria.",
+  "isso levou coragem.",
+  "poucos chegam aqui.",
+];
+
 function CardGame({
   questions,
   title,
@@ -1589,6 +1597,7 @@ function CardGame({
   weightedMode,
   allowAnswer,
   isFreeLimit,
+  nextLockedQuestion,
 }: {
   questions: string[];
   title: string;
@@ -1599,6 +1608,7 @@ function CardGame({
   weightedMode?: boolean;
   allowAnswer?: boolean;
   isFreeLimit?: boolean;
+  nextLockedQuestion?: string;
 }) {
   const sessionKey = `casa-dos-20-seen-${title}`;
 
@@ -1645,6 +1655,7 @@ function CardGame({
   const [cardsPlayed, setCardsPlayed] = useState(0);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [microReward, setMicroReward] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [showSavedCards, setShowSavedCards] = useState(false);
   const [imageTheme, setImageTheme] = useState<ShareImageTheme>(() => document.documentElement.classList.contains("dark") ? "dark" : "light");
@@ -1655,6 +1666,16 @@ function CardGame({
       renderShareImageToCanvas(questionPreviewRef.current, { text: questions[currentIndex], theme: imageTheme, type: "question" });
     }
   }, [showImagePreview, imageTheme, currentIndex, questions]);
+
+  // Micro reward — show after flipping when in free mode and has answered at least 1
+  useEffect(() => {
+    if (isFlipped && isFreeLimit && cardsPlayed >= 1) {
+      const idx = Math.floor(Math.random() * MICRO_REWARDS.length);
+      setMicroReward(MICRO_REWARDS[idx]);
+    } else if (!isFlipped) {
+      setMicroReward(null);
+    }
+  }, [isFlipped]);
 
   const resetGame = () => {
     const startIndex = isShuffling ? Math.floor(Math.random() * questions.length) : 0;
@@ -1753,6 +1774,8 @@ function CardGame({
             onDismiss={dismissTrial}
             isActivating={isTrialActivating}
             context="limit"
+            nextQuestion={nextLockedQuestion}
+            cardsAnswered={cardsPlayed}
           />
         </>
       );
@@ -2007,6 +2030,31 @@ function CardGame({
                 "Finalizar"
               )}
             </button>
+          </div>
+        )}
+
+        {/* Micro reward — emotional validation after flipping */}
+        {microReward && (
+          <p className="mt-3 text-xs text-muted-foreground italic animate-in fade-in duration-500" data-testid="micro-reward">
+            {microReward}
+          </p>
+        )}
+
+        {/* Next locked question teaser — shows when approaching the limit */}
+        {isFreeLimit && nextLockedQuestion && cardsPlayed >= 2 && !showCompleted && (
+          <div className="mt-6 w-full max-w-sm animate-in fade-in duration-700" data-testid="next-locked-teaser">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 text-center">
+              próxima pergunta
+            </p>
+            <div className="relative rounded-2xl border border-border/60 bg-card/50 overflow-hidden">
+              <p className="text-sm font-serif text-foreground/40 leading-relaxed px-4 py-3 blur-[2px] select-none">
+                "{nextLockedQuestion}"
+              </p>
+              <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/40">
+                <Lock size={12} className="text-muted-foreground" />
+                <span className="text-[11px] text-muted-foreground font-medium">essa é onde as coisas ficam reais</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -2947,6 +2995,7 @@ export default function Questions() {
         onBack={() => setSoloTheme(null)}
         allowAnswer={true}
         isFreeLimit={!premium}
+        nextLockedQuestion={!premium ? theme.questions[FREE_QUESTIONS_PER_THEME] : undefined}
       />
     );
   }
@@ -2969,6 +3018,7 @@ export default function Questions() {
         weightedMode={true}
         allowAnswer={true}
         isFreeLimit={!premium}
+        nextLockedQuestion={!premium ? data.questions[FREE_QUESTIONS_PER_THEME] : undefined}
       />
     );
   }

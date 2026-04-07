@@ -1,0 +1,201 @@
+Você é um especialista em Product Design, UX Writing e monetização de apps de autodesenvolvimento.
+
+Seu objetivo é AUMENTAR a conversão para premium dentro do app, atuando exclusivamente em:
+- fluxo do usuário
+- microcopy (textos)
+- timing de paywalls
+- gatilhos psicológicos
+
+Você NÃO pode alterar:
+- estrutura de backend
+- funcionalidades existentes
+- arquitetura do produto
+
+Pode sugerir pequenos ajustes de limite SOMENTE se impactarem diretamente a conversão.
+
+---
+
+## CONTEXTO DO APP
+
+O app possui:
+
+- Diário → 15 entradas/mês (free)
+- Perguntas → 5 por tema (free)
+- Jornadas → apenas premium
+- Livro → capítulos gratuitos definidos pelo admin
+- Premium → acesso completo
+
+Modelo de monetização:
+- Trial 14 dias (sem cartão)
+- Trial 30 dias (com cartão)
+- Assinatura mensal/anual
+- Acesso vitalício (ativável pelo admin)
+
+---
+
+## PROBLEMA REAL
+
+Usuários:
+- entram
+- usam o app
+- mas NÃO sentem urgência em pagar
+
+Baixa:
+- ativação de trial com intenção
+- inserção de cartão
+- conversão final
+
+---
+
+## OBJETIVO
+
+Aumentar:
+- desejo pelo premium
+- cliques no paywall
+- ativação de trial com intenção real
+- conversão em pagamento
+
+Sem aumentar tráfego.
+
+---
+
+## PRINCÍPIO CENTRAL
+
+O app NÃO deve apenas funcionar.
+
+Ele deve gerar:
+- curiosidade
+- envolvimento emocional
+- sensação de continuidade interrompida
+
+---
+
+## IMPLEMENTAÇÕES OBRIGATÓRIAS
+
+### 1. PAYWALL COM TENSÃO (Perguntas)
+
+Após 2–3 respostas:
+
+Antes de bloquear, criar transição emocional:
+
+"você começou a tocar em coisas que normalmente evita
+
+as próximas perguntas vão mais fundo nisso"
+
+(logo depois)
+
+"desbloqueie 14 dias grátis para continuar"
+
+---
+
+### 2. PERGUNTA BLOQUEADA COM CURIOSIDADE
+
+Sempre mostrar próxima pergunta bloqueada:
+
+Formato:
+
+"próxima pergunta:
+
+‘[pergunta profunda]’
+
+🔒 essa é onde as coisas começam a ficar reais"
+
+---
+
+### 3. PROGRESSÃO PSICOLÓGICA
+
+Adicionar progresso:
+
+"você respondeu 3 perguntas
+
+a maioria das pessoas para aqui
+
+quem continua começa a ter clareza real"
+
+---
+
+### 4. MICRO RECOMPENSAS (REFORÇO)
+
+Após resposta:
+
+- "resposta honesta."
+- "isso não é superficial."
+- "você foi mais fundo do que a maioria iria."
+
+Objetivo: gerar validação emocional
+
+---
+
+### 5. JORNADAS COMO LOOP INCOMPLETO
+
+Ao clicar em jornada bloqueada:
+
+"isso não é só conteúdo
+
+é um processo
+
+e você acabou de começar"
+
+CTA:
+
+"continue a jornada completa"
+
+---
+
+### 6. PAYWALL EMOCIONAL (SUBSTITUIR O ATUAL)
+
+Remover descrição técnica e usar:
+
+"continue se conhecendo de verdade
+
+desbloqueie perguntas profundas, jornadas completas e reflexões ilimitadas"
+
+---
+
+### 7. TIMING DO TRIAL
+
+REGRAS:
+
+- NÃO mostrar trial no onboarding
+- NÃO mostrar trial sem contexto
+- MOSTRAR trial apenas após:
+  - ação real (responder perguntas)
+  - tentativa de continuar
+  - clique em conteúdo bloqueado
+
+---
+
+### 8. FRICÇÃO INTELIGENTE PARA CARTÃO
+
+Antes do trial de 30 dias:
+
+"você pode continuar usando gratuitamente
+
+ou liberar tudo agora e ir mais fundo nisso"
+
+---
+
+## MELHORIAS ESTRATÉGICAS
+
+- Transformar bloqueios em momentos de curiosidade
+- Transformar uso em progressão
+- Transformar limite em desejo
+
+---
+
+## RESULTADO ESPERADO
+
+- aumento de cliques no premium
+- aumento de ativação de trial com intenção
+- aumento de usuários que colocam cartão
+- aumento de conversão final
+
+---
+
+## IMPORTANTE
+
+Você deve responder com:
+
+1. Sugestões práticas aplicáveis no código
+2. Exemplos de copy prontos
+3. Pontos exatos do fluxo onde aplicar cada mudança

@@ -899,35 +899,86 @@ export default function Journey() {
   }, []);
 
   if (!hasAccess) {
+    const trialExpired = !!user?.trialEndsAt && !user?.hasPremium;
+    const neverActivated = !user?.trialEndsAt && !user?.hasPremium;
+    const firstJourney = JOURNEYS[0];
+
     return (
       <div className="min-h-screen pb-24 animate-in fade-in duration-700" data-testid="page-journey-locked">
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-amber-100/40 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-orange-950/10 dark:to-transparent" />
           <div className="relative px-6 pt-14 pb-8">
             <h1 className="text-3xl font-serif text-foreground">A Jornada</h1>
-            <p className="text-sm text-muted-foreground mt-1">Seu caminho através da Casa dos 20</p>
+            <p className="text-sm text-muted-foreground mt-1">O teu caminho através da Casa dos 20</p>
           </div>
         </div>
-        <div className="px-6 mt-8">
-          <div className="text-center py-12 space-y-4">
-            <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
-              <LockKeyhole size={32} className="text-amber-600" />
-            </div>
-            <h2 className="text-xl font-serif text-foreground">Acesso Bloqueado</h2>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Seu período de teste acabou. Assine o plano premium para continuar suas jornadas. Seu progresso está salvo e esperando por você.
+
+        <div className="px-6 mt-2 space-y-6">
+          {/* Emotional headline */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
+              30 dias de transformação
             </p>
-            <div className="pt-2">
-              <button
-                onClick={() => setLocation("/premium")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold active:scale-95 transition-all"
-                data-testid="button-unlock-premium"
-              >
-                <Crown size={16} />
-                Desbloquear Jornadas
-              </button>
+            <h2 className="text-2xl font-serif text-foreground leading-snug">
+              isso não é só conteúdo —<br />é um processo
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {trialExpired
+                ? "o teu progresso está guardado e à tua espera. continua de onde paraste."
+                : "e acabas de começar. cada jornada foi pensada para te preparar para a seguinte."}
+            </p>
+          </div>
+
+          {/* Journey teaser — preview of first few days */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className={`h-1.5 bg-gradient-to-r ${firstJourney.gradientFrom} ${firstJourney.gradientTo}`} />
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{firstJourney.icon}</span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{firstJourney.title}</p>
+                  <p className="text-xs text-muted-foreground">{firstJourney.totalDays} dias</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {firstJourney.days.slice(0, 3).map((day, i) => (
+                  <div key={day.id} className={`flex items-center gap-3 ${i >= 1 ? "opacity-40 blur-[1.5px]" : ""}`}>
+                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold text-muted-foreground">{day.day}</span>
+                    </div>
+                    <p className="text-xs text-foreground truncate">{day.title}</p>
+                  </div>
+                ))}
+                <div className="flex items-center gap-3 opacity-25 blur-[2px]">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <LockKeyhole size={10} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">27 dias mais à tua espera...</p>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Progression message */}
+          <div className="bg-muted/50 rounded-xl px-4 py-3">
+            <p className="text-sm text-foreground font-medium">quem completa uma jornada começa a ter clareza real</p>
+            <p className="text-xs text-muted-foreground mt-0.5">e recebe um relatório personalizado feito por IA</p>
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => setLocation("/premium")}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold active:scale-95 transition-all flex items-center justify-center gap-2"
+            data-testid="button-unlock-premium"
+          >
+            <Sparkles size={16} />
+            {neverActivated ? "ativar 14 dias grátis e começar" : "continuar a jornada completa"}
+          </button>
+          {neverActivated && (
+            <p className="text-center text-[11px] text-muted-foreground -mt-3">
+              sem cartão · sem compromisso
+            </p>
+          )}
         </div>
       </div>
     );
