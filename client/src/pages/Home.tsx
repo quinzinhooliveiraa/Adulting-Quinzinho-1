@@ -1192,6 +1192,9 @@ export default function Home() {
         </div>
       )}
 
+      {/* Referral */}
+      <ReferralCard />
+
       {/* Share Drawer Overlay */}
       {isShareOpen && (
         <div className="fixed inset-x-0 top-0 bottom-[64px] sm:bottom-0 z-50 flex items-end sm:items-center justify-center">
