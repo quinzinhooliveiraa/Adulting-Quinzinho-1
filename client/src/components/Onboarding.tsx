@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { useGeoPrice } from "@/hooks/useGeoPrice";
 import {
   ArrowRight, ArrowLeft, Bell, Check,
   Map, BookOpen, PenLine, MessageCircle,
   BellRing, Loader2, CheckCircle2, Clock,
-  ShieldCheck, Sparkles, Brain,
+  ShieldCheck, Brain,
   Smartphone, Plus, Share, User,
   Frown, Meh, Smile, Laugh, Star,
   Wifi, Zap
@@ -37,9 +36,9 @@ function PwaSkipButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-type StepId = "welcome" | "profile" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications" | "trial";
+type StepId = "welcome" | "profile" | "pwa" | "checkin" | "journal" | "questions" | "journeys" | "book" | "notifications";
 
-const STEP_ORDER: StepId[] = ["welcome", "profile", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications", "trial"];
+const STEP_ORDER: StepId[] = ["welcome", "profile", "pwa", "checkin", "journal", "questions", "journeys", "book", "notifications"];
 
 const INTERESTS = [
   { id: "autoconhecimento", label: "Autoconhecimento" },
@@ -57,7 +56,6 @@ const INTERESTS = [
 const MOOD_ICONS = [Frown, Meh, Smile, Laugh, Star];
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
-  const { price: geo } = useGeoPrice();
   const savedStep = parseInt(localStorage.getItem("casa-onboarding-step") || "0", 10);
   const [stepIndex, setStepIndex] = useState(isNaN(savedStep) ? 0 : Math.min(savedStep, STEP_ORDER.length - 1));
   const [isAnimating, setIsAnimating] = useState(false);
@@ -92,7 +90,11 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const next = () => {
     if (currentStep === "profile") saveProfile();
-    if (stepIndex < STEP_ORDER.length - 1) goTo(stepIndex + 1);
+    if (stepIndex < STEP_ORDER.length - 1) {
+      goTo(stepIndex + 1);
+    } else {
+      handleActivateTrial();
+    }
   };
 
   const back = () => {
@@ -683,69 +685,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {currentStep === "trial" && (
-            <div className="flex flex-col items-center text-center space-y-5 w-full">
-              <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center animate-float stagger-1">
-                <Sparkles size={32} className="text-primary" />
-              </div>
-
-              <div className="space-y-2 stagger-2">
-                <h2 className="text-2xl font-serif text-foreground">Explora tudo por 14 dias</h2>
-                <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Ative seu trial gratuito agora e desbloqueie toda a experiência da Casa dos 20, sem cartão de crédito.
-                </p>
-              </div>
-
-              <div className="w-full max-w-[320px] space-y-3 stagger-3">
-                {/* Free forever */}
-                <div className="bg-card rounded-2xl border border-border p-4 space-y-2.5">
-                  <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider text-left">Gratuito (sempre)</p>
-                  <div className="space-y-2">
-                    {[
-                      "Check-in diário de humor",
-                      "5 cartas por tema de reflexão",
-                      "Diário básico com texto",
-                      "Trechos selecionados do livro",
-                    ].map((item, i) => (
-                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.3 + i * 0.07}s both` }}>
-                        <Check size={13} className="text-green-500 shrink-0" />
-                        <span className="text-xs text-foreground">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Trial unlocks */}
-                <div className="bg-primary/5 rounded-2xl border border-primary/20 p-4 space-y-2.5 animate-pulse-glow">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles size={10} /> Desbloqueado no trial
-                    </p>
-                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">14 dias grátis</span>
-                  </div>
-                  <div className="space-y-2">
-                    {[
-                      "Todas as cartas de reflexão ilimitadas",
-                      "Jornadas completas de 30 dias",
-                      "1.º relatório de jornada com IA grátis",
-                      "Diário com fotos, desenhos e banners",
-                      "Notificações personalizadas",
-                    ].map((item, i) => (
-                      <div key={item} className="flex items-center gap-2 text-left" style={{ animation: `staggerFade 0.3s ease-out ${0.4 + i * 0.07}s both` }}>
-                        <Check size={13} className="text-primary shrink-0" />
-                        <span className="text-xs text-foreground">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 justify-center">
-                  <ShieldCheck size={13} className="text-muted-foreground" />
-                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito · Cancele quando quiser</p>
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
@@ -764,70 +703,42 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             ))}
           </div>
 
-          {currentStep === "trial" ? (
-            <div className="space-y-3">
+          <>
+            {currentStep === "pwa" && !pwaInstalled ? (
+              <PwaSkipButton onClick={next} />
+            ) : (
               <Button
-                onClick={handleActivateTrial}
+                onClick={next}
                 disabled={trialLoading}
-                className="w-full h-14 rounded-full text-base font-semibold"
-                data-testid="button-onboarding-activate-trial"
+                className="w-full h-14 rounded-full text-base font-medium"
+                data-testid="button-onboarding-next"
               >
                 {trialLoading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <>
-                    <Sparkles size={18} className="mr-2" />
-                    Ativar 14 dias grátis
+                    {currentStep === "notifications" && notifStatus === "idle" ? "Começar" : "Continuar"}
+                    <ArrowRight className="ml-2" size={18} />
                   </>
                 )}
               </Button>
-              <button
-                onClick={onComplete}
-                className="w-full text-sm text-muted-foreground font-medium hover:text-foreground transition-colors py-2"
-                data-testid="button-onboarding-skip-trial"
-              >
-                Explorar primeiro
-              </button>
+            )}
+
+            {currentStep === "profile" && !profileAge && profileInterests.length === 0 && (
+              <p className="text-[10px] text-muted-foreground text-center -mt-1">Você pode pular e preencher mais tarde</p>
+            )}
+
+            {stepIndex > 0 && (
               <button
                 onClick={back}
-                className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1"
+                className="w-full text-xs text-muted-foreground font-medium hover:text-foreground transition-colors py-1 flex items-center justify-center gap-1"
                 data-testid="button-onboarding-back"
               >
                 <ArrowLeft size={12} />
                 Voltar
               </button>
-            </div>
-          ) : (
-            <>
-              {currentStep === "pwa" && !pwaInstalled ? (
-                <PwaSkipButton onClick={next} />
-              ) : (
-                <Button
-                  onClick={next}
-                  className="w-full h-14 rounded-full text-base font-medium"
-                  data-testid="button-onboarding-next"
-                >
-                  {currentStep === "notifications" && notifStatus === "idle" ? "Pular" : "Continuar"}
-                  <ArrowRight className="ml-2" size={18} />
-                </Button>
-              )}
-
-              {currentStep === "profile" && !profileAge && profileInterests.length === 0 && (
-                <p className="text-[10px] text-muted-foreground text-center -mt-1">Você pode pular e preencher mais tarde</p>
-              )}
-
-              {stepIndex > 0 && (
-                <button
-                  onClick={back}
-                  className="w-full text-xs text-muted-foreground font-medium hover:text-foreground transition-colors py-1 flex items-center justify-center gap-1"
-                  data-testid="button-onboarding-back"
-                >
-                  <ArrowLeft size={12} />
-                  Voltar
-                </button>
-              )}
-            </>
-          )}
+            )}
+          </>
         </div>
       </div>
     </div>
