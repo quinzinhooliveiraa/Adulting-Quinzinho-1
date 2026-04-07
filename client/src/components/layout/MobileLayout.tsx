@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard, FileText, AlertTriangle, CalendarDays, RefreshCw, ChevronRight } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard, FileText, AlertTriangle, CalendarDays, RefreshCw, ChevronRight, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -286,6 +286,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showPlanManager, setShowPlanManager] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isPushSubscribed());
   const [pushLoading, setPushLoading] = useState(false);
   const [showPushBanner, setShowPushBanner] = useState(false);
@@ -404,6 +405,35 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     localStorage.removeItem("casa-dos-20-needs-onboarding");
     localStorage.removeItem("casa-dos-20-profile-photo");
     window.location.reload();
+  };
+
+  const { data: referralData } = useQuery<{ code: string; link: string }>({
+    queryKey: ["/api/referral/me"],
+    enabled: !!user,
+  });
+
+  const handleReferralShare = async () => {
+    setShowMenu(false);
+    const link = referralData?.link;
+    if (!link) return;
+    const shareData = {
+      title: "Casa dos 20",
+      text: "estou usando o Casa dos 20 e está me ajudando muito. acho que você ia gostar.",
+      url: link,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        await navigator.clipboard.writeText(link).catch(() => {});
+        setReferralCopied(true);
+        setTimeout(() => setReferralCopied(false), 2500);
+      }
+    } else {
+      await navigator.clipboard.writeText(link).catch(() => {});
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2500);
+    }
   };
 
   const handleManagePlan = () => {
@@ -569,6 +599,16 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                 : "bg-muted text-muted-foreground"
           )}>
             {getPlanLabel()}
+          </span>
+        </button>
+        <button
+          onClick={handleReferralShare}
+          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          data-testid="button-referral-menu"
+        >
+          <Share2 size={15} />
+          <span className="flex-1 text-left">
+            {referralCopied ? "link copiado" : "continuar com alguém"}
           </span>
         </button>
         {isPushSupported() && (
