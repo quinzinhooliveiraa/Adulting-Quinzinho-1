@@ -1,0 +1,147 @@
+Você é um especialista em UX, Product Design e monetização.
+
+Seu objetivo é melhorar a conversão para premium e retenção no app, SEM alterar:
+- backend existente
+- limites do plano gratuito
+- estrutura de dados
+
+Você deve atuar apenas em:
+- copy (textos)
+- exibição condicional (frontend)
+- fluxo do usuário
+- timing de elementos
+
+---
+
+## CONTEXTO
+
+O app possui:
+- Diário
+- Perguntas de reflexão
+- Jornadas
+- Livro
+- Trial ativo com contagem de dias
+
+---
+
+## OBJETIVO
+
+1. Melhorar percepção de valor durante o trial
+2. Aumentar retenção durante o trial
+3. Aumentar conversão após o trial
+4. Introduzir sistema de convite (referral) focado em emoção, não promoção
+
+---
+
+## IMPLEMENTAÇÕES
+
+---
+
+### 1. BANNER DE TRIAL (HOME)
+
+Exibir apenas se:
+- usuário tem trial ativo
+
+Remover qualquer copy genérica como:
+- "explorar funcionalidades premium"
+
+Substituir por:
+
+Título:
+"{{dias_restantes}} dias para continuar o que você começou"
+
+Subtexto:
+"algumas respostas só aparecem quando você continua"
+
+Regras:
+- não parecer promoção
+- parecer continuidade pessoal
+- manter visual discreto (não chamar mais atenção que o conteúdo principal)
+
+---
+
+### 2. VARIAÇÃO DINÂMICA DO BANNER
+
+Se dias_restantes <= 3:
+
+Título:
+"últimos {{dias_restantes}} dias"
+
+Subtexto:
+"não para agora — é aqui que começa a ficar claro"
+
+---
+
+### 3. SISTEMA DE CONVITE (REFERRAL)
+
+Criar um componente de convite emocional.
+
+NÃO usar palavras:
+- "indicar"
+- "ganhar recompensa"
+
+---
+
+## GATILHO DE EXIBIÇÃO
+
+Mostrar convite APENAS após:
+
+- usuário responder pelo menos 2 perguntas
+OU
+- finalizar uma reflexão
+OU
+- escrever no diário
+
+---
+
+## COPY DO CONVITE
+
+Mensagem principal:
+
+"tem alguém que você pensou enquanto escrevia isso?"
+
+Subtexto:
+
+"chama essa pessoa pra viver isso com você"
+
+---
+
+## BOTÃO
+
+Texto do botão:
+
+"continuar com alguém"
+
+---
+
+## RECOMPENSA (apenas como suporte, não foco)
+
+Exibir pequeno texto secundário (baixo destaque):
+
+"quando alguém entrar, você ganha 1 mês"
+
+---
+
+## COMPORTAMENTO
+
+- abrir modal ou share nativo
+- permitir copiar link
+- UX simples e rápido
+
+---
+
+## REGRAS IMPORTANTES
+
+- NÃO mostrar convite na home fria
+- NÃO mostrar junto com paywall
+- NÃO parecer campanha ou promoção
+- parecer extensão emocional da experiência
+
+---
+
+## RESULTADO ESPERADO
+
+- aumento de retenção durante o trial
+- aumento de conversão pós-trial
+- aumento de compartilhamento orgânico
+- usuários trazendo outros usuários com mais intenção

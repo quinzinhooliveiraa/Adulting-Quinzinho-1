@@ -16,7 +16,7 @@ import { useCreateCheckin, useLatestCheckin, useCheckins } from "@/hooks/useChec
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { JOURNEYS } from "./Journey";
-import { Flame, Target, ArrowUpRight, Lock, Clock, Crown as CrownIcon } from "lucide-react";
+import { Flame, Target, ArrowUpRight, Lock, Clock } from "lucide-react";
 import { DEFAULT_REMINDERS, THEMED_REMINDERS } from "@shared/reminders";
 import { useLocation } from "wouter";
 import ReferralCard from "@/components/ReferralCard";
@@ -32,7 +32,7 @@ function TrialBanner({ trialEndsAt, onUpgrade }: {
   if (hoursLeft <= 0) return null;
 
   const within24h = hoursLeft <= 24;
-  const urgent = daysLeft <= 2;
+  const lastDays = daysLeft <= 3;
 
   if (within24h) {
     return (
@@ -44,13 +44,34 @@ function TrialBanner({ trialEndsAt, onUpgrade }: {
         <Clock className="h-5 w-5 text-destructive shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-destructive">
-            {hoursLeft <= 1 ? "Menos de 1 hora de trial!" : `${hoursLeft}h restantes no trial`}
+            últimas horas
           </p>
-          <p className="text-xs text-muted-foreground truncate">
-            Assina agora para não perderes o acesso.
+          <p className="text-xs text-muted-foreground">
+            não para agora — é aqui que começa a ficar claro
           </p>
         </div>
-        <span className="text-xs font-medium text-destructive shrink-0 whitespace-nowrap">Assinar →</span>
+        <span className="text-xs font-medium text-destructive shrink-0 whitespace-nowrap">continuar →</span>
+      </button>
+    );
+  }
+
+  if (lastDays) {
+    return (
+      <button
+        onClick={onUpgrade}
+        className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-muted/60 border border-border hover-elevate"
+        data-testid="trial-banner-home-last-days"
+      >
+        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            últimos {daysLeft} {daysLeft === 1 ? "dia" : "dias"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            não para agora — é aqui que começa a ficar claro
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">continuar →</span>
       </button>
     );
   }
@@ -58,26 +79,18 @@ function TrialBanner({ trialEndsAt, onUpgrade }: {
   return (
     <button
       onClick={onUpgrade}
-      className={`w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 hover-elevate ${
-        urgent
-          ? "bg-red-500/10 border border-red-400/30"
-          : "bg-amber-500/10 border border-amber-400/30"
-      }`}
+      className="w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 bg-muted/60 border border-border hover-elevate"
       data-testid="trial-banner-home"
     >
-      {urgent
-        ? <Clock className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />
-        : <CrownIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-      }
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold ${urgent ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
-          {daysLeft === 1 ? "Último dia de trial!" : `${daysLeft} dias de trial restantes`}
+        <p className="text-sm font-medium text-foreground">
+          {daysLeft} dias para continuar o que você começou
         </p>
-        <p className="text-xs text-muted-foreground truncate">
-          {urgent ? "Assina agora para não perderes o acesso" : "Explorar todas as funcionalidades premium"}
+        <p className="text-xs text-muted-foreground">
+          algumas respostas só aparecem quando você continua
         </p>
       </div>
-      <span className="text-xs font-medium text-primary shrink-0">Ver planos →</span>
+      <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">continuar →</span>
     </button>
   );
 }
@@ -1154,8 +1167,13 @@ export default function Home() {
         </div>
       )}
 
-      {/* Referral */}
-      <ReferralCard />
+      {/* Referral — shown only after user has engaged with content */}
+      <ReferralCard
+        hasEngaged={
+          allCheckins.length > 0 ||
+          (monthlyInsights?.entriesThisMonth || 0) > 0
+        }
+      />
 
       {/* Share Drawer Overlay */}
       {isShareOpen && (
