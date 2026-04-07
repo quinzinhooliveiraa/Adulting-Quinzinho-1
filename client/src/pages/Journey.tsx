@@ -898,10 +898,24 @@ export default function Journey() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Quiz first — even free users do onboarding before hitting paywall
+  if (!onboardingDone) {
+    return (
+      <JourneyOnboarding
+        onComplete={(order) => {
+          setJourneyOrder(order);
+          setOnboardingDone(true);
+        }}
+      />
+    );
+  }
+
   if (!hasAccess) {
     const trialExpired = !!user?.trialEndsAt && !user?.hasPremium;
     const neverActivated = !user?.trialEndsAt && !user?.hasPremium;
-    const firstJourney = JOURNEYS[0];
+    // Use their quiz result to personalise the teaser
+    const recommendedJourneyId = journeyOrder[0];
+    const firstJourney = (recommendedJourneyId && JOURNEYS.find(j => j.id === recommendedJourneyId)) || JOURNEYS[0];
 
     return (
       <div className="min-h-screen pb-24 animate-in fade-in duration-700" data-testid="page-journey-locked">
@@ -914,30 +928,30 @@ export default function Journey() {
         </div>
 
         <div className="px-6 mt-2 space-y-6">
-          {/* Emotional headline */}
+          {/* Emotional headline — personalised with quiz result */}
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-              30 dias de transformação
+              a tua jornada foi definida
             </p>
             <h2 className="text-2xl font-serif text-foreground leading-snug">
-              isso não é só conteúdo —<br />é um processo
+              "{firstJourney.title}"
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {trialExpired
                 ? "o teu progresso está guardado e à tua espera. continua de onde paraste."
-                : "e acabas de começar. cada jornada foi pensada para te preparar para a seguinte."}
+                : "baseado nas tuas respostas, esta é a jornada que mais precisa de ti agora. são 30 dias, um passo de cada vez."}
             </p>
           </div>
 
           {/* Journey teaser — preview of first few days */}
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className={`h-1.5 bg-gradient-to-r ${firstJourney.gradientFrom} ${firstJourney.gradientTo}`} />
+            <div className="h-1.5" style={{ background: `linear-gradient(to right, ${firstJourney.gradientFrom}, ${firstJourney.gradientTo})` }} />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-lg">{firstJourney.icon}</span>
+                <Compass size={18} className="text-primary shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">{firstJourney.title}</p>
-                  <p className="text-xs text-muted-foreground">{firstJourney.totalDays} dias</p>
+                  <p className="text-xs text-muted-foreground">{firstJourney.totalDays} dias · {firstJourney.subtitle}</p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -981,17 +995,6 @@ export default function Journey() {
           )}
         </div>
       </div>
-    );
-  }
-
-  if (!onboardingDone) {
-    return (
-      <JourneyOnboarding
-        onComplete={(order) => {
-          setJourneyOrder(order);
-          setOnboardingDone(true);
-        }}
-      />
     );
   }
 
