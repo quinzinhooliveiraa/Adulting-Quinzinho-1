@@ -37,7 +37,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || "Erro ao iniciar. Tenta novamente.");
+        setError(data.message || "Erro ao iniciar. Tente novamente.");
         setLoading(false);
         return;
       }
@@ -48,7 +48,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
       );
 
       if (stripeError) {
-        setError(stripeError.message || "Erro ao guardar cartão. Verifica os dados.");
+        setError(stripeError.message || "Erro ao salvar cartão. Verifique os dados.");
         setLoading(false);
         return;
       }
@@ -62,17 +62,17 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
         });
         const confirmData = await confirmRes.json();
         if (!confirmRes.ok) {
-          setError(confirmData.message || "Erro ao ativar bónus.");
+          setError(confirmData.message || "Erro ao ativar bônus.");
           setLoading(false);
           return;
         }
         onSuccess();
       } else {
-        setError("Não foi possível confirmar o cartão. Tenta novamente.");
+        setError("Não foi possível confirmar o cartão. Tente novamente.");
         setLoading(false);
       }
     } catch {
-      setError("Erro de ligação. Tenta novamente.");
+      setError("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   };
@@ -86,7 +86,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           </div>
           <div>
             <h2 className="text-lg font-bold font-serif text-foreground leading-tight">
-              Ativa os teus 30 dias grátis
+              Ative seus 30 dias grátis
             </h2>
             <p className="text-xs text-muted-foreground">Cartão necessário para iniciar o trial</p>
           </div>
@@ -96,7 +96,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           <div className="flex items-start gap-2">
             <ShieldCheck size={15} className="text-green-600 shrink-0 mt-0.5" />
             <p className="text-xs text-green-700 dark:text-green-400 leading-relaxed">
-              <strong>30 dias gratuitos a começar agora.</strong> Após o trial, a assinatura é cobrada automaticamente. Podes cancelar a qualquer momento pelo app.
+              <strong>30 dias gratuitos a partir de agora.</strong> Após o trial, a assinatura é cobrada automaticamente. Você pode cancelar a qualquer momento pelo app.
             </p>
           </div>
         </div>
@@ -126,7 +126,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
 
         <div className="flex items-center gap-1.5 mt-2">
           <Lock size={11} className="text-muted-foreground shrink-0" />
-          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe. Os teus dados nunca passam pelos nossos servidores</p>
+          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe. Seus dados nunca passam pelos nossos servidores</p>
         </div>
       </div>
 
@@ -142,7 +142,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
           className="w-full py-3.5 rounded-2xl bg-foreground text-background font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <CreditCard size={18} />
-          {loading ? "A ativar..." : "Começar 30 dias grátis"}
+          {loading ? "Ativando..." : "Começar 30 dias grátis"}
         </button>
 
         <button
@@ -169,10 +169,10 @@ export default function CardSetupModal({ onSuccess, onClose }: CardSetupModalPro
         if (d.publishableKey) {
           setStripePromise(loadStripe(d.publishableKey));
         } else {
-          setConfigError("Stripe não disponível de momento.");
+          setConfigError("Stripe indisponível no momento.");
         }
       })
-      .catch(() => setConfigError("Erro de ligação."));
+      .catch(() => setConfigError("Erro de conexão."));
   }, []);
 
   return (
@@ -200,7 +200,7 @@ export default function CardSetupModal({ onSuccess, onClose }: CardSetupModalPro
           </div>
         ) : !stripePromise ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground animate-pulse">A carregar...</p>
+            <p className="text-sm text-muted-foreground animate-pulse">Carregando...</p>
           </div>
         ) : (
           <Elements stripe={stripePromise}>

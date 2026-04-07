@@ -278,7 +278,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
               <p className={`font-medium ${user.hasBook ? "text-emerald-500" : "text-muted-foreground"}`}>
                 {user.hasBook
                   ? user.bookUntil && new Date(user.bookUntil) > new Date()
-                    ? `Temp. até ${new Date(user.bookUntil).toLocaleDateString("pt-PT")}`
+                    ? `Temp. até ${new Date(user.bookUntil).toLocaleDateString("pt-BR")}`
                     : "Comprado"
                   : "Não"}
               </p>
@@ -421,7 +421,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                     </button>
                     {user.bookUntil && new Date(user.bookUntil) > new Date() && (
                       <span className="text-[10px] text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                        até {new Date(user.bookUntil).toLocaleDateString("pt-PT")}
+                        até {new Date(user.bookUntil).toLocaleDateString("pt-BR")}
                       </span>
                     )}
                   </>
@@ -561,7 +561,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                       className="text-[11px] px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 hover:bg-green-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
                       data-testid={`button-grant-bonus-${user.id}`}
                     >
-                      <Star size={12} /> {grantingBonus ? "..." : "+16 dias bónus"}
+                      <Star size={12} /> {grantingBonus ? "..." : "+16 dias bônus"}
                     </button>
                   </>
                 )}
@@ -1819,10 +1819,10 @@ export default function Admin() {
               <div className="bg-card border border-border rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos · hoje por hora</p>
+                    <p className="text-xs font-medium text-muted-foreground">Usuários ativos · hoje por hora</p>
                     {peakHour.count > 0 && (
                       <p className="text-[10px] text-primary font-medium mt-0.5">
-                        Pico às {fmt(peakHour.hour)} · {peakHour.count} utilizador{peakHour.count !== 1 ? "es" : ""}
+                        Pico às {fmt(peakHour.hour)} · {peakHour.count} usuário{peakHour.count !== 1 ? "s" : ""}
                       </p>
                     )}
                   </div>
@@ -1880,7 +1880,7 @@ export default function Admin() {
             return (
               <div className="bg-card border border-border rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos por dia</p>
+                  <p className="text-xs font-medium text-muted-foreground">Usuários ativos por dia</p>
                   <div className="flex gap-3 text-right">
                     <div>
                       <p className="text-sm font-bold text-foreground">{todayCount}</p>
@@ -2601,7 +2601,7 @@ function BookSettingsPanel() {
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Preço actual</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Preço atual</p>
             <p className="text-2xl font-bold text-foreground mt-0.5">{currentPriceLabel}</p>
           </div>
           <div className="text-[10px] text-muted-foreground text-right leading-relaxed">
@@ -2699,12 +2699,12 @@ function SubscriptionPricesPanel() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setMsg({ ok: false, text: json.error || "Erro ao actualizar." });
+        setMsg({ ok: false, text: json.error || "Erro ao atualizar." });
       } else {
         const parts = [];
         if (json.newPriceIds?.monthly) parts.push(`mensal criado (${json.newPriceIds.monthly})`);
         if (json.newPriceIds?.yearly) parts.push(`anual criado (${json.newPriceIds.yearly})`);
-        setMsg({ ok: true, text: `Preços actualizados: ${parts.join(", ")}. Preços antigos arquivados no Stripe.` });
+        setMsg({ ok: true, text: `Preços atualizados: ${parts.join(", ")}. Preços antigos arquivados no Stripe.` });
         setInputMonthly("");
         setInputYearly("");
         refetch();
@@ -2779,7 +2779,7 @@ function SubscriptionPricesPanel() {
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
             data-testid="button-save-sub-prices"
           >
-            {saving ? "A actualizar no Stripe..." : "Guardar e Actualizar Stripe"}
+            {saving ? "Atualizando no Stripe..." : "Salvar e Atualizar Stripe"}
           </button>
           {msg && (
             <p className={`text-xs rounded-lg p-2 leading-relaxed ${msg.ok ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
@@ -3168,7 +3168,7 @@ function PlansPanel() {
       </Sheet>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground text-center py-6 animate-pulse">A carregar planos...</p>
+        <p className="text-sm text-muted-foreground text-center py-6 animate-pulse">Carregando planos...</p>
       ) : plans.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-8 text-center">
           <Crown size={32} className="text-amber-500 mx-auto mb-3" />
@@ -3206,7 +3206,7 @@ function PlansPanel() {
                       <p className="text-[10px] mt-0.5">
                         <span className={`font-medium ${new Date(plan.validUntil) < new Date() ? "text-red-500" : "text-amber-500"}`}>
                           {new Date(plan.validUntil) < new Date() ? "Expirado" : "Válido até"}{" "}
-                          {new Date(plan.validUntil).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {new Date(plan.validUntil).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </p>
                     )}
@@ -3294,10 +3294,10 @@ interface AutoNotif {
 }
 
 const AUTO_TYPE_LABELS: Record<string, { label: string; description: string; icon: string }> = {
-  morning_prompt: { label: "Exercício do Dia", description: "De manhã, envia o próximo exercício da jornada ativa do utilizador", icon: "☀️" },
+  morning_prompt: { label: "Exercício do Dia", description: "De manhã, envia o próximo exercício da jornada ativa do usuário", icon: "☀️" },
   evening_reflection: { label: "Reflexão da Noite", description: "À noite, convida a escrever no diário se ainda não escreveu hoje", icon: "🌙" },
-  daily_reflection: { label: "Lembrete Diário", description: "Enviado quando o utilizador não escreveu no diário hoje", icon: "📝" },
-  mood_checkin: { label: "Check-in de Humor", description: "Enviado quando o utilizador não fez check-in hoje", icon: "🌟" },
+  daily_reflection: { label: "Lembrete Diário", description: "Enviado quando o usuário não escreveu no diário hoje", icon: "📝" },
+  mood_checkin: { label: "Check-in de Humor", description: "Enviado quando o usuário não fez check-in hoje", icon: "🌟" },
   streak_risk: { label: "Streak em Risco", description: "Enviado após 2+ dias sem escrever", icon: "🔥" },
   streak_celebration: { label: "Celebração de Streak", description: "Enviado a cada 7 reflexões no mês", icon: "🎉" },
   journey_nudge: { label: "Progresso na Jornada", description: "Enviado após 3+ dias sem avançar na jornada", icon: "🚀" },
@@ -3368,10 +3368,10 @@ function RecoveryNotificationCard() {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Utilizadores que iniciaram o registo do cartão mas não completaram. Desmarca quem não deve receber a notificação.
+          Usuários que iniciaram o cadastro do cartão mas não completaram. Desmarca quem não deve receber a notificação.
         </p>
         {isLoading ? (
-          <p className="text-[11px] text-muted-foreground">A verificar Stripe...</p>
+          <p className="text-[11px] text-muted-foreground">Verificando no Stripe...</p>
         ) : (
           <div className="space-y-2">
             {abandoned && abandoned.users.length > 0 ? (
@@ -3405,7 +3405,7 @@ function RecoveryNotificationCard() {
               <p className="text-[11px] text-muted-foreground">Nenhum checkout abandonado encontrado.</p>
             )}
             {withoutPush.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push, não receberão notificação.</p>
+              <p className="text-[10px] text-muted-foreground">{withoutPush.length} usuário(s) sem push, não receberão notificação.</p>
             )}
             {excludedIds.size > 0 && (
               <p className="text-[10px] text-orange-500">{excludedIds.size} excluído(s) manualmente.</p>
@@ -3434,11 +3434,11 @@ function BookRecoveryNotificationCard() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailResult, setEmailResult] = useState<string | null>(null);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
-  const [customTitle, setCustomTitle] = useState("O livro A Casa dos 20 espera por ti");
-  const [customBody, setCustomBody] = useState("Adquire o livro e leva a tua relação mais longe. Acede agora.");
+  const [customTitle, setCustomTitle] = useState("O livro A Casa dos 20 espera por você");
+  const [customBody, setCustomBody] = useState("Adquira o livro e leve sua relação mais longe. Acesse agora.");
   const [customUrl, setCustomUrl] = useState("/livro");
-  const [customEmailSubject, setCustomEmailSubject] = useState("O livro A Casa dos 20 espera por ti");
-  const [customEmailBody, setCustomEmailBody] = useState("Começaste a tua jornada mas não a concluíste. O livro ainda está aqui para ti.");
+  const [customEmailSubject, setCustomEmailSubject] = useState("O livro A Casa dos 20 espera por você");
+  const [customEmailBody, setCustomEmailBody] = useState("Você começou sua jornada mas não a concluiu. O livro ainda está aqui para você.");
   const [showCustomize, setShowCustomize] = useState(false);
   const [showEmailCustomize, setShowEmailCustomize] = useState(false);
   const [showDiag, setShowDiag] = useState(false);
@@ -3506,7 +3506,7 @@ function BookRecoveryNotificationCard() {
       });
       const data = await res.json();
       if (data.error) { setEmailResult(`Erro: ${data.error}`); return; }
-      setEmailResult(`Email enviado para ${data.sent} utilizador(es).${data.errors?.length ? ` ${data.errors.length} falha(s).` : ""}`);
+      setEmailResult(`Email enviado para ${data.sent} usuário(s).${data.errors?.length ? ` ${data.errors.length} falha(s).` : ""}`);
     } catch {
       setEmailResult("Erro ao enviar emails.");
     } finally {
@@ -3522,7 +3522,7 @@ function BookRecoveryNotificationCard() {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Utilizadores que iniciaram o checkout do livro mas não completaram o pagamento. Desmarca quem não deve receber.
+          Usuários que iniciaram o checkout do livro mas não completaram o pagamento. Desmarca quem não deve receber.
         </p>
 
         <button
@@ -3566,7 +3566,7 @@ function BookRecoveryNotificationCard() {
         )}
 
         {isLoading ? (
-          <p className="text-[11px] text-muted-foreground">A verificar utilizadores...</p>
+          <p className="text-[11px] text-muted-foreground">Verificando usuários...</p>
         ) : (
           <div className="space-y-2">
             {bookData && bookData.users.length > 0 ? (
@@ -3597,10 +3597,10 @@ function BookRecoveryNotificationCard() {
                 })}
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">Todos os utilizadores já têm acesso ao livro.</p>
+              <p className="text-[11px] text-muted-foreground">Todos os usuários já têm acesso ao livro.</p>
             )}
             {withoutPush.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push, não receberão notificação.</p>
+              <p className="text-[10px] text-muted-foreground">{withoutPush.length} usuário(s) sem push, não receberão notificação.</p>
             )}
             {excludedIds.size > 0 && (
               <p className="text-[10px] text-orange-500">{excludedIds.size} excluído(s) manualmente.</p>
@@ -3627,11 +3627,11 @@ function BookRecoveryNotificationCard() {
           </div>
           {withoutPush.length > 0 ? (
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {withoutPush.length} utilizador(es) sem push. Podes enviar-lhes um email de recuperação.
+              {withoutPush.length} usuário(s) sem push. Você pode enviar um email de recuperação para eles.
             </p>
           ) : (
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {isLoading ? "A verificar..." : "Todos os utilizadores têm push ativo. Nenhum email necessário por agora."}
+              {isLoading ? "Verificando..." : "Todos os usuários têm push ativo. Nenhum email necessário por agora."}
             </p>
           )}
           {withoutPush.length > 0 && (
@@ -3729,7 +3729,7 @@ function BookRecoveryNotificationCard() {
                             <span className="text-muted-foreground text-[9px]">{row.excludedReason}</span>
                           )}
                           <span className="text-muted-foreground text-[9px] ml-auto shrink-0">
-                            {new Date(row.createdAt).toLocaleDateString("pt-PT")}
+                            {new Date(row.createdAt).toLocaleDateString("pt-BR")}
                           </span>
                         </div>
                         <p className="text-muted-foreground font-mono mt-0.5 text-[9px] truncate">{row.piId}</p>
@@ -3775,15 +3775,15 @@ function ReconcileTrialBonusCard() {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Procura no Stripe todos os utilizadores que adicionaram cartão mas não receberam os dias gratuitos. Corrige automaticamente.
+          Procura no Stripe todos os usuários que adicionaram cartão mas não receberam os dias gratuitos. Corrige automaticamente.
         </p>
         {result && (
           <div className="space-y-2">
             {result.fixed === 0 ? (
-              <p className="text-[11px] text-muted-foreground">Nenhum utilizador em falta. Todos estão correctos ({result.alreadyOk} já tinham o bónus).</p>
+              <p className="text-[11px] text-muted-foreground">Nenhum usuário faltando. Todos estão corretos ({result.alreadyOk} já tinham o bônus).</p>
             ) : (
               <>
-                <p className="text-[11px] text-green-500 font-medium">{result.fixed} utilizador(es) corrigido(s):</p>
+                <p className="text-[11px] text-green-500 font-medium">{result.fixed} usuário(s) corrigido(s):</p>
                 <div className="space-y-1">
                   {result.users.map((u, i) => (
                     <div key={i} className="flex items-center justify-between text-[11px] px-2 py-1 rounded-md bg-muted/50">
@@ -3802,7 +3802,7 @@ function ReconcileTrialBonusCard() {
           className="w-full py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-[0.98]"
           data-testid="button-reconcile-trial"
         >
-          {running ? "A verificar Stripe..." : "Verificar e Corrigir"}
+          {running ? "Verificando no Stripe..." : "Verificar e Corrigir"}
         </button>
       </div>
     </div>
@@ -4210,7 +4210,7 @@ function AutoNotificationsPanel() {
         </div>
         <div className="py-6 text-center bg-card border border-border rounded-xl">
           <Bell size={28} className="text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">A carregar notificações automáticas...</p>
+          <p className="text-sm text-muted-foreground">Carregando notificações automáticas...</p>
         </div>
       </div>
     );
@@ -4223,7 +4223,7 @@ function AutoNotificationsPanel() {
         <h2 className="text-sm font-medium text-foreground">Notificações Inteligentes</h2>
       </div>
       <p className="text-[11px] text-muted-foreground -mt-1">
-        Enviadas automaticamente com base no comportamento de cada utilizador.
+        Enviadas automaticamente com base no comportamento de cada usuário.
       </p>
 
       <div className="space-y-2">
@@ -4376,13 +4376,13 @@ function CouponsPanel() {
           data-testid="btn-create-coupon"
         >
           <Plus size={14} />
-          Criar cupão
+          Criar cupom
         </button>
       </div>
 
       {couponFormOpen && (
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <h4 className="text-sm font-semibold">Novo cupão</h4>
+          <h4 className="text-sm font-semibold">Novo cupom</h4>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="text-[11px] text-muted-foreground mb-1 block">Código</label>
@@ -4471,7 +4471,7 @@ function CouponsPanel() {
               className="flex-1 py-2 rounded-xl bg-foreground text-background text-sm font-medium disabled:opacity-50"
               data-testid="btn-save-coupon"
             >
-              {createCouponMutation.isPending ? "A criar..." : "Criar cupão"}
+              {createCouponMutation.isPending ? "Criando..." : "Criar cupom"}
             </button>
           </div>
         </div>
@@ -4480,7 +4480,7 @@ function CouponsPanel() {
       {coupons.length === 0 ? (
         <div className="py-12 text-center">
           <Ticket size={32} className="text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum cupão criado ainda.</p>
+          <p className="text-sm text-muted-foreground">Nenhum cupom criado ainda.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -4512,7 +4512,7 @@ function CouponsPanel() {
                   {c.note && <p className="text-[11px] text-muted-foreground/70 italic">{c.note}</p>}
                   {c.expiresAt && (
                     <p className="text-[11px] text-muted-foreground">
-                      Expira: {new Date(c.expiresAt).toLocaleDateString("pt-PT")}
+                      Expira: {new Date(c.expiresAt).toLocaleDateString("pt-BR")}
                     </p>
                   )}
                 </div>
@@ -4525,7 +4525,7 @@ function CouponsPanel() {
                     {c.isActive ? <ToggleRight size={24} className="text-primary" /> : <ToggleLeft size={24} />}
                   </button>
                   <button
-                    onClick={() => { if (confirm("Apagar cupão?")) deleteCouponMutation.mutate(c.id); }}
+                    onClick={() => { if (confirm("Apagar cupom?")) deleteCouponMutation.mutate(c.id); }}
                     className="text-red-400 hover:text-red-500 transition-colors"
                     data-testid={`delete-coupon-${c.id}`}
                   >

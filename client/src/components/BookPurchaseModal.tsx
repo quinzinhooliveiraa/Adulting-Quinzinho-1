@@ -79,7 +79,7 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
           <CheckCircle2 size={32} className="text-green-500" />
         </div>
         <h2 className="text-xl font-bold font-serif text-foreground">Livro desbloqueado!</h2>
-        <p className="text-sm text-muted-foreground">Todos os capítulos estão agora disponíveis para ti.</p>
+        <p className="text-sm text-muted-foreground">Todos os capítulos estão disponíveis para você.</p>
       </div>
     );
   }
@@ -120,14 +120,14 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
 
         <div className="flex items-center gap-1.5 mb-4">
           <Lock size={11} className="text-muted-foreground shrink-0" />
-          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe · os teus dados nunca passam pelos nossos servidores</p>
+          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe · seus dados nunca passam pelos nossos servidores</p>
         </div>
 
         <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
           <div className="flex items-start gap-2">
             <ShieldCheck size={14} className="text-green-600 shrink-0 mt-0.5" />
             <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
-              Pagamento único · sem subscrição · acesso para sempre
+              Pagamento único · sem assinatura · acesso para sempre
             </p>
           </div>
         </div>
@@ -142,7 +142,7 @@ function PaymentForm({ priceLabel, onSuccess, onClose }: BookPurchaseModalProps)
           data-testid="btn-confirm-book-purchase"
           className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50"
         >
-          {loading ? "A processar..." : `Comprar por ${priceLabel}`}
+          {loading ? "Processando..." : `Comprar por ${priceLabel}`}
         </button>
 
         <button
@@ -211,7 +211,7 @@ export default function BookPurchaseModal({ priceLabel, onSuccess, onClose }: Bo
           </div>
         ) : !clientSecret || !stripePromise ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground animate-pulse">A carregar...</p>
+            <p className="text-sm text-muted-foreground animate-pulse">Carregando...</p>
           </div>
         ) : (
           <Elements

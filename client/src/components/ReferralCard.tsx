@@ -36,7 +36,7 @@ export default function ReferralCard() {
     if (!data?.link) return;
     const shareData = {
       title: "Casa dos 20",
-      text: "Estou a usar o Casa dos 20 e está a mudar a minha vida! Experimenta, é uma aplicação de crescimento pessoal baseada no livro.",
+      text: "Estou usando o Casa dos 20 e está mudando minha vida! Experimente, é um aplicativo de crescimento pessoal baseado no livro.",
       url: data.link,
     };
     if (navigator.share) {
@@ -99,7 +99,7 @@ export default function ReferralCard() {
       {expanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-primary-foreground/20 pt-3">
           <p className="text-sm opacity-85 leading-snug">
-            Partilha o teu link. Por cada amigo que criar conta e subscrever, recebes <strong>30 dias de premium</strong> automaticamente, sem limite de convites!
+            Compartilhe seu link. Por cada amigo que criar conta e assinar, você recebe <strong>30 dias de premium</strong> automaticamente, sem limite de convites!
           </p>
 
           {/* Link row */}
@@ -135,7 +135,7 @@ export default function ReferralCard() {
             data-testid="button-share-referral"
           >
             <Share2 className="h-4 w-4 mr-2" />
-            {copied ? "Link copiado!" : "Partilhar convite agora"}
+            {copied ? "Link copiado!" : "Compartilhar convite agora"}
           </Button>
         </div>
       )}

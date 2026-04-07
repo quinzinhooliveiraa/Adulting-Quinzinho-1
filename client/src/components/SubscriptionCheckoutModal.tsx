@@ -103,7 +103,7 @@ function PaymentForm({
         </h2>
         <p className="text-sm text-muted-foreground">
           {isLifetime
-            ? "Tens agora acesso permanente a todo o conteúdo da Casa dos 20."
+            ? "Você tem acesso permanente a todo o conteúdo da Casa dos 20."
             : "Bem-vindo ao Casa dos 20 Premium. Todo o conteúdo está agora desbloqueado."}
         </p>
       </div>
@@ -162,7 +162,7 @@ function PaymentForm({
         <div className="flex items-center gap-1.5 mb-4">
           <Lock size={11} className="text-muted-foreground shrink-0" />
           <p className="text-[11px] text-muted-foreground">
-            Protegido pelo Stripe · os teus dados nunca passam pelos nossos servidores
+            Protegido pelo Stripe · seus dados nunca passam pelos nossos servidores
           </p>
         </div>
 
@@ -172,7 +172,7 @@ function PaymentForm({
             <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
               {isLifetime
                 ? "Pagamento único · acesso vitalício · sem renovações · sem surpresas"
-                : "Cancela quando quiseres · sem compromisso · conteúdo ilimitado durante a subscrição"}
+                : "Cancele quando quiser · sem compromisso · conteúdo ilimitado durante a assinatura"}
             </p>
           </div>
         </div>
@@ -187,10 +187,10 @@ function PaymentForm({
           className="w-full py-3.5 rounded-2xl bg-amber-500 text-white font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-50"
         >
           {loading
-            ? "A processar..."
+            ? "Processando..."
             : isLifetime
               ? `Pagar ${plan.priceFormatted} · acesso vitalício`
-              : `Subscrever por ${plan.priceFormatted}/${plan.interval === "month" ? "mês" : "ano"}`}
+              : `Assinar por ${plan.priceFormatted}/${plan.interval === "month" ? "mês" : "ano"}`}
         </button>
         <button
           type="button"
@@ -268,7 +268,7 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
           <div className="px-6 py-10 text-center flex flex-col items-center gap-3">
             <p className="text-sm text-red-500 font-medium">{loadError}</p>
             <p className="text-xs text-muted-foreground max-w-[260px]">
-              Verifica a tua ligação à internet. Se usas um bloqueador de anúncios, tenta desactivá-lo para este site.
+              Verifique sua conexão à internet. Se você usa um bloqueador de anúncios, tente desativá-lo para este site.
             </p>
             <div className="flex gap-3 mt-1">
               <button

@@ -47,7 +47,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
         >
           <PartyPopper size={40} className="mx-auto mb-3 text-yellow-500" />
           <h2 className="text-xl font-bold font-serif text-foreground mb-1">Bónus ativado!</h2>
-          <p className="text-sm text-muted-foreground">O teu trial foi alargado para <strong className="text-foreground">30 dias grátis</strong>. Aproveita!</p>
+          <p className="text-sm text-muted-foreground">Seu trial foi estendido para <strong className="text-foreground">30 dias grátis</strong>. Aproveite!</p>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
                 <CreditCard size={14} className="text-foreground/60" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground">Registas o cartão aqui mesmo</p>
+                <p className="text-xs font-medium text-foreground">Registre o cartão aqui mesmo</p>
                 <p className="text-[11px] text-muted-foreground">Seguro: <strong className="text-foreground">sem qualquer cobrança agora</strong></p>
               </div>
             </div>
@@ -98,7 +98,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
                 <Gift size={14} className="text-foreground/60" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground">Recebes 30 dias grátis</p>
+                <p className="text-xs font-medium text-foreground">Você recebe 30 dias grátis</p>
                 <p className="text-[11px] text-muted-foreground">O trial passa de 14 para 30 dias completos</p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground">Decides depois</p>
-                <p className="text-[11px] text-muted-foreground">Só pagas se quiseres continuar após os 30 dias</p>
+                <p className="text-[11px] text-muted-foreground">Só paga se quiser continuar após os 30 dias</p>
               </div>
             </div>
           </div>
@@ -117,7 +117,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
         <div className="px-6 pt-3 space-y-2">
           <div className="flex items-center gap-1.5 justify-center mb-1">
             <ShieldCheck size={12} className="text-green-500 shrink-0" />
-            <p className="text-[11px] text-muted-foreground">Nenhuma cobrança hoje. Cancela a qualquer momento.</p>
+            <p className="text-[11px] text-muted-foreground">Nenhuma cobrança hoje. Cancele a qualquer momento.</p>
           </div>
 
           <button
@@ -126,7 +126,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
             data-testid="btn-claim-bonus"
           >
             <CreditCard size={18} />
-            Registar cartão e ganhar 30 dias
+            Registrar cartão e ganhar 30 dias
           </button>
 
           <button

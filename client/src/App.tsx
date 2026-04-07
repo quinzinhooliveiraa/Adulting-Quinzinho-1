@@ -201,7 +201,7 @@ function AuthGate() {
           <div>
             <p className={`text-sm font-semibold ${bonusBanner === "success" || bonusBanner === "checkout-success" ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>
               {bonusBanner === "checkout-success"
-                ? "Subscrição ativada com sucesso!"
+                ? "Assinatura ativada com sucesso!"
                 : bonusBanner === "success"
                   ? "+16 dias a ser ativados!"
                   : "Adição de cartão cancelada"}
@@ -210,8 +210,8 @@ function AuthGate() {
               {bonusBanner === "checkout-success"
                 ? "Bem-vindo ao Premium da Casa dos 20."
                 : bonusBanner === "success"
-                  ? "O teu trial de 30 dias será ativado em instantes."
-                  : "Podes tentar novamente quando quiseres."}
+                  ? "Seu trial de 30 dias será ativado em instantes."
+                  : "Você pode tentar novamente quando quiser."}
             </p>
           </div>
         </div>
@@ -221,7 +221,7 @@ function AuthGate() {
           <span className="text-xl">✅</span>
           <div>
             <p className="text-sm font-semibold text-green-700 dark:text-green-400">Login com Google feito!</p>
-            <p className="text-xs text-muted-foreground">Volta à app no ecrã inicial do iPhone.</p>
+            <p className="text-xs text-muted-foreground">Volte ao app na tela inicial do iPhone.</p>
           </div>
         </div>
       )}

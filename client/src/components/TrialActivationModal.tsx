@@ -48,10 +48,10 @@ export default function TrialActivationModal({
           {isLimit ? (
             <div className="space-y-1.5 pr-6">
               <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-                tu e as tuas perguntas
+                você e suas perguntas
               </p>
               <h2 className="text-xl font-serif text-foreground leading-snug">
-                começaste a tocar em coisas que normalmente evitas
+                você começou a tocar em coisas que normalmente evita
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 as próximas perguntas vão mais fundo nisso
@@ -60,10 +60,10 @@ export default function TrialActivationModal({
           ) : (
             <div className="space-y-1.5 pr-6">
               <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-                estás a ir mais fundo
+                você está indo mais fundo
               </p>
               <h2 className="text-xl font-serif text-foreground leading-snug">
-                continua a conhecer-te de verdade
+                continue se conhecendo de verdade
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 desbloqueie perguntas profundas, jornadas completas e reflexões ilimitadas
@@ -97,7 +97,7 @@ export default function TrialActivationModal({
           {isLimit && cardsAnswered > 0 && (
             <div className="bg-muted/50 rounded-xl px-4 py-3 space-y-0.5">
               <p className="text-sm font-semibold text-foreground">
-                respondeste {cardsAnswered} {cardsAnswered === 1 ? "pergunta" : "perguntas"}
+                você respondeu {cardsAnswered} {cardsAnswered === 1 ? "pergunta" : "perguntas"}
               </p>
               <p className="text-xs text-muted-foreground leading-snug">
                 a maioria das pessoas para aqui. quem continua começa a ter clareza real.
@@ -131,7 +131,7 @@ export default function TrialActivationModal({
             </button>
 
             <p className="text-center text-[11px] text-muted-foreground opacity-60">
-              sem cartão de crédito · cancelas quando quiseres
+              sem cartão de crédito · cancele quando quiser
             </p>
           </div>
         </div>

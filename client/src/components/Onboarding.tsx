@@ -233,7 +233,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="w-full bg-primary/5 border border-primary/15 rounded-xl p-3 stagger-3">
                 <div className="flex items-center justify-center gap-1.5 mb-2">
                   <ShieldCheck size={14} className="text-primary" />
-                  <span className="text-xs font-semibold text-primary">Os teus dados estão protegidos</span>
+                  <span className="text-xs font-semibold text-primary">Seus dados estão protegidos</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex flex-col items-center gap-1">
@@ -259,12 +259,12 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
                   <User size={28} className="text-primary" />
                 </div>
-                <h2 className="text-2xl font-serif text-foreground">Conta-nos sobre ti</h2>
-                <p className="text-sm text-muted-foreground">Ajuda-nos a personalizar a tua experiência</p>
+                <h2 className="text-2xl font-serif text-foreground">Nos conte sobre você</h2>
+                <p className="text-sm text-muted-foreground">Ajuda-nos a personalizar sua experiência</p>
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quantos anos tens?</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quantos anos você tem?</p>
                 <div className="flex flex-wrap gap-2">
                   {[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35].map(age => (
                     <button
@@ -295,8 +295,8 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que mais te importa agora?</p>
-                <p className="text-[11px] text-muted-foreground/70">Podes escolher vários</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que mais importa para você agora?</p>
+                <p className="text-[11px] text-muted-foreground/70">Você pode escolher vários</p>
                 <div className="flex flex-wrap gap-2">
                   {INTERESTS.map(interest => (
                     <button
@@ -339,7 +339,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                   </h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {pwaInstalled
-                      ? "Tudo pronto! O app já está na tua ecrã inicial."
+                      ? "Tudo pronto! O app já está na sua tela inicial."
                       : "Instala para receber lembretes diários e ter a melhor experiência."
                     }
                   </p>
@@ -491,7 +491,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Diário Pessoal</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Escreve os teus pensamentos livremente. Adiciona fotos, desenhos e banners. O teu espaço privado de reflexão.
+                  Escreva seus pensamentos livremente. Adicione fotos, desenhos e banners. Seu espaço privado de reflexão.
                 </p>
               </div>
             </div>
@@ -581,7 +581,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 pt-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">O Livro</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Lê trechos exclusivos de "A Casa dos 20" e aprofunda as tuas reflexões com os temas do livro.
+                  Leia trechos exclusivos de "A Casa dos 20" e aprofunde suas reflexões com os temas do livro.
                 </p>
               </div>
             </div>
@@ -632,9 +632,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
                   {notifStatus === "granted"
-                    ? "Vais receber lembretes gentis para os teus momentos de reflexão."
+                    ? "Você receberá lembretes gentis para seus momentos de reflexão."
                     : notifStatus === "denied"
-                    ? "Podes ativar as notificações mais tarde nas definições do app."
+                    ? "Você pode ativar as notificações mais tarde nas configurações do app."
                     : "Ativa as notificações para receber convites diários à reflexão."
                   }
                 </p>
@@ -665,9 +665,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                       const res = await fetch("/api/push/test", { method: "POST", credentials: "include" });
                       const data = await res.json();
                       if (data.sent > 0) {
-                        alert("Notificação enviada! Verifica o teu dispositivo.");
+                        alert("Notificação enviada! Verifique seu dispositivo.");
                       } else {
-                        alert("Nenhuma assinatura encontrada. Tenta ativar novamente.");
+                        alert("Nenhuma assinatura encontrada. Tente ativar novamente.");
                       }
                     } catch {
                       alert("Erro ao enviar notificação de teste.");
@@ -692,7 +692,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Explora tudo por 14 dias</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Ativa o teu trial gratuito agora e desbloqueia toda a experiência da Casa dos 20, sem cartão de crédito.
+                  Ative seu trial gratuito agora e desbloqueie toda a experiência da Casa dos 20, sem cartão de crédito.
                 </p>
               </div>
 
@@ -741,7 +741,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
                 <div className="flex items-center gap-2 justify-center">
                   <ShieldCheck size={13} className="text-muted-foreground" />
-                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito · Cancelas quando quiseres</p>
+                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito · Cancele quando quiser</p>
                 </div>
               </div>
             </div>
@@ -813,7 +813,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               )}
 
               {currentStep === "profile" && !profileAge && profileInterests.length === 0 && (
-                <p className="text-[10px] text-muted-foreground text-center -mt-1">Podes saltar e preencher mais tarde</p>
+                <p className="text-[10px] text-muted-foreground text-center -mt-1">Você pode pular e preencher mais tarde</p>
               )}
 
               {stepIndex > 0 && (

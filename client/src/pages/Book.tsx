@@ -1208,7 +1208,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                           </p>
                           <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
                             <p className="text-[11px] bk-muted">
-                              {new Date(hl.createdAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
+                              {new Date(hl.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
                             </p>
                             <div className="flex items-center gap-3 flex-wrap">
                               {ch && (
@@ -1615,7 +1615,7 @@ export default function Book() {
                 <CheckCircle2 size={20} className="text-green-600 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-green-700 dark:text-green-400">Livro desbloqueado</p>
-                  <p className="text-xs text-muted-foreground">Tens acesso completo a todos os capítulos.</p>
+                  <p className="text-xs text-muted-foreground">Você tem acesso completo a todos os capítulos.</p>
                 </div>
                 <button onClick={() => openReader()} data-testid="btn-read-now"
                   className="text-xs px-3 py-2 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
@@ -1785,7 +1785,7 @@ export default function Book() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <BookOpen size={15} style={{ color: "var(--bk-accent,#7c5c3a)" }} />
-                    <p className="text-sm font-semibold text-foreground">O teu progresso</p>
+                    <p className="text-sm font-semibold text-foreground">Seu progresso</p>
                   </div>
                   <span className="text-sm font-bold tabular-nums" style={{ color: "var(--bk-accent,#7c5c3a)" }}>
                     {savedProgress.pct}%

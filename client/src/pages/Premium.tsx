@@ -99,7 +99,7 @@ function getPlanIntervalLabel(plan: SubscriptionPlan): string {
 }
 
 function getPlanSubtitle(plan: SubscriptionPlan): string {
-  if (plan.interval === "month") return "Cancela quando quiseres";
+  if (plan.interval === "month") return "Cancele quando quiser";
   if (plan.interval === "year") return "Melhor custo-benefício";
   if (plan.interval === "lifetime") return "Acesso para sempre";
   return "";
@@ -184,7 +184,7 @@ export default function Premium() {
         setCouponMsg({ text: data.message, ok: false });
       }
     } catch {
-      setCouponMsg({ text: "Erro ao aplicar o cupão. Tenta novamente.", ok: false });
+      setCouponMsg({ text: "Erro ao aplicar o cupom. Tente novamente.", ok: false });
     } finally {
       setCouponLoading(false);
     }
@@ -204,7 +204,7 @@ export default function Premium() {
           trialEndsAt: data.trialEndsAt,
         }));
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        toast({ title: "Trial ativado!", description: "Tens 14 dias grátis de acesso completo." });
+        toast({ title: "Trial ativado!", description: "Você tem 14 dias grátis de acesso completo." });
       } else {
         toast({ title: "Erro", description: data.message || "Não foi possível ativar o trial.", variant: "destructive" });
       }
@@ -247,7 +247,7 @@ export default function Premium() {
         toast({ title: "Erro", description: data.message, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", description: "Não foi possível cancelar. Tenta novamente.", variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível cancelar. Tente novamente.", variant: "destructive" });
     } finally {
       setCancelling(false);
       setShowCancelDialog(false);
@@ -294,7 +294,7 @@ export default function Premium() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="btn-confirm-cancel-subscription"
             >
-              {cancelling ? "A cancelar..." : "Sim, cancelar"}
+              {cancelling ? "Cancelando..." : "Sim, cancelar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -318,7 +318,7 @@ export default function Premium() {
             Casa dos 20 Premium
           </h1>
           <p className="text-muted-foreground text-sm">
-            Desbloqueia todo o conteúdo e transforma a tua jornada de autoconhecimento.
+            Desbloqueie todo o conteúdo e transforme sua jornada de autoconhecimento.
           </p>
         </div>
 
@@ -332,7 +332,7 @@ export default function Premium() {
               <div>
                 <p className="font-semibold text-foreground">14 dias grátis</p>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Explora tudo sem cartão de crédito. Cancelas quando quiseres.
+                  Explore tudo sem cartão de crédito. Cancele quando quiser.
                 </p>
               </div>
             </div>
@@ -362,7 +362,7 @@ export default function Premium() {
             </Button>
             <div className="flex items-center justify-center gap-1.5 mt-3">
               <ShieldCheck className="w-3 h-3 text-muted-foreground" />
-              <p className="text-[11px] text-muted-foreground">Sem cartão · Sem compromisso · Cancelas a qualquer momento</p>
+              <p className="text-[11px] text-muted-foreground">Sem cartão · Sem compromisso · Cancele a qualquer momento</p>
             </div>
           </div>
         )}
@@ -387,9 +387,9 @@ export default function Premium() {
         {/* Trial expired */}
         {trialExpired && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6 text-center" data-testid="trial-expired-banner">
-            <p className="text-destructive font-semibold">O teu trial expirou</p>
+            <p className="text-destructive font-semibold">Seu trial expirou</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Escolhe um plano abaixo para continuar com acesso completo.
+              Escolha um plano abaixo para continuar com acesso completo.
             </p>
           </div>
         )}
@@ -397,11 +397,11 @@ export default function Premium() {
         {/* Already paid premium */}
         {user?.hasPremium && user?.premiumReason !== "trial" && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-center" data-testid="premium-active-banner">
-            <p className="text-green-600 dark:text-green-400 font-semibold">Já tens o Premium ativo!</p>
+            <p className="text-green-600 dark:text-green-400 font-semibold">Você já tem o Premium ativo!</p>
             <p className="text-sm text-muted-foreground mt-1">Obrigado pelo apoio à Casa dos 20.</p>
             {user?.premiumUntil && (
               <p className="text-xs text-muted-foreground mt-1">
-                Acesso até {new Date(user.premiumUntil).toLocaleDateString("pt-PT")}
+                Acesso até {new Date(user.premiumUntil).toLocaleDateString("pt-BR")}
               </p>
             )}
             {hasActiveSubscription && (
@@ -510,7 +510,7 @@ export default function Premium() {
           >
             <div className="flex items-center gap-2">
               <Ticket size={16} />
-              Tens um cupão de desconto?
+              Você tem um cupom de desconto?
             </div>
             {couponOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -521,7 +521,7 @@ export default function Premium() {
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === "Enter" && applyCoupon()}
-                  placeholder="Código do cupão"
+                  placeholder="Código do cupom"
                   className="flex-1 bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
                   data-testid="input-coupon-code-user"
                 />
@@ -544,7 +544,7 @@ export default function Premium() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4" data-testid="text-disclaimer">
-          Pagamento seguro via Stripe. Cancela a qualquer momento.
+          Pagamento seguro via Stripe. Cancele a qualquer momento.
         </p>
       </div>
     </div>
