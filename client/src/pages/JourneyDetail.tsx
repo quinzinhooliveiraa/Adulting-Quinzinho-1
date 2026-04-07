@@ -954,7 +954,7 @@ export default function JourneyDetail() {
                             <div className="flex-1 min-w-0">
                               <span className="text-[10px] font-bold text-muted-foreground">DIA {day.day}</span>
                               <p className="text-xs text-muted-foreground/60 italic">
-                                {lockedTomorrow ? "Disponível amanhã — descanse e reflita" : "Complete o dia anterior para desbloquear"}
+                                {lockedTomorrow ? "Disponível amanhã. Descanse e reflita" : "Complete o dia anterior para desbloquear"}
                               </p>
                             </div>
                           </div>

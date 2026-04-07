@@ -64,7 +64,7 @@ export function getEntriesByTag(tag: string): JournalEntry[] {
 }
 
 export function shareEntry(entry: JournalEntry, platform: string): string {
-  const text = `"${entry.text}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
+  const text = `"${entry.text}"\n\nCasa dos 20 (@quinzinhooliveiraa_)`;
   
   switch (platform) {
     case "substack":

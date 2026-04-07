@@ -376,7 +376,7 @@ export default function Premium() {
                 : `${trialDaysLeft} ${trialDaysLeft === 1 ? "dia restante" : "dias restantes"} de trial gratuito`}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Aproveita para explorar tudo — sem cartão, sem compromisso.
+              Aproveita para explorar tudo, sem cartão, sem compromisso.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Depois do trial, escolhe um plano para continuar.

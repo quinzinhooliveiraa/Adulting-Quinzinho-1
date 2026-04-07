@@ -361,7 +361,7 @@ export default function BlogReflectionEditor({
       } else if (msg.includes("500") || msg.includes("network") || msg.includes("Failed")) {
         setSaveError("Erro ao salvar. Verifique sua conexão e tente novamente.");
       } else {
-        setSaveError("Não foi possível salvar. Sua reflexão não foi perdida — tente novamente.");
+        setSaveError("Não foi possível salvar. Sua reflexão não foi perdida. Tente novamente.");
       }
     }
   };

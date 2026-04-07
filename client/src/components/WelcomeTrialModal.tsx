@@ -90,7 +90,7 @@ export default function WelcomeTrialModal({ userId, trialBonusClaimed, onClose }
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground">Registas o cartão aqui mesmo</p>
-                <p className="text-[11px] text-muted-foreground">Seguro — <strong className="text-foreground">sem qualquer cobrança agora</strong></p>
+                <p className="text-[11px] text-muted-foreground">Seguro: <strong className="text-foreground">sem qualquer cobrança agora</strong></p>
               </div>
             </div>
             <div className="flex items-center gap-3">

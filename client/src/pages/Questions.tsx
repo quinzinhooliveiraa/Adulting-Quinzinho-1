@@ -1730,7 +1730,7 @@ function CardGame({
   };
 
   const handleShare = () => {
-    const text = `"${questions[currentIndex]}" — Casa dos 20`;
+    const text = `"${questions[currentIndex]}" | Casa dos 20`;
     if (navigator.share) {
       navigator.share({ title: "Casa dos 20", text }).catch(() => {});
     } else {
@@ -2303,7 +2303,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
             <span className="text-2xl font-bold text-foreground">{geo.yearlyFormatted}</span>
             <span className="text-sm text-muted-foreground">/ano</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{geo.yearlyMonthlyFormatted}/mês — melhor custo-benefício</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{geo.yearlyMonthlyFormatted}/mês · melhor custo-benefício</p>
         </button>
 
         <button
@@ -2349,7 +2349,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-medium text-sm shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           data-testid="button-subscribe"
         >
-          {loading ? "Redirecionando..." : selectedPlan === "yearly" ? `Assinar Anual — ${geo.yearlyFormatted}/ano` : `Assinar Mensal — ${geo.monthlyFormatted}/mês`}
+          {loading ? "Redirecionando..." : selectedPlan === "yearly" ? `Assinar Anual · ${geo.yearlyFormatted}/ano` : `Assinar Mensal · ${geo.monthlyFormatted}/mês`}
         </button>
         <button
           onClick={onBack}
@@ -2360,7 +2360,7 @@ function SubscriptionPlanSelector({ onBack, context }: { onBack: () => void; con
         </button>
       </div>
       <p className="text-[10px] text-muted-foreground mt-4 text-center">
-        Cancele quando quiser.{geo.currency !== "BRL" ? " Valor aproximado — cobrança em BRL." : ""}
+        Cancele quando quiser.{geo.currency !== "BRL" ? " Valor aproximado, cobrança em BRL." : ""}
       </p>
     </div>
   );
@@ -2653,7 +2653,7 @@ function LobbyScreen({
               )}
               <button
                 onClick={() => {
-                  const text = `"${questions[cardIndex]}" — Casa dos 20`;
+                  const text = `"${questions[cardIndex]}" | Casa dos 20`;
                   if (navigator.share) {
                     navigator.share({ title: "Casa dos 20", text }).catch(() => {});
                   } else {
@@ -2752,7 +2752,7 @@ function LobbyScreen({
             onClick={() => {
               const text = `Entre na sala ${lobbyCode} no Casa dos 20 para jogar comigo!`;
               if (navigator.share) {
-                navigator.share({ title: "Casa dos 20 — Sala", text }).catch(() => {});
+                navigator.share({ title: "Casa dos 20 | Sala", text }).catch(() => {});
               } else {
                 navigator.clipboard.writeText(text);
               }
@@ -2814,7 +2814,7 @@ function LobbyScreen({
           <ChevronLeft size={24} className="text-foreground" />
         </button>
         <h1 className="text-2xl font-serif text-foreground">
-          {mode === "online" ? "Jogo Online" : "Jogo Presencial"} — Lobby
+          {mode === "online" ? "Jogo Online" : "Jogo Presencial"} · Lobby
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Crie uma sala ou entre com um código.</p>
       </div>

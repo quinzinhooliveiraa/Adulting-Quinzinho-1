@@ -358,7 +358,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                           className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-yellow-500 text-white font-medium"
                           data-testid={`button-confirm-grant-${user.id}`}
                         >
-                          Liberar — {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
+                          Liberar · {grantDays > 0 ? `${grantDays} dias` : "Ilimitado"}
                         </button>
                       </>
                     ) : (
@@ -470,7 +470,7 @@ function UserCard({ user, onUpdate, onDelete, currentUserIsMaster, allUsers }: {
                           className="w-full text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium disabled:opacity-40"
                           data-testid={`button-confirm-grant-book-${user.id}`}
                         >
-                          Liberar — {grantBookDays > 0 ? `${grantBookDays} dias` : "Permanente"}
+                          Liberar · {grantBookDays > 0 ? `${grantBookDays} dias` : "Permanente"}
                         </button>
                       </div>
                     )}
@@ -895,7 +895,7 @@ function FeedbackCard({ ticket, onUpdate }: { ticket: FeedbackTicket; onUpdate: 
             <FeedbackStatusBadge status={ticket.status} />
           </div>
           <p className="text-[11px] text-muted-foreground truncate">
-            {ticket.userName} ({ticket.userEmail}) — {createdAt.toLocaleDateString("pt-BR")}
+            {ticket.userName} ({ticket.userEmail}) · {createdAt.toLocaleDateString("pt-BR")}
           </p>
         </div>
         <ChevronDown size={14} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -1508,7 +1508,7 @@ export default function Admin() {
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-foreground" />
               <h2 className="text-sm font-medium text-foreground">
-                {allFeedback.length} chamado(s) — {openFeedbackCount} aberto(s)
+                {allFeedback.length} chamado(s) · {openFeedbackCount} aberto(s)
               </h2>
             </div>
             <button
@@ -1547,8 +1547,8 @@ export default function Admin() {
               {pushStatus === undefined
                 ? "Verificando inscrição..."
                 : pushStatus.hasSubscription
-                ? `${pushStatus.subscriptionCount} dispositivo(s) inscrito(s) — notificações ativas`
-                : "Nenhuma inscrição ativa — notificações não serão entregues"}
+                ? `${pushStatus.subscriptionCount} dispositivo(s) inscrito(s) · notificações ativas`
+                : "Nenhuma inscrição ativa. Notificações não serão entregues"}
             </div>
 
             {!pushStatus?.hasSubscription && (
@@ -1819,7 +1819,7 @@ export default function Admin() {
               <div className="bg-card border border-border rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos — hoje por hora</p>
+                    <p className="text-xs font-medium text-muted-foreground">Utilizadores ativos · hoje por hora</p>
                     {peakHour.count > 0 && (
                       <p className="text-[10px] text-primary font-medium mt-0.5">
                         Pico às {fmt(peakHour.hour)} · {peakHour.count} utilizador{peakHour.count !== 1 ? "es" : ""}
@@ -1932,7 +1932,7 @@ export default function Admin() {
               <div className="bg-card border border-border rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Horário de uso — padrão do período</p>
+                    <p className="text-xs font-medium text-muted-foreground">Horário de uso · padrão do período</p>
                     {peakHp.count > 0 && (
                       <p className="text-[10px] text-primary font-medium mt-0.5">
                         Pico às {fmt(peakHp.hour)} · {peakHp.count.toLocaleString()} eventos
@@ -2473,7 +2473,7 @@ export default function Admin() {
                     <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
                       {ch.excerpt && <p className="text-xs italic text-muted-foreground">"{ch.excerpt}"</p>}
                       {ch.content.length < 50 ? (
-                        <p className="text-xs text-red-500 font-medium">⚠ Conteúdo vazio — clica no lápis para editar.</p>
+                        <p className="text-xs text-red-500 font-medium">⚠ Conteúdo vazio. Clica no lápis para editar.</p>
                       ) : (
                         <p className="text-xs text-foreground/70 line-clamp-3 whitespace-pre-wrap">{ch.content}</p>
                       )}
@@ -2967,7 +2967,7 @@ function PlanForm({ initial, onSave, onCancel, saving, error }: {
       {/* Valid Until */}
       <div>
         <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Tempo de oferta (opcional — aparece countdown na página Premium)
+          Tempo de oferta (opcional · aparece countdown na página Premium)
         </label>
         <input
           type="datetime-local"
@@ -3405,7 +3405,7 @@ function RecoveryNotificationCard() {
               <p className="text-[11px] text-muted-foreground">Nenhum checkout abandonado encontrado.</p>
             )}
             {withoutPush.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push — não receberão notificação.</p>
+              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push, não receberão notificação.</p>
             )}
             {excludedIds.size > 0 && (
               <p className="text-[10px] text-orange-500">{excludedIds.size} excluído(s) manualmente.</p>
@@ -3518,7 +3518,7 @@ function BookRecoveryNotificationCard() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <BookOpen size={16} className="text-foreground" />
-        <h2 className="text-sm font-medium text-foreground">Recuperação de Carrinho — Livro</h2>
+        <h2 className="text-sm font-medium text-foreground">Recuperação de Carrinho · Livro</h2>
       </div>
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -3600,7 +3600,7 @@ function BookRecoveryNotificationCard() {
               <p className="text-[11px] text-muted-foreground">Todos os utilizadores já têm acesso ao livro.</p>
             )}
             {withoutPush.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push — não receberão notificação.</p>
+              <p className="text-[10px] text-muted-foreground">{withoutPush.length} utilizador(es) sem push, não receberão notificação.</p>
             )}
             {excludedIds.size > 0 && (
               <p className="text-[10px] text-orange-500">{excludedIds.size} excluído(s) manualmente.</p>
@@ -3627,11 +3627,11 @@ function BookRecoveryNotificationCard() {
           </div>
           {withoutPush.length > 0 ? (
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {withoutPush.length} utilizador(es) sem push — podes enviar-lhes um email de recuperação.
+              {withoutPush.length} utilizador(es) sem push. Podes enviar-lhes um email de recuperação.
             </p>
           ) : (
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {isLoading ? "A verificar..." : "Todos os utilizadores têm push ativo — nenhum email necessário por agora."}
+              {isLoading ? "A verificar..." : "Todos os utilizadores têm push ativo. Nenhum email necessário por agora."}
             </p>
           )}
           {withoutPush.length > 0 && (
@@ -3780,7 +3780,7 @@ function ReconcileTrialBonusCard() {
         {result && (
           <div className="space-y-2">
             {result.fixed === 0 ? (
-              <p className="text-[11px] text-muted-foreground">Nenhum utilizador em falta — todos estão correctos ({result.alreadyOk} já tinham o bónus).</p>
+              <p className="text-[11px] text-muted-foreground">Nenhum utilizador em falta. Todos estão correctos ({result.alreadyOk} já tinham o bónus).</p>
             ) : (
               <>
                 <p className="text-[11px] text-green-500 font-medium">{result.fixed} utilizador(es) corrigido(s):</p>

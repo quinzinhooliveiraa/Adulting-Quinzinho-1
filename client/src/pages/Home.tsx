@@ -50,7 +50,7 @@ function TrialBanner({ trialEndsAt, trialBonusClaimed, onUpgrade, onClaim }: {
             Ganha +16 dias e fica com 30 dias grátis!
           </p>
           <p className="text-xs text-muted-foreground truncate">
-            Ativa agora — sem pagar nada.
+            Ativa agora, sem pagar nada.
           </p>
         </div>
         <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 whitespace-nowrap">Ganhar →</span>
@@ -1057,7 +1057,7 @@ export default function Home() {
                 {thisMonthCheckins.length > 0 && (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
-                      Check-ins do mês — {thisMonthCheckins.length} registro{thisMonthCheckins.length !== 1 ? "s" : ""}
+                      Check-ins do mês · {thisMonthCheckins.length} registro{thisMonthCheckins.length !== 1 ? "s" : ""}
                     </p>
                     {thisMonthCheckins.map((c) => {
                       const moodInfo = moodIcons.find(m => m.id === c.mood);

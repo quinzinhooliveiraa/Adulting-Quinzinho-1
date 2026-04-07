@@ -149,7 +149,7 @@ function ReportDetail({ report, onClose }: { report: SavedReport; onClose: () =>
               Relatório da Jornada
             </p>
             <h1 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "4px" }}>{r.titulo}</h1>
-            <p style={{ fontSize: "12px", color: "#666" }}>{report.journeyTitle} — {dateStr}</p>
+            <p style={{ fontSize: "12px", color: "#666" }}>{report.journeyTitle} · {dateStr}</p>
             <p style={{ fontSize: "11px", color: "#999", marginTop: "4px" }}>
               {report.completedDays}/{report.totalDays} dias • {report.entriesCount} reflexões escritas
             </p>
@@ -219,7 +219,7 @@ function ReportDetail({ report, onClose }: { report: SavedReport; onClose: () =>
           </div>
 
           <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <p style={{ fontSize: "10px", color: "#999", letterSpacing: "0.1em" }}>Casa dos 20 — Jornada de Autoconhecimento</p>
+            <p style={{ fontSize: "10px", color: "#999", letterSpacing: "0.1em" }}>Casa dos 20 | Jornada de Autoconhecimento</p>
           </div>
         </div>
       </div>

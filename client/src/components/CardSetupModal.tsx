@@ -126,7 +126,7 @@ function CardForm({ onSuccess, onClose }: CardSetupModalProps) {
 
         <div className="flex items-center gap-1.5 mt-2">
           <Lock size={11} className="text-muted-foreground shrink-0" />
-          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe — os teus dados nunca passam pelos nossos servidores</p>
+          <p className="text-[11px] text-muted-foreground">Protegido pelo Stripe. Os teus dados nunca passam pelos nossos servidores</p>
         </div>
       </div>
 

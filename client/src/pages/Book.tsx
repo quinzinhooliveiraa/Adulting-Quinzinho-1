@@ -1200,7 +1200,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                           {ch && (
                             <p className="text-[10px] uppercase tracking-widest font-bold mb-1.5"
                               style={{ color: "var(--bk-accent)" }}>
-                              {ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title.slice(0, 40)}` : ch.title}
+                              {ch.pageType === "chapter" ? `Cap. ${ch.order}: ${ch.title.slice(0, 40)}` : ch.title}
                             </p>
                           )}
                           <p className="bk-serif text-[14px] bk-ink leading-relaxed italic">
@@ -1225,7 +1225,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                                 style={{ color: "var(--bk-accent)" }}
                                 onClick={() => {
                                   const label = ch
-                                    ? (ch.pageType === "chapter" ? `Cap. ${ch.order} — ${ch.title}` : ch.title)
+                                    ? (ch.pageType === "chapter" ? `Cap. ${ch.order}: ${ch.title}` : ch.title)
                                     : "A Casa dos 20";
                                   const cvs = buildHighlightCanvas(hl, label);
                                   setHlImgPreview({
@@ -1381,7 +1381,7 @@ function BookReader({ chapters, startIdx, purchased, onClose, onBuy, openToc }: 
                 </p>
                 {searchResults.map((r, i) => {
                   const chIdx = chapters.findIndex(c => c.id === r.chapterId);
-                  const label = r.pageType === "chapter" ? `Cap. ${r.order} — ${r.title}` : r.title;
+                  const label = r.pageType === "chapter" ? `Cap. ${r.order}: ${r.title}` : r.title;
                   return (
                     <button key={i}
                       data-testid={`btn-search-result-${i}`}
