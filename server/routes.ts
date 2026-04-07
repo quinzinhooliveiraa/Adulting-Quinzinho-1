@@ -1897,6 +1897,45 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/stripe/subscription-details", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+
+      const stripe = getStableStripeClient();
+      const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
+        expand: ["items.data.price.product"],
+      });
+
+      const item = sub.items.data[0];
+      const price = item?.price as any;
+      const product = price?.product as any;
+
+      let planType: "monthly" | "annual" | "lifetime" = "monthly";
+      if (price?.recurring?.interval === "year") planType = "annual";
+      else if (!price?.recurring) planType = "lifetime";
+
+      res.json({
+        subscription: {
+          id: sub.id,
+          status: sub.status,
+          cancelAtPeriodEnd: sub.cancel_at_period_end,
+          currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+          cancelAt: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null,
+          planType,
+          productName: product?.name || null,
+          amount: price?.unit_amount ? price.unit_amount / 100 : null,
+          currency: price?.currency || "brl",
+        },
+      });
+    } catch (error: any) {
+      console.error("subscription-details error:", error);
+      res.json({ subscription: null });
+    }
+  });
+
   app.get("/api/stripe/subscription", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.session.userId!);

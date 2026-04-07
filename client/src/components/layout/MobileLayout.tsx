@@ -1,11 +1,11 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard, FileText } from "lucide-react";
+import { Home, BookOpen, PenLine, Sparkles, Map, LogOut, Sun, Moon, Monitor, Camera, Shield, MessageSquare, X, Send, PanelLeftClose, PanelLeftOpen, Bell, BellOff, Pencil, Check, Crown, CreditCard, FileText, AlertTriangle, CalendarDays, RefreshCw, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isPushSupported, subscribeToPush, unsubscribeFromPush, isSubscribed as isPushSubscribed, refreshPushSubscription } from "@/utils/pushNotifications";
 import { useTrack } from "@/hooks/useTrack";
@@ -110,6 +110,174 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+function PlanManagerSheet({ onClose }: { onClose: () => void }) {
+  const { user, refetch } = useAuth();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelDone, setCancelDone] = useState(false);
+  const [cancelUntil, setCancelUntil] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery<{ subscription: any }>({
+    queryKey: ["/api/stripe/subscription-details"],
+    enabled: user?.premiumReason === "paid",
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/stripe/cancel-subscription");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCancelUntil(data.cancelAt);
+      setCancelDone(true);
+      setConfirmCancel(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-details"] });
+      refetch();
+    },
+  });
+
+  const sub = data?.subscription;
+
+  const planLabel = () => {
+    if (!sub) return "Plano Premium";
+    if (sub.planType === "annual") return "Plano Anual";
+    if (sub.planType === "lifetime") return "Plano Vitalício";
+    return "Plano Mensal";
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const isCanceling = sub?.cancelAtPeriodEnd;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-background rounded-t-3xl w-full max-w-md border-t border-border shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Crown size={18} className="text-amber-500" />
+            <h3 className="text-base font-semibold text-foreground">Meu Plano</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground" data-testid="button-close-plan-manager">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw size={20} className="animate-spin text-muted-foreground" />
+            </div>
+          ) : cancelDone ? (
+            <div className="text-center py-6 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mx-auto">
+                <CalendarDays size={28} className="text-orange-500" />
+              </div>
+              <p className="font-medium text-foreground">Assinatura cancelada</p>
+              <p className="text-sm text-muted-foreground">
+                Continuas com acesso premium até{" "}
+                <span className="font-medium text-foreground">
+                  {cancelUntil ? formatDate(cancelUntil) : "o fim do período"}
+                </span>.
+              </p>
+              <button
+                onClick={onClose}
+                className="mt-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm"
+                data-testid="button-close-after-cancel"
+              >
+                Fechar
+              </button>
+            </div>
+          ) : confirmCancel ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+                <AlertTriangle size={18} className="text-orange-500 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Cancelar assinatura?</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {sub?.currentPeriodEnd
+                      ? `O teu acesso premium continua até ${formatDate(sub.currentPeriodEnd)}. Depois disso, a conta passa para o plano gratuito.`
+                      : "O teu acesso continua até ao fim do período pago. Depois passa para o plano gratuito."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground"
+                  data-testid="button-cancel-confirm-no"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-medium disabled:opacity-60"
+                  data-testid="button-cancel-confirm-yes"
+                >
+                  {cancelMutation.isPending ? "Cancelando..." : "Confirmar cancelamento"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Current plan card */}
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">{planLabel()}</span>
+                  <span className={cn(
+                    "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                    isCanceling
+                      ? "bg-orange-500/15 text-orange-600 dark:text-orange-400"
+                      : "bg-green-500/15 text-green-600 dark:text-green-400"
+                  )}>
+                    {isCanceling ? "A cancelar" : "Ativo"}
+                  </span>
+                </div>
+
+                {sub?.currentPeriodEnd && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CalendarDays size={14} />
+                    <span>
+                      {isCanceling
+                        ? `Acesso até ${formatDate(sub.currentPeriodEnd)}`
+                        : sub.planType === "lifetime"
+                        ? "Acesso vitalício"
+                        : `Renova em ${formatDate(sub.currentPeriodEnd)}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2">
+                {!isCanceling && sub?.planType !== "lifetime" && (
+                  <button
+                    onClick={() => setConfirmCancel(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-red-500 hover:border-red-500/30 transition-colors"
+                    data-testid="button-cancel-subscription"
+                  >
+                    <span>Cancelar assinatura</span>
+                    <ChevronRight size={16} />
+                  </button>
+                )}
+
+                {isCanceling && (
+                  <div className="px-4 py-3 rounded-xl bg-muted/50 text-xs text-muted-foreground text-center">
+                    A assinatura já está marcada para cancelamento no fim do período.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MobileLayout({ children }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const { logout, user, refetch } = useAuth();
@@ -117,6 +285,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const track = useTrack();
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showPlanManager, setShowPlanManager] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isPushSubscribed());
   const [pushLoading, setPushLoading] = useState(false);
   const [showPushBanner, setShowPushBanner] = useState(false);
@@ -237,24 +406,13 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     window.location.reload();
   };
 
-  const handleManagePlan = async () => {
+  const handleManagePlan = () => {
     setShowMenu(false);
-    if (user?.premiumReason === "paid" || user?.premiumReason === "granted") {
-      try {
-        const portalRes = await fetch("/api/stripe/portal", {
-          method: "POST",
-          credentials: "include",
-        });
-        if (portalRes.ok) {
-          const portalData = await portalRes.json();
-          if (portalData.url) {
-            window.location.href = portalData.url;
-            return;
-          }
-        }
-      } catch {}
+    if (user?.premiumReason === "paid") {
+      setShowPlanManager(true);
+    } else {
+      setLocation("/premium");
     }
-    setLocation("/premium");
   };
 
   const getPlanLabel = () => {
@@ -591,6 +749,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           />
 
           {showFeedback && <FeedbackDialog onClose={() => setShowFeedback(false)} />}
+          {showPlanManager && <PlanManagerSheet onClose={() => setShowPlanManager(false)} />}
 
           {showPushBanner && (
             <div className="mx-4 mt-3 p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
