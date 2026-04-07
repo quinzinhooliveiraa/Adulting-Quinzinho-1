@@ -36,7 +36,7 @@ export default function ReferralCard() {
     if (!data?.link) return;
     const shareData = {
       title: "Casa dos 20",
-      text: "Estou a usar o Casa dos 20 e está a mudar a minha vida! Experimenta — é uma aplicação de crescimento pessoal baseada no livro.",
+      text: "Estou a usar o Casa dos 20 e está a mudar a minha vida! Experimenta, é uma aplicação de crescimento pessoal baseada no livro.",
       url: data.link,
     };
     if (navigator.share) {
@@ -70,7 +70,7 @@ export default function ReferralCard() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <p className="font-bold text-sm leading-tight">
-              Convida amigos — ganha 1 mês grátis por cada um
+              Convida amigos e ganha 1 mês grátis por cada um
             </p>
             {expanded
               ? <ChevronUp className="h-4 w-4 shrink-0 opacity-70" />
@@ -99,7 +99,7 @@ export default function ReferralCard() {
       {expanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-primary-foreground/20 pt-3">
           <p className="text-sm opacity-85 leading-snug">
-            Partilha o teu link. Por cada amigo que criar conta e subscrever, recebes <strong>30 dias de premium</strong> automaticamente — sem limite de convites!
+            Partilha o teu link. Por cada amigo que criar conta e subscrever, recebes <strong>30 dias de premium</strong> automaticamente, sem limite de convites!
           </p>
 
           {/* Link row */}

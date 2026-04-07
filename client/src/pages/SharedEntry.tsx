@@ -159,7 +159,7 @@ export default function SharedEntry() {
 
         <footer className="mt-12 pt-6 border-t border-border/30 text-center">
           <p className="text-sm text-muted-foreground mb-4">
-            Reflexão escrita na Casa dos 20 — o diário para quem está vivendo seus 20 e poucos.
+            Reflexão escrita na Casa dos 20, o diário para quem está vivendo seus 20 e poucos.
           </p>
           <a href="/">
             <Button className="rounded-xl bg-primary text-primary-foreground">

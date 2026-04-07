@@ -692,7 +692,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               <div className="space-y-2 stagger-2">
                 <h2 className="text-2xl font-serif text-foreground">Explora tudo por 14 dias</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed px-2">
-                  Ativa o teu trial gratuito agora e desbloqueia toda a experiência da Casa dos 20 — sem cartão de crédito.
+                  Ativa o teu trial gratuito agora e desbloqueia toda a experiência da Casa dos 20, sem cartão de crédito.
                 </p>
               </div>
 

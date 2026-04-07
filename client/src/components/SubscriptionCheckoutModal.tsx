@@ -132,7 +132,7 @@ function PaymentForm({
             <span className="text-sm text-foreground font-medium block">{plan.label}</span>
             <span className="text-[11px] text-muted-foreground">
               {isLifetime
-                ? "acesso permanente — paga uma vez, usa sempre"
+                ? "acesso permanente: paga uma vez, usa sempre"
                 : plan.interval === "month"
                   ? "cobrado mensalmente"
                   : "cobrado anualmente"}
@@ -189,7 +189,7 @@ function PaymentForm({
           {loading
             ? "A processar..."
             : isLifetime
-              ? `Pagar ${plan.priceFormatted} — acesso vitalício`
+              ? `Pagar ${plan.priceFormatted} · acesso vitalício`
               : `Subscrever por ${plan.priceFormatted}/${plan.interval === "month" ? "mês" : "ano"}`}
         </button>
         <button

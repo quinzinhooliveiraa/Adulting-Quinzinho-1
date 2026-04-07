@@ -569,7 +569,7 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
                     <Shield size={14} className="text-primary mt-0.5 shrink-0" />
                     <div>
                       <p className="font-medium text-foreground text-xs">E-mail criptografado</p>
-                      <p className="text-foreground/70 text-xs">Seu e-mail é armazenado com criptografia AES-256-GCM — o mesmo padrão usado por bancos. Mesmo que alguém acesse o banco de dados, não consegue ler seu e-mail.</p>
+                      <p className="text-foreground/70 text-xs">Seu e-mail é armazenado com criptografia AES-256-GCM, o mesmo padrão usado por bancos. Mesmo que alguém acesse o banco de dados, não consegue ler seu e-mail.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -617,7 +617,7 @@ export default function Auth({ onRegisterSuccess, initialError }: { onRegisterSu
 
               <div>
                 <h3 className="font-semibold text-foreground mb-2">6. Pagamentos</h3>
-                <p>Assinaturas premium são processadas pela Stripe (certificada PCI DSS nível 1). Nenhum dado de cartão é armazenado nos nossos servidores — apenas um identificador de referência da Stripe. Você pode cancelar a qualquer momento.</p>
+                <p>Assinaturas premium são processadas pela Stripe (certificada PCI DSS nível 1). Nenhum dado de cartão é armazenado nos nossos servidores, apenas um identificador de referência da Stripe. Você pode cancelar a qualquer momento.</p>
               </div>
 
               <div>

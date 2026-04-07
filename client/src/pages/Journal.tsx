@@ -268,7 +268,7 @@ function ShareLinkButton({ entryId, existingSlug }: { entryId: number; existingS
   const handleNativeShare = async () => {
     if (!shareUrl) return;
     try {
-      await navigator.share({ title: "Reflexão — Casa dos 20", url: shareUrl });
+      await navigator.share({ title: "Reflexão | Casa dos 20", url: shareUrl });
     } catch {}
   };
 
@@ -515,8 +515,8 @@ export default function Journal() {
     if (platform === "native" && navigator.share) {
       try {
         await navigator.share({
-          title: "Casa dos 20 — Diário",
-          text: `"${plainText}"\n\n— Casa dos 20`,
+          title: "Casa dos 20 | Diário",
+          text: `"${plainText}"\n\nCasa dos 20`,
         });
         setShowShare(null);
         return;
@@ -525,7 +525,7 @@ export default function Journal() {
     const shareData = { id: String(entry.id), date: entry.date, text: plainText, tags: entry.tags, timestamp: Date.now() };
     const url = shareEntry(shareData, platform);
     if (platform === "instagram") {
-      const text = `"${plainText}"\n\n— Casa dos 20 (@quinzinhooliveiraa_)`;
+      const text = `"${plainText}"\n\nCasa dos 20 (@quinzinhooliveiraa_)`;
       navigator.clipboard.writeText(text);
       alert("Texto copiado! Cole no Instagram direto.");
     } else {
@@ -633,7 +633,7 @@ export default function Journal() {
             <PenLine size={12} />
             {journalLimit.remaining > 0
               ? `${journalLimit.remaining} reflexão${journalLimit.remaining !== 1 ? "ões" : ""} gratuita${journalLimit.remaining !== 1 ? "s" : ""} restante${journalLimit.remaining !== 1 ? "s" : ""} este mês`
-              : "Limite mensal atingido — assine o premium para continuar"}
+              : "Limite mensal atingido. Assine o premium para continuar"}
           </div>
         )}
         <div className="flex justify-between items-center gap-2 min-w-0 pr-24 md:pr-0">
