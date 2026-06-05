@@ -60,16 +60,26 @@ function AuthGate() {
       }
       if (checkout === "success") {
         setCheckoutBanner(true);
-        fetch("/api/stripe/sync-subscription", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }).finally(() => {
-          setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-          }, 500);
-        });
         setTimeout(() => setCheckoutBanner(false), 8000);
+
+        // Poll until premium is confirmed (up to 30s), trying sync + refetch every 2s
+        let attempts = 0;
+        const maxAttempts = 15;
+        const poll = async () => {
+          attempts++;
+          try {
+            await fetch("/api/stripe/sync-subscription", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+            });
+          } catch { /* non-fatal */ }
+          await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          const result = await queryClient.fetchQuery({ queryKey: ["/api/auth/me"] });
+          if ((result as any)?.hasPremium) return; // confirmed premium
+          if (attempts < maxAttempts) setTimeout(poll, 2000);
+        };
+        poll();
       }
       if (fromPwa && !googleNewUser) {
         setPwaReturnBanner(true);
