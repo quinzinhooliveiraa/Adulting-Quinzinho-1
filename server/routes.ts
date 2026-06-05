@@ -1718,7 +1718,7 @@ export async function registerRoutes(
         return res.status(500).json({ message: "Nenhum plano mensal disponível. Tente novamente." });
       }
 
-      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const domain = process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ["card"],
@@ -1886,7 +1886,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nenhuma assinatura encontrada" });
       }
 
-      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const domain = process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
         return_url: `${domain}/`,
