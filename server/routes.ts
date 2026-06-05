@@ -66,6 +66,8 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 function getAppDomain() {
+  const appUrl = process.env.APP_URL;
+  if (appUrl) return appUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000";
 }
 

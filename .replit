@@ -66,3 +66,6 @@ expertMode = true
 [userenv.shared]
 VAPID_SUBJECT = "mailto:quinzinhooliveiraa@gmail.com"
 VAPID_PUBLIC_KEY = "BFWf1qCLJrnOiDrZZLmAeQHnAedp_ycyifaCZogdcyk_-aqx_J-c11XzQQpa8NcAb_TerKj-Zy3-QHFfXH8nBmk"
+
+[userenv.production]
+APP_URL = "https://acasados20.com.br"
