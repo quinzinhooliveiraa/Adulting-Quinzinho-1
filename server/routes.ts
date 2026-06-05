@@ -1307,37 +1307,34 @@ export async function registerRoutes(
 
       let customerId = user.stripeCustomerId;
 
-      async function ensureCustomer() {
-        if (customerId) {
-          try {
-            const existing = await stripe.customers.retrieve(customerId) as any;
-            if (!existing.deleted) return customerId;
-          } catch {}
-        }
+      // Ensure valid Stripe customer
+      if (customerId) {
+        try {
+          const existing = await stripe.customers.retrieve(customerId) as any;
+          if (existing.deleted) customerId = null;
+        } catch { customerId = null; }
+      }
+      if (!customerId) {
         const customer = await stripe.customers.create({
-          email: user!.email,
-          name: user!.name,
-          metadata: { userId: user!.id },
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
         });
-        await storage.updateUser(user!.id, { stripeCustomerId: customer.id });
-        return customer.id;
+        await storage.updateUser(user.id, { stripeCustomerId: customer.id });
+        customerId = customer.id;
       }
-      customerId = await ensureCustomer();
 
-      // Cancel any orphaned incomplete subscriptions for this customer+price
-      const existing = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "incomplete",
-        limit: 10,
-      });
-      for (const sub of existing.data) {
-        const hasSamePrice = sub.items.data.some((i) => i.price.id === priceId);
-        if (hasSamePrice) {
-          await stripe.subscriptions.cancel(sub.id);
+      // Cancel any orphaned incomplete subscriptions for this price
+      try {
+        const orphans = await stripe.subscriptions.list({ customer: customerId, status: "incomplete", limit: 5 });
+        for (const sub of orphans.data) {
+          if (sub.items.data.some((i) => i.price.id === priceId)) {
+            await stripe.subscriptions.cancel(sub.id);
+          }
         }
-      }
+      } catch { /* non-fatal */ }
 
-      // Create the subscription — expand invoice + payment_intent at creation time
+      // Create subscription — expand invoice + payment_intent in one call
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
@@ -1349,97 +1346,25 @@ export async function registerRoutes(
         expand: ["latest_invoice.payment_intent"],
       });
 
-      // Try to get client_secret from the expanded subscription first
-      let clientSecret: string | null = null;
+      const invoice = subscription.latest_invoice as any;
+      const pi = invoice?.payment_intent;
+      const clientSecret: string | null =
+        typeof pi === "object" ? (pi?.client_secret ?? null) : null;
 
-      const latestInvoice = subscription.latest_invoice as any;
-      const invoiceType = typeof latestInvoice;
-      const piRaw = invoiceType === "object" ? latestInvoice?.payment_intent : undefined;
-      console.log("sub-intent debug:", {
+      console.log("[sub-intent]", {
         subId: subscription.id,
         subStatus: subscription.status,
-        invoiceType,
-        invoiceId: invoiceType === "object" ? latestInvoice?.id : latestInvoice,
-        invoiceStatus: invoiceType === "object" ? latestInvoice?.status : "n/a",
-        invoiceAmountDue: invoiceType === "object" ? latestInvoice?.amount_due : "n/a",
-        invoiceCollectionMethod: invoiceType === "object" ? latestInvoice?.collection_method : "n/a",
-        paymentIntentType: typeof piRaw,
-        paymentIntentId: typeof piRaw === "object" ? piRaw?.id : piRaw,
-        paymentIntentStatus: typeof piRaw === "object" ? piRaw?.status : "n/a",
-        subscriptionKeys: Object.keys(subscription),
+        hasClientSecret: !!clientSecret,
       });
 
-      if (latestInvoice && typeof latestInvoice === "object") {
-        const piFromSub = latestInvoice.payment_intent;
-        if (piFromSub && typeof piFromSub === "object" && piFromSub.client_secret) {
-          clientSecret = piFromSub.client_secret;
-          console.log("sub-intent: got secret from expanded invoice object");
-        } else if (typeof piFromSub === "string" && piFromSub) {
-          // payment_intent came back as an ID — retrieve it separately
-          const pi = await stripe.paymentIntents.retrieve(piFromSub);
-          clientSecret = pi.client_secret ?? null;
-          console.log("sub-intent: got secret from pi retrieve, status:", pi.status);
-        }
-      }
-
-      // Fallback 1: retrieve the invoice separately with expand
       if (!clientSecret) {
-        const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
-        if (invoiceId) {
-          const invoice = await stripe.invoices.retrieve(invoiceId, {
-            expand: ["payment_intent"],
-          }) as any;
-          const pi = invoice.payment_intent;
-          console.log("sub-intent fallback invoice keys:", Object.keys(invoice).join(","));
-          console.log("sub-intent fallback invoice:", {
-            invoiceStatus: invoice.status,
-            amountDue: invoice.amount_due,
-            collectionMethod: invoice.collection_method,
-            piType: typeof pi,
-            piId: typeof pi === "object" ? pi?.id : pi,
-            paymentKeys: typeof invoice.payment === "object" ? Object.keys(invoice.payment || {}) : String(invoice.payment),
-          });
-          if (pi && typeof pi === "object" && pi.client_secret) {
-            clientSecret = pi.client_secret;
-          } else if (typeof pi === "string" && pi) {
-            const piObj = await stripe.paymentIntents.retrieve(pi);
-            clientSecret = piObj.client_secret ?? null;
-          }
-        }
+        await stripe.subscriptions.cancel(subscription.id).catch(() => {});
+        return res.status(500).json({ message: "Não foi possível iniciar o pagamento. Tenta novamente." });
       }
 
-      // Fallback 2: list recent PaymentIntents for this customer and find the one for our invoice
-      if (!clientSecret) {
-        const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
-        const recentPIs = await stripe.paymentIntents.list({ customer: customerId, limit: 10 });
-        console.log("sub-intent fallback PI list:", recentPIs.data.map(p => ({
-          id: p.id, invoice: p.invoice, status: p.status, amount: p.amount
-        })));
-        const matchedPI = recentPIs.data.find((p: any) => {
-          const piInvoice = typeof p.invoice === "string" ? p.invoice : (p.invoice as any)?.id;
-          return piInvoice === invoiceId;
-        });
-        if (matchedPI?.client_secret) {
-          clientSecret = matchedPI.client_secret;
-          console.log("sub-intent: found secret via PI list, status:", matchedPI.status);
-        }
-      }
-
-      if (!clientSecret) {
-        console.error("create-subscription-intent: no client_secret found", {
-          subscriptionId: subscription.id,
-          latestInvoice: typeof latestInvoice === "object" ? latestInvoice?.id : latestInvoice,
-        });
-        await stripe.subscriptions.cancel(subscription.id);
-        return res.status(500).json({ message: "Não foi possível iniciar o pagamento" });
-      }
-
-      res.json({
-        clientSecret,
-        subscriptionId: subscription.id,
-      });
+      res.json({ clientSecret, subscriptionId: subscription.id });
     } catch (error: any) {
-      console.error("create-subscription-intent error:", error?.message ?? error);
+      console.error("[sub-intent] error:", error?.message ?? error);
       res.status(500).json({ message: "Não foi possível iniciar o pagamento. Tenta novamente." });
     }
   });
