@@ -130,11 +130,23 @@ function PaymentForm({
   );
 }
 
+function redirectToCheckout(priceId: string) {
+  fetch("/api/stripe/checkout", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ priceId }),
+  })
+    .then((r) => r.json())
+    .then((d) => { if (d.url) window.location.href = d.url; })
+    .catch(() => {});
+}
+
 export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: Props) {
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof getStripePromise> | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionId, setSubscriptionId] = useState("");
-  const [loadError, setLoadError] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
 
   const isDark =
     typeof document !== "undefined" &&
@@ -142,7 +154,13 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
 
   useEffect(() => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
+
+    // After 12s without the embedded form loading, fall back to redirect checkout
+    const fallbackTimeout = setTimeout(() => {
+      controller.abort();
+      setRedirecting(true);
+      redirectToCheckout(plan.priceId);
+    }, 12000);
 
     const intentFetch = fetch("/api/stripe/create-subscription-intent", {
       method: "POST",
@@ -159,21 +177,21 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
 
     Promise.all([getStripePromise(), intentFetch])
       .then(([stripeInst, intentData]) => {
-        clearTimeout(timeout);
+        clearTimeout(fallbackTimeout);
         setStripePromise(Promise.resolve(stripeInst));
         setClientSecret(intentData.clientSecret);
         if (intentData.subscriptionId) setSubscriptionId(intentData.subscriptionId);
       })
       .catch((err: any) => {
-        clearTimeout(timeout);
-        const msg = err?.name === "AbortError"
-          ? "Tempo esgotado. Verifica a tua ligação e tenta novamente."
-          : (err?.message || "Erro de ligação. Tenta novamente.");
-        setLoadError(msg);
+        clearTimeout(fallbackTimeout);
+        if (err?.name === "AbortError") return; // fallback already triggered
+        // Any other error → also fall back to redirect
+        setRedirecting(true);
+        redirectToCheckout(plan.priceId);
       });
 
     return () => {
-      clearTimeout(timeout);
+      clearTimeout(fallbackTimeout);
       controller.abort();
     };
   }, [plan.priceId]);
@@ -197,35 +215,16 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
           <X size={18} />
         </button>
 
-        {loadError ? (
-          <div className="px-6 py-10 text-center flex flex-col items-center gap-3">
-            <p className="text-sm text-red-500 font-medium">{loadError}</p>
-            <p className="text-xs text-muted-foreground max-w-[260px]">
-              Se usas um bloqueador de anúncios, tenta desativá-lo para este site.
-            </p>
-            <div className="flex gap-3 mt-1">
-              <button
-                onClick={() => { setLoadError(""); setClientSecret(""); }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium"
-              >
-                Tentar novamente
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm text-muted-foreground border border-border rounded-xl"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        ) : !clientSecret || !stripePromise ? (
+        {!clientSecret || !stripePromise ? (
           <div className="px-6 py-10 text-center">
             <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
               {plan.interval === "lifetime"
                 ? <Infinity size={20} className="text-violet-500" />
                 : <Crown size={20} className="text-amber-500" />}
             </div>
-            <p className="text-sm text-muted-foreground animate-pulse">A preparar pagamento seguro...</p>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {redirecting ? "A abrir página de pagamento..." : "A preparar pagamento seguro..."}
+            </p>
           </div>
         ) : (
           <Elements
