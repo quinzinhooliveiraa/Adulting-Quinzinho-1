@@ -1272,7 +1272,7 @@ export async function registerRoutes(
       }
       customerId = await ensureValidCustomer();
 
-      const domain = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const domain = process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
       const sessionParams: any = {
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
