@@ -155,12 +155,12 @@ export default function SubscriptionCheckoutModal({ plan, onSuccess, onClose }: 
   useEffect(() => {
     const controller = new AbortController();
 
-    // After 12s without the embedded form loading, fall back to redirect checkout
+    // After 6s without the embedded form loading, fall back to redirect checkout
     const fallbackTimeout = setTimeout(() => {
       controller.abort();
       setRedirecting(true);
       redirectToCheckout(plan.priceId);
-    }, 12000);
+    }, 6000);
 
     const intentFetch = fetch("/api/stripe/create-subscription-intent", {
       method: "POST",
