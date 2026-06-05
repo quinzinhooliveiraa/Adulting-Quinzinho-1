@@ -14,10 +14,19 @@ declare module "http" {
   }
 }
 
+app.all("/api/stripe/webhook", (req, res, next) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  next();
+});
+
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
+    console.log("[stripe webhook] POST received, processing...");
+
     const signature = req.headers["stripe-signature"];
     if (!signature) {
       return res.status(400).json({ error: "Missing stripe-signature" });

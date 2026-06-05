@@ -1,0 +1,65 @@
+Preciso verificar se o webhook da Stripe está realmente funcionando em produção.
+
+Contexto:
+
+* Domínio: https://acasados20.com.br
+* Endpoint esperado: https://acasados20.com.br/api/stripe/webhook
+* Corrigimos recentemente um problema onde o sistema estava gerando:
+  https://undefined/api/stripe/webhook
+* Agora APP_URL está configurada corretamente.
+
+O problema é que ao abrir:
+
+https://acasados20.com.br/api/stripe/webhook
+
+no navegador, sou redirecionado para o frontend do site em vez de receber uma resposta da API.
+
+Quero que você investigue e corrija os seguintes pontos:
+
+1. Verifique se a rota POST /api/stripe/webhook realmente existe no backend.
+
+2. Verifique se o Render, Express, Vite, React Router, Nginx ou qualquer proxy está redirecionando a rota /api/stripe/webhook para o frontend.
+
+3. Execute testes locais usando:
+   curl -i https://acasados20.com.br/api/stripe/webhook
+
+   e
+
+   curl -X POST https://acasados20.com.br/api/stripe/webhook -i
+
+4. Confirme qual resposta HTTP está sendo retornada atualmente.
+
+5. Para requisições GET:
+
+   * retornar 405 Method Not Allowed
+   * nunca carregar o frontend
+
+6. Para requisições POST:
+
+   * garantir que a rota chegue ao controlador do webhook da Stripe
+   * registrar logs detalhados quando uma requisição chegar
+
+7. Adicione logs temporários como:
+   console.log("Stripe webhook reached")
+
+8. Verifique se a ordem das rotas está correta.
+   O webhook deve ser registrado ANTES de qualquer fallback como:
+   app.get("*")
+   app.use("*")
+   app.use(express.static(...))
+   ou qualquer handler que sirva o frontend.
+
+9. Confirme qual arquivo contém a implementação do webhook e mostre:
+
+   * rota registrada
+   * middleware utilizados
+   * código completo do endpoint
+
+10. Depois dos testes, informe:
+
+* se o endpoint está acessível externamente
+* se responde corretamente a POST
+* se a Stripe conseguirá entregar eventos
+* qualquer erro encontrado e a correção aplicada
+
+Não apenas analise. Corrija o problema e valide o funcionamento do endpoint.
