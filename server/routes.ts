@@ -353,9 +353,9 @@ export async function registerRoutes(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://js.stripe.com", "https://js.stripe.com/v3/"],
-        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network", "https://q.stripe.com", "wss:", "ws:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://js.stripe.com", "https://js.stripe.com/v3/", "https://pay.google.com"],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network", "https://pay.google.com"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://accounts.google.com", "https://m.stripe.com", "https://m.stripe.network", "https://q.stripe.com", "https://pay.google.com", "https://r.stripe.com", "https://errors.stripe.com", "wss:", "ws:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
